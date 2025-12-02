@@ -1,4 +1,4 @@
-# SCINDONGO Immo – Version unifiée
+SCINDONGO Immo – Version unifiée
 
 Cette archive correspond à la version **finale unifiée** de la plateforme immobilière SCINDONGO Immo.
 
@@ -77,3 +77,7 @@ Pour une démo propre, il est recommandé de créer progressivement vos objets v
 - Superuser créé automatiquement si nécessaire.
 - `collectstatic` exécuté systématiquement pour garantir le CSS/JS du /admin.
 
+=======
+# scindongo_immo
+Projet master2
+>>>>>>> ebbcc2420cf3f6f5d995e030d1f21a77db2b0ec1
