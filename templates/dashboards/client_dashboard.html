@@ -1,0 +1,41 @@
+{% extends 'base.html' %}
+{% block content %}
+<h1 class="mb-4">Mon espace client</h1>
+<div class="row g-3 mb-4">
+  <div class="col-md-6">
+    <div class="card shadow-sm">
+      <div class="card-body">
+        <h5 class="card-title">Mes réservations</h5>
+        <ul class="list-group list-group-flush">
+          {% for r in reservations %}
+          <li class="list-group-item">
+            <strong>{{ r.unite.reference_lot }}</strong> – {{ r.unite.programme.nom }}<br>
+            Statut : <span class="badge bg-info">{{ r.get_statut_display }}</span> · Acompte : {{ r.acompte }} FCFA
+          </li>
+          {% empty %}
+          <li class="list-group-item text-muted">Aucune réservation.</li>
+          {% endfor %}
+        </ul>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-6">
+    <div class="card shadow-sm">
+      <div class="card-body">
+        <h5 class="card-title">Mes paiements</h5>
+        <ul class="list-group list-group-flush">
+          {% for p in paiements %}
+          <li class="list-group-item">
+            {{ p.date_paiement }} – {{ p.montant }} FCFA –
+            <span class="badge bg-secondary">{{ p.get_statut_display }}</span><br>
+            Réservation : {{ p.reservation.unite.reference_lot }}
+          </li>
+          {% empty %}
+          <li class="list-group-item text-muted">Aucun paiement enregistré.</li>
+          {% endfor %}
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

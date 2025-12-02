@@ -1,0 +1,35 @@
+[
+  {
+    "model": "catalog.programme",
+    "pk": 1,
+    "fields": {
+      "created_at": "2025-01-01T00:00:00Z",
+      "updated_at": "2025-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "catalog.unite",
+    "pk": 1,
+    "fields": {}
+  },
+  {
+    "model": "catalog.unite",
+    "pk": 2,
+    "fields": {}
+  },
+  {
+    "model": "catalog.unite",
+    "pk": 3,
+    "fields": {}
+  },
+  {
+    "model": "catalog.unite",
+    "pk": 4,
+    "fields": {}
+  },
+  {
+    "model": "catalog.unite",
+    "pk": 5,
+    "fields": {}
+  }
+]

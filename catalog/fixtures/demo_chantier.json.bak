@@ -1,0 +1,44 @@
+[
+  {
+    "model": "catalog.etapechantier",
+    "pk": 1,
+    "fields": {
+      "programme": 1,
+      "code": "VRD",
+      "libelle": "Voiries et Réseaux Divers",
+      "ordre": 1,
+      "description": "Préparation du terrain et des réseaux."
+    }
+  },
+  {
+    "model": "catalog.etapechantier",
+    "pk": 2,
+    "fields": {
+      "programme": 1,
+      "code": "GROS_OEUVRE",
+      "libelle": "Gros œuvre",
+      "ordre": 2,
+      "description": "Fondations, élévation des murs, toiture."
+    }
+  },
+  {
+    "model": "catalog.avancementchantier",
+    "pk": 1,
+    "fields": {
+      "etape": 1,
+      "date_pointage": "2025-02-01",
+      "pourcentage": 40,
+      "commentaire": "VRD en cours, terrassement terminé."
+    }
+  },
+  {
+    "model": "catalog.avancementchantier",
+    "pk": 2,
+    "fields": {
+      "etape": 2,
+      "date_pointage": "2025-03-10",
+      "pourcentage": 20,
+      "commentaire": "Fondations coulées."
+    }
+  }
+]

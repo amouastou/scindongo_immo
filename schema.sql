@@ -1,0 +1,3 @@
+-- Schéma logique PostgreSQL pour SCINDONGO Immo
+-- Généré à partir des modèles Django (Programmes, Biens, Clients, Réservations, Contrats, Paiements, Financement, Chantiers, Sécurité).
+-- Les tables effectives sont créées via `python manage.py migrate`.

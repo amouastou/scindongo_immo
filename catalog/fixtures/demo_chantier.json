@@ -1,0 +1,28 @@
+[
+  {
+    "model": "catalog.etapechantier",
+    "pk": 1,
+    "fields": {
+      "created_at": "2025-01-01T00:00:00Z",
+      "updated_at": "2025-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "catalog.etapechantier",
+    "pk": 2,
+    "fields": {
+      "created_at": "2025-01-01T00:00:00Z",
+      "updated_at": "2025-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "catalog.avancementchantier",
+    "pk": 1,
+    "fields": {}
+  },
+  {
+    "model": "catalog.avancementchantier",
+    "pk": 2,
+    "fields": {}
+  }
+]

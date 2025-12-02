@@ -1,0 +1,22 @@
+{% extends 'base.html' %}
+{% block content %}
+<h1 class="mb-4">Tableau de bord commercial</h1>
+<div class="row g-3">
+  <div class="col-md-4">
+    <div class="card shadow-sm">
+      <div class="card-body">
+        <h5 class="card-title">Réservations</h5>
+        <p class="display-6">{{ reservations_count }}</p>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-4">
+    <div class="card shadow-sm">
+      <div class="card-body">
+        <h5 class="card-title">Paiements</h5>
+        <p class="display-6">{{ paiements_count }}</p>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

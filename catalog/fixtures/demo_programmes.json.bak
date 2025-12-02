@@ -1,0 +1,67 @@
+[
+  {
+    "model": "catalog.programme",
+    "pk": 1,
+    "fields": {
+      "nom": "Résidences Mame Diarra – Bayakh",
+      "adresse": "Bayakh, Sénégal",
+      "description": "Programme de villas modernes F3 à F5.",
+      "date_livraison_prevue": "2025-12-31"
+    }
+  },
+  {
+    "model": "catalog.unite",
+    "pk": 1,
+    "fields": {
+      "programme": 1,
+      "reference_lot": "SALY-F3-01",
+      "prix_ttc": 25500000,
+      "statut_disponibilite": "disponible",
+      "surface_habitable": 73.7
+    }
+  },
+  {
+    "model": "catalog.unite",
+    "pk": 2,
+    "fields": {
+      "programme": 1,
+      "reference_lot": "SALY-F3A-01",
+      "prix_ttc": 26500000,
+      "statut_disponibilite": "disponible",
+      "surface_habitable": 81.25
+    }
+  },
+  {
+    "model": "catalog.unite",
+    "pk": 3,
+    "fields": {
+      "programme": 1,
+      "reference_lot": "AICHA-F4-01",
+      "prix_ttc": 29500000,
+      "statut_disponibilite": "disponible",
+      "surface_habitable": 85.25
+    }
+  },
+  {
+    "model": "catalog.unite",
+    "pk": 4,
+    "fields": {
+      "programme": 1,
+      "reference_lot": "AICHA-F4A-01",
+      "prix_ttc": 30500000,
+      "statut_disponibilite": "disponible",
+      "surface_habitable": 92.8
+    }
+  },
+  {
+    "model": "catalog.unite",
+    "pk": 5,
+    "fields": {
+      "programme": 1,
+      "reference_lot": "FATIMA-F5-01",
+      "prix_ttc": 49500000,
+      "statut_disponibilite": "disponible",
+      "surface_habitable": 147.5
+    }
+  }
+]

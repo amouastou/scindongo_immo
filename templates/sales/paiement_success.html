@@ -1,0 +1,11 @@
+{% extends 'base.html' %}
+{% load form_tags %}
+{% block content %}
+
+<div class="alert alert-success">
+  <h4 class="alert-heading">Paiement enregistré avec succès</h4>
+  <p>Votre paiement de {{ paiement.montant }} FCFA a été enregistré pour le lot {{ reservation.unite.reference_lot }}.</p>
+  <hr>
+  <a href="{% url 'client_dashboard' %}" class="btn btn-outline-success">Voir mon espace client</a>
+</div>
+{% endblock %}

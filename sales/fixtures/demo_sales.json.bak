@@ -1,0 +1,49 @@
+[
+  {
+    "model": "sales.client",
+    "pk": 1,
+    "fields": {
+      "user": 3,
+      "prenom": "Moussa",
+      "nom": "Ndiaye",
+      "telephone": "+221770000000",
+      "email": "client1@example.com",
+      "kyc_statut": "valide"
+    }
+  },
+  {
+    "model": "sales.reservation",
+    "pk": 1,
+    "fields": {
+      "client": 1,
+      "unite": 1,
+      "date_reservation": "2025-01-15",
+      "acompte": 3000000,
+      "statut": "confirmee"
+    }
+  },
+  {
+    "model": "sales.paiement",
+    "pk": 1,
+    "fields": {
+      "reservation": 1,
+      "montant": 3000000,
+      "date_paiement": "2025-01-16",
+      "moyen": "virement",
+      "source": "client",
+      "statut": "valide"
+    }
+  },
+  {
+    "model": "sales.contrat",
+    "pk": 1,
+    "fields": {
+      "reservation": 1,
+      "numero": "CTR-0001",
+      "statut": "brouillon",
+      "pdf": "",
+      "pdf_hash": "",
+      "otp_logs": {}
+    }
+  }
+]

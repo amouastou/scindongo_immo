@@ -1,0 +1,47 @@
+{% extends 'base.html' %}
+{% load form_tags %}
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-md-6">
+    <div class="card shadow-sm">
+      <div class="card-body">
+        <h2 class="mb-3">Créer un compte client</h2>
+
+        {% if form.errors %}
+          <div class="alert alert-danger">
+            {{ form.errors }}
+          </div>
+        {% endif %}
+
+        <form method="post">
+          {% csrf_token %}
+          {{ form.non_field_errors }}
+          <div class="row">
+            <div class="col-md-6 mb-3">
+              <label class="form-label">Prénom</label>
+              {{ form.first_name|add_class:"form-control" }}
+            </div>
+            <div class="col-md-6 mb-3">
+              <label class="form-label">Nom</label>
+              {{ form.last_name|add_class:"form-control" }}
+            </div>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Email</label>
+            {{ form.email|add_class:"form-control" }}
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Mot de passe</label>
+            {{ form.password1|add_class:"form-control" }}
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Confirmation du mot de passe</label>
+            {{ form.password2|add_class:"form-control" }}
+          </div>
+          <button type="submit" class="btn btn-success w-100">Créer mon compte</button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

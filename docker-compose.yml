@@ -1,0 +1,31 @@
+services:
+  db:
+    image: postgres:15
+    environment:
+      POSTGRES_DB: scindongo_immo
+      POSTGRES_USER: scindongo
+      POSTGRES_PASSWORD: scindongo
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+
+  web:
+    build: .
+    command: bash -c "python manage.py makemigrations accounts core catalog sales && python manage.py migrate && python manage.py runserver 0.0.0.0:8000"
+    volumes:
+      - .:/app
+    ports:
+      - "8000:8000"
+    environment:
+      POSTGRES_DB: scindongo_immo
+      POSTGRES_USER: scindongo
+      POSTGRES_PASSWORD: scindongo
+      POSTGRES_HOST: db
+      POSTGRES_PORT: 5432
+      DJANGO_DEBUG: "1"
+    depends_on:
+      - db
+
+volumes:
+  postgres_data:

@@ -1,0 +1,23 @@
+{% extends 'base.html' %}
+{% block content %}
+<h1 class="mb-3">Paiement de la réservation</h1>
+<p><strong>Lot :</strong> {{ reservation.unite.reference_lot }} – {{ reservation.unite.programme.nom }}</p>
+<p><strong>Montant dû (suggestion) :</strong> {{ reservation.acompte|default:reservation.unite.prix_ttc }} FCFA</p>
+<hr>
+<form method="post">
+  {% csrf_token %}
+  <div class="mb-3">
+    <label class="form-label">Montant</label>
+    {{ form.montant|add_class:"form-control" }}
+  </div>
+  <div class="mb-3">
+    <label class="form-label">Moyen de paiement</label>
+    {{ form.moyen|add_class:"form-control" }}
+  </div>
+  <div class="mb-3">
+    <label class="form-label">Source</label>
+    {{ form.source|add_class:"form-control" }}
+  </div>
+  <button type="submit" class="btn btn-primary">Enregistrer le paiement</button>
+</form>
+{% endblock %}

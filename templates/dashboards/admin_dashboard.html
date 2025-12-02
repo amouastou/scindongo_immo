@@ -1,0 +1,38 @@
+{% extends 'base.html' %}
+{% block content %}
+<h1 class="mb-4">Tableau de bord administrateur</h1>
+<div class="row g-3">
+  <div class="col-md-3">
+    <div class="card shadow-sm">
+      <div class="card-body">
+        <h6 class="card-title text-muted">Programmes</h6>
+        <p class="display-6">{{ programmes_count }}</p>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="card shadow-sm">
+      <div class="card-body">
+        <h6 class="card-title text-muted">Unités</h6>
+        <p class="display-6">{{ unites_count }}</p>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="card shadow-sm">
+      <div class="card-body">
+        <h6 class="card-title text-muted">Réservations</h6>
+        <p class="display-6">{{ reservations_count }}</p>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="card shadow-sm">
+      <div class="card-body">
+        <h6 class="card-title text-muted">Paiements</h6>
+        <p class="display-6">{{ paiements_count }}</p>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
