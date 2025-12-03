@@ -26,14 +26,19 @@ class ClientDashboardView(RoleRequiredMixin, TemplateView):
     required_roles = ["CLIENT"]
 
     def get_context_data(self, **kwargs):
+        from .models import Contrat, Financement
         ctx = super().get_context_data(**kwargs)
         client = getattr(self.request.user, "client_profile", None)
         if client:
             ctx["reservations"] = client.reservations.select_related("unite", "unite__programme")
             ctx["paiements"] = Paiement.objects.filter(reservation__client=client)
+            ctx["contrats"] = Contrat.objects.filter(reservation__client=client)
+            ctx["financements"] = Financement.objects.filter(reservation__client=client)
         else:
             ctx["reservations"] = []
             ctx["paiements"] = []
+            ctx["contrats"] = []
+            ctx["financements"] = []
         return ctx
 
 
@@ -42,10 +47,25 @@ class CommercialDashboardView(RoleRequiredMixin, TemplateView):
     required_roles = ["COMMERCIAL"]
 
     def get_context_data(self, **kwargs):
-        from .models import Reservation, Paiement
+        from .models import Reservation, Paiement, Financement, Contrat
+        from catalog.models import Programme
+        from accounts.models import User, Role
+        
         ctx = super().get_context_data(**kwargs)
+        
+        # Comptes
+        ctx["clients_count"] = Client.objects.count()
         ctx["reservations_count"] = Reservation.objects.count()
         ctx["paiements_count"] = Paiement.objects.count()
+        ctx["financements_count"] = Financement.objects.count()
+        
+        # Listes détaillées
+        ctx["reservations"] = Reservation.objects.select_related("client", "unite", "unite__programme").all()[:20]
+        ctx["clients"] = Client.objects.select_related("user").all()[:20]
+        ctx["paiements"] = Paiement.objects.select_related("reservation", "reservation__client").all()[:20]
+        ctx["financements"] = Financement.objects.select_related("banque", "reservation", "reservation__client").all()[:20]
+        ctx["programmes"] = Programme.objects.filter(statut="actif").all()
+        
         return ctx
 
 
@@ -55,12 +75,45 @@ class AdminDashboardView(RoleRequiredMixin, TemplateView):
 
     def get_context_data(self, **kwargs):
         from catalog.models import Programme, Unite
-        from .models import Reservation, Paiement
+        from .models import Reservation, Paiement, Financement, Contrat
+        from accounts.models import User, Role
+        from django.db.models import Count, Q
+        
         ctx = super().get_context_data(**kwargs)
+        
+        # Comptes principaux
         ctx["programmes_count"] = Programme.objects.count()
         ctx["unites_count"] = Unite.objects.count()
         ctx["reservations_count"] = Reservation.objects.count()
         ctx["paiements_count"] = Paiement.objects.count()
+        
+        # Comptes détaillés
+        ctx["programmes_actifs"] = Programme.objects.filter(statut="actif").count()
+        ctx["unites_disponibles"] = Unite.objects.filter(statut_disponibilite="disponible").count()
+        ctx["reservations_confirmees"] = Reservation.objects.filter(statut="confirmee").count()
+        ctx["paiements_valides"] = Paiement.objects.filter(statut="valide").count()
+        
+        # Comptes utilisateurs
+        ctx["users_count"] = User.objects.count()
+        ctx["clients_count"] = Client.objects.count()
+        ctx["commercials_count"] = User.objects.filter(roles__code="COMMERCIAL").distinct().count()
+        ctx["admins_count"] = User.objects.filter(roles__code="ADMIN").distinct().count()
+        
+        # Financements
+        ctx["financements_count"] = Financement.objects.count()
+        ctx["financements_acceptes"] = Financement.objects.filter(statut="accepte").count()
+        ctx["financements_en_etude"] = Financement.objects.filter(statut="en_etude").count()
+        
+        # Contrats et banques
+        ctx["contrats_count"] = Contrat.objects.count()
+        ctx["contrats_signes"] = Contrat.objects.filter(statut="signe").count()
+        ctx["banques_count"] = BanquePartenaire.objects.count()
+        
+        # Listes détaillées
+        ctx["programmes"] = Programme.objects.all().order_by("-created_at")[:10]
+        ctx["derniers_paiements"] = Paiement.objects.select_related("reservation", "reservation__client").order_by("-date_paiement")[:10]
+        ctx["dernieres_reservations"] = Reservation.objects.select_related("client", "unite", "unite__programme").order_by("-created_at")[:10]
+        
         return ctx
 
 

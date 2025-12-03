@@ -10,7 +10,7 @@
   {% csrf_token %}
   <div class="mb-3">
     <label class="form-label">Acompte (FCFA)</label>
-    {{ form.acompte|add_class:"form-control" }}
+    <input type="number" name="acompte" class="form-control" required min="0">
   </div>
   <button type="submit" class="btn btn-success">Valider la réservation</button>
 </form>

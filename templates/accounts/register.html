@@ -1,47 +1,178 @@
 {% extends 'base.html' %}
-{% load form_tags %}
-{% block content %}
-<div class="row justify-content-center">
-  <div class="col-md-6">
-    <div class="card shadow-sm">
-      <div class="card-body">
-        <h2 class="mb-3">Créer un compte client</h2>
 
+{% block content %}
+
+<div class="row justify-content-center mt-5">
+  <div class="col-md-6">
+    <!-- Hero section -->
+    <div class="mb-4 text-center">
+      <h1 class="display-6 fw-bold mb-2">✍️ Créer un compte</h1>
+      <p class="lead text-muted">Rejoignez SCINDONGO Immo et accédez à votre espace client</p>
+    </div>
+
+    <!-- Formulaire -->
+    <div class="card shadow-sm border-0">
+      <div class="card-body p-4">
         {% if form.errors %}
-          <div class="alert alert-danger">
-            {{ form.errors }}
+          <div class="alert alert-danger alert-dismissible fade show" role="alert">
+            <strong>Erreurs dans le formulaire :</strong>
+            <ul class="mb-0 mt-2 ms-3">
+              {% for field, errors in form.errors.items %}
+                <li>
+                  {% if field == '__all__' %}
+                    {{ errors }}
+                  {% else %}
+                    <strong>{{ field|upper }}:</strong> {{ errors }}
+                  {% endif %}
+                </li>
+              {% endfor %}
+            </ul>
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
           </div>
         {% endif %}
 
-        <form method="post">
+        <form method="post" novalidate>
           {% csrf_token %}
-          {{ form.non_field_errors }}
+
           <div class="row">
+            <!-- Prénom -->
             <div class="col-md-6 mb-3">
-              <label class="form-label">Prénom</label>
-              {{ form.first_name|add_class:"form-control" }}
+              <label for="{{ form.first_name.id_for_label }}" class="form-label fw-semibold">
+                Prénom
+              </label>
+              <input 
+                type="text" 
+                id="{{ form.first_name.id_for_label }}" 
+                name="{{ form.first_name.name }}"
+                class="form-control {% if form.first_name.errors %}is-invalid{% endif %}"
+                placeholder="Votre prénom"
+                value="{{ form.first_name.value|default:'' }}"
+                required
+              >
+              {% if form.first_name.errors %}
+                <div class="invalid-feedback d-block">
+                  {% for error in form.first_name.errors %}{{ error }}{% endfor %}
+                </div>
+              {% endif %}
             </div>
+
+            <!-- Nom -->
             <div class="col-md-6 mb-3">
-              <label class="form-label">Nom</label>
-              {{ form.last_name|add_class:"form-control" }}
+              <label for="{{ form.last_name.id_for_label }}" class="form-label fw-semibold">
+                Nom
+              </label>
+              <input 
+                type="text" 
+                id="{{ form.last_name.id_for_label }}" 
+                name="{{ form.last_name.name }}"
+                class="form-control {% if form.last_name.errors %}is-invalid{% endif %}"
+                placeholder="Votre nom"
+                value="{{ form.last_name.value|default:'' }}"
+                required
+              >
+              {% if form.last_name.errors %}
+                <div class="invalid-feedback d-block">
+                  {% for error in form.last_name.errors %}{{ error }}{% endfor %}
+                </div>
+              {% endif %}
             </div>
           </div>
+
+          <!-- Email -->
           <div class="mb-3">
-            <label class="form-label">Email</label>
-            {{ form.email|add_class:"form-control" }}
+            <label for="{{ form.email.id_for_label }}" class="form-label fw-semibold">
+              📧 Email
+            </label>
+            <input 
+              type="email" 
+              id="{{ form.email.id_for_label }}" 
+              name="{{ form.email.name }}"
+              class="form-control {% if form.email.errors %}is-invalid{% endif %}"
+              placeholder="votre.email@exemple.com"
+              value="{{ form.email.value|default:'' }}"
+              required
+            >
+            {% if form.email.errors %}
+              <div class="invalid-feedback d-block">
+                {% for error in form.email.errors %}{{ error }}{% endfor %}
+              </div>
+            {% endif %}
           </div>
+
+          <!-- Mot de passe -->
           <div class="mb-3">
-            <label class="form-label">Mot de passe</label>
-            {{ form.password1|add_class:"form-control" }}
+            <label for="{{ form.password1.id_for_label }}" class="form-label fw-semibold">
+              🔒 Mot de passe
+            </label>
+            <input 
+              type="password" 
+              id="{{ form.password1.id_for_label }}" 
+              name="{{ form.password1.name }}"
+              class="form-control {% if form.password1.errors %}is-invalid{% endif %}"
+              placeholder="Entrez un mot de passe sécurisé"
+              required
+            >
+            {% if form.password1.errors %}
+              <div class="invalid-feedback d-block">
+                {% for error in form.password1.errors %}{{ error }}{% endfor %}
+              </div>
+            {% else %}
+              <small class="form-text text-muted d-block mt-2">
+                • Au moins 8 caractères<br>
+                • Mélange de majuscules, minuscules et chiffres<br>
+                • Pas un mot trop courant
+              </small>
+            {% endif %}
           </div>
-          <div class="mb-3">
-            <label class="form-label">Confirmation du mot de passe</label>
-            {{ form.password2|add_class:"form-control" }}
+
+          <!-- Confirmation mot de passe -->
+          <div class="mb-4">
+            <label for="{{ form.password2.id_for_label }}" class="form-label fw-semibold">
+              🔐 Confirmation du mot de passe
+            </label>
+            <input 
+              type="password" 
+              id="{{ form.password2.id_for_label }}" 
+              name="{{ form.password2.name }}"
+              class="form-control {% if form.password2.errors %}is-invalid{% endif %}"
+              placeholder="Confirmez votre mot de passe"
+              required
+            >
+            {% if form.password2.errors %}
+              <div class="invalid-feedback d-block">
+                {% for error in form.password2.errors %}{{ error }}{% endfor %}
+              </div>
+            {% endif %}
           </div>
-          <button type="submit" class="btn btn-success w-100">Créer mon compte</button>
+
+          <!-- Bouton -->
+          <button type="submit" class="btn btn-primary w-100 btn-lg fw-semibold mb-3">
+            ✓ Créer mon compte
+          </button>
         </form>
+
+        <!-- Lien vers login -->
+        <hr>
+        <p class="text-center text-muted mb-0 small">
+          Déjà un compte ? 
+          <a href="{% url 'login' %}" class="text-decoration-none fw-semibold">
+            🔐 Se connecter
+          </a>
+        </p>
       </div>
+    </div>
+
+    <!-- Avantages -->
+    <div class="alert alert-success mt-4" role="alert">
+      <strong>✓ Avantages de créer un compte :</strong>
+      <ul class="mb-0 mt-2 ms-3">
+        <li>Réserver votre unité en quelques clics</li>
+        <li>Suivre vos paiements en temps réel</li>
+        <li>Consulter l'avancement du chantier</li>
+        <li>Télécharger vos contrats</li>
+      </ul>
     </div>
   </div>
 </div>
+
 {% endblock %}

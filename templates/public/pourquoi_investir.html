@@ -1,53 +1,187 @@
 {% extends 'base.html' %}
 {% block content %}
-<h1 class="mb-4">Pourquoi investir avec SCINDONGO Immo ?</h1>
 
-<div class="row g-4">
+<!-- Breadcrumbs -->
+<nav aria-label="breadcrumb" class="mb-4">
+  <ol class="breadcrumb">
+    <li class="breadcrumb-item"><a href="{% url 'home' %}" class="text-decoration-none">Accueil</a></li>
+    <li class="breadcrumb-item active">Pourquoi investir ?</li>
+  </ol>
+</nav>
+
+<!-- Header -->
+<div class="mb-5">
+  <h1 class="display-5 fw-bold">🎯 Pourquoi investir avec SCINDONGO Immo ?</h1>
+  <p class="lead text-muted">Une plateforme moderne, sécurisée et transparente pour vos projets immobiliers</p>
+</div>
+
+<!-- Avantages principaux -->
+<div class="row g-4 mb-5">
   <div class="col-md-4">
-    <div class="card h-100 shadow-sm">
+    <div class="card h-100 shadow-sm border-0">
       <div class="card-body">
-        <h5 class="card-title">Sécurité juridique</h5>
+        <h5 class="card-title">🔐 Sécurité juridique</h5>
         <p class="card-text">
           Les programmes sont encadrés par des notaires partenaires, conformément à la
           réglementation immobilière en vigueur au Sénégal. Les contrats sont tracés et archivés
-          dans la plateforme (JournalAudit, documents numériques).
+          numériquement dans la plateforme avec audit trail complet.
         </p>
       </div>
     </div>
   </div>
 
   <div class="col-md-4">
-    <div class="card h-100 shadow-sm">
+    <div class="card h-100 shadow-sm border-0">
       <div class="card-body">
-        <h5 class="card-title">Suivi digital du projet</h5>
+        <h5 class="card-title">📊 Suivi digital du projet</h5>
         <p class="card-text">
-          Depuis votre espace client, vous suivez vos réservations, vos paiements, l'avancement
-          du chantier (étapes, pourcentage, photos géolocalisées) et vos documents contractuels.
+          Depuis votre espace client, suivez vos réservations, vos paiements, l'avancement
+          du chantier (étapes, pourcentage, photos géolocalisées) et vos documents contractuels
+          en temps réel.
         </p>
       </div>
     </div>
   </div>
 
   <div class="col-md-4">
-    <div class="card h-100 shadow-sm">
+    <div class="card h-100 shadow-sm border-0">
       <div class="card-body">
-        <h5 class="card-title">Partenariats financiers</h5>
+        <h5 class="card-title">🏦 Partenariats financiers</h5>
         <p class="card-text">
           SCINDONGO Immo travaille avec des banques partenaires pour faciliter le financement
-          de votre projet (simulation, suivi des financements, échéancier, etc.).
+          de votre projet (simulation, suivi des financements, échéancier, gestion des paiements).
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-md-4">
+    <div class="card h-100 shadow-sm border-0">
+      <div class="card-body">
+        <h5 class="card-title">💰 Flexibilité de paiement</h5>
+        <p class="card-text">
+          Enregistrez vos paiements selon vos capacités (virements, chèques, espèces, cartes).
+          Tracez chaque transaction et recevez automatiquement vos reçus.
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-md-4">
+    <div class="card h-100 shadow-sm border-0">
+      <div class="card-body">
+        <h5 class="card-title">📱 Accès 24/7</h5>
+        <p class="card-text">
+          Connectez-vous à votre espace client depuis n'importe quel appareil pour consulter
+          vos documents, paiements et avancement de chantier quand vous le souhaitez.
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-md-4">
+    <div class="card h-100 shadow-sm border-0">
+      <div class="card-body">
+        <h5 class="card-title">✅ Transparence totale</h5>
+        <p class="card-text">
+          Toutes les étapes sont documentées et traçables. Pas de surprise, pas de caché.
+          Chaque action est enregistrée et consultable dans votre espace.
         </p>
       </div>
     </div>
   </div>
 </div>
 
-<div class="mt-5">
-  <h3>Un parcours client fluide</h3>
-  <ol>
-    <li>Consultation du catalogue de programmes et des biens disponibles.</li>
-    <li>Création de compte client et réservation en ligne du bien choisi.</li>
-    <li>Enregistrement des paiements d'acompte et des règlements successifs.</li>
-    <li>Signature électronique du contrat via OTP et suivi des chantiers.</li>
-  </ol>
+<!-- Parcours client -->
+<div class="card shadow-sm border-0 mb-5">
+  <div class="card-body">
+    <h2 class="card-title mb-4">📈 Votre parcours client</h2>
+    <div class="timeline">
+      <div class="row g-0">
+        <div class="col-md-6 mb-4">
+          <div class="d-flex">
+            <div class="badge bg-primary rounded-pill" style="height: 40px; width: 40px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+              1
+            </div>
+            <div class="ms-3">
+              <h5 class="mb-1">Explorez nos programmes</h5>
+              <p class="text-muted small mb-0">Parcourez le catalogue des programmes et unités disponibles avec tous les détails.</p>
+            </div>
+          </div>
+        </div>
+        <div class="col-md-6 mb-4">
+          <div class="d-flex">
+            <div class="badge bg-primary rounded-pill" style="height: 40px; width: 40px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+              2
+            </div>
+            <div class="ms-3">
+              <h5 class="mb-1">Créez votre compte</h5>
+              <p class="text-muted small mb-0">Inscrivez-vous en 2 minutes pour accéder à votre espace client personnel.</p>
+            </div>
+          </div>
+        </div>
+        <div class="col-md-6 mb-4">
+          <div class="d-flex">
+            <div class="badge bg-primary rounded-pill" style="height: 40px; width: 40px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+              3
+            </div>
+            <div class="ms-3">
+              <h5 class="mb-1">Réservez et payez</h5>
+              <p class="text-muted small mb-0">Réservez votre bien, versez votre acompte et gérez vos paiements en ligne.</p>
+            </div>
+          </div>
+        </div>
+        <div class="col-md-6 mb-4">
+          <div class="d-flex">
+            <div class="badge bg-primary rounded-pill" style="height: 40px; width: 40px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+              4
+            </div>
+            <div class="ms-3">
+              <h5 class="mb-1">Signez votre contrat</h5>
+              <p class="text-muted small mb-0">Accédez à votre contrat numérique, signez-le électroniquement et archivez-le.</p>
+            </div>
+          </div>
+        </div>
+        <div class="col-md-6 mb-4">
+          <div class="d-flex">
+            <div class="badge bg-primary rounded-pill" style="height: 40px; width: 40px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+              5
+            </div>
+            <div class="ms-3">
+              <h5 class="mb-1">Suivez le chantier</h5>
+              <p class="text-muted small mb-0">Consultez l'avancement du chantier, les photos, les jalons et les dates de livraison.</p>
+            </div>
+          </div>
+        </div>
+        <div class="col-md-6 mb-4">
+          <div class="d-flex">
+            <div class="badge bg-success rounded-pill" style="height: 40px; width: 40px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+              ✓
+            </div>
+            <div class="ms-3">
+              <h5 class="mb-1">Réception et livraison</h5>
+              <p class="text-muted small mb-0">Recevez votre bien à la livraison. Tous les documents sont sur la plateforme.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
 </div>
+
+<!-- CTA -->
+<div class="alert alert-primary" role="alert">
+  <div class="d-flex align-items-center justify-content-between">
+    <div>
+      <h4 class="alert-heading mb-2">Prêt à démarrer ?</h4>
+      <p class="mb-0">Explorez nos programmes disponibles et trouvez l'unité qui correspond à votre projet.</p>
+    </div>
+    <div class="ms-3">
+      <a href="{% url 'programme_list' %}" class="btn btn-primary btn-lg text-nowrap">
+        Voir les programmes →
+      </a>
+    </div>
+  </div>
+</div>
+
 {% endblock %}

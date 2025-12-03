@@ -8,15 +8,21 @@
   {% csrf_token %}
   <div class="mb-3">
     <label class="form-label">Montant</label>
-    {{ form.montant|add_class:"form-control" }}
+    <input type="number" name="montant" class="form-control" required>
   </div>
   <div class="mb-3">
     <label class="form-label">Moyen de paiement</label>
-    {{ form.moyen|add_class:"form-control" }}
+    <select name="moyen" class="form-control" required>
+      <option value="">--- Choisir ---</option>
+      <option value="virement">🏦 Virement</option>
+      <option value="cheque">📋 Chèque</option>
+      <option value="espece">💵 Espèce</option>
+      <option value="carte">💳 Carte</option>
+    </select>
   </div>
   <div class="mb-3">
     <label class="form-label">Source</label>
-    {{ form.source|add_class:"form-control" }}
+    <input type="text" name="source" class="form-control" placeholder="Source du paiement">
   </div>
   <button type="submit" class="btn btn-primary">Enregistrer le paiement</button>
 </form>

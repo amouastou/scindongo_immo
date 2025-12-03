@@ -6,3 +6,5 @@ Pillow
 djangorestframework
 djangorestframework-simplejwt
 django-cors-headers
+django-filter
+django-widget-tweaks==1.5.0

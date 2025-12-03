@@ -1,22 +1,359 @@
 {% extends 'base.html' %}
+
 {% block content %}
-<h1 class="mb-4">Tableau de bord commercial</h1>
-<div class="row g-3">
-  <div class="col-md-4">
-    <div class="card shadow-sm">
+
+<!-- Header Dashboard -->
+<div class="mb-4">
+  <h1 class="display-6 fw-bold">📊 Tableau de bord commercial</h1>
+  <p class="lead text-muted">Suivi global des ventes, clients et financements</p>
+</div>
+
+<!-- Statistiques principales -->
+<div class="row g-3 mb-5">
+  <div class="col-lg-3">
+    <div class="card border-0 bg-primary text-white">
       <div class="card-body">
-        <h5 class="card-title">Réservations</h5>
-        <p class="display-6">{{ reservations_count }}</p>
+        <h6 class="card-title text-uppercase fw-bold small">Clients</h6>
+        <h2 class="display-5 fw-bold">{{ clients_count }}</h2>
       </div>
     </div>
   </div>
-  <div class="col-md-4">
-    <div class="card shadow-sm">
+  <div class="col-lg-3">
+    <div class="card border-0 bg-success text-white">
       <div class="card-body">
-        <h5 class="card-title">Paiements</h5>
-        <p class="display-6">{{ paiements_count }}</p>
+        <h6 class="card-title text-uppercase fw-bold small">Réservations</h6>
+        <h2 class="display-5 fw-bold">{{ reservations_count }}</h2>
+      </div>
+    </div>
+  </div>
+  <div class="col-lg-3">
+    <div class="card border-0 bg-info text-white">
+      <div class="card-body">
+        <h6 class="card-title text-uppercase fw-bold small">Paiements</h6>
+        <h2 class="display-5 fw-bold">{{ paiements_count }}</h2>
+      </div>
+    </div>
+  </div>
+  <div class="col-lg-3">
+    <div class="card border-0 bg-warning text-dark">
+      <div class="card-body">
+        <h6 class="card-title text-uppercase fw-bold small">Financements</h6>
+        <h2 class="display-5 fw-bold">{{ financements_count }}</h2>
       </div>
     </div>
   </div>
 </div>
+
+<!-- Onglets de contenu -->
+<ul class="nav nav-tabs mb-4" role="tablist">
+  <li class="nav-item" role="presentation">
+    <button class="nav-link active" id="reservations-tab" data-bs-toggle="tab" data-bs-target="#reservations-content" type="button" role="tab">
+      📋 Réservations
+    </button>
+  </li>
+  <li class="nav-item" role="presentation">
+    <button class="nav-link" id="clients-tab" data-bs-toggle="tab" data-bs-target="#clients-content" type="button" role="tab">
+      👥 Clients
+    </button>
+  </li>
+  <li class="nav-item" role="presentation">
+    <button class="nav-link" id="paiements-tab" data-bs-toggle="tab" data-bs-target="#paiements-content" type="button" role="tab">
+      💳 Paiements
+    </button>
+  </li>
+  <li class="nav-item" role="presentation">
+    <button class="nav-link" id="financements-tab" data-bs-toggle="tab" data-bs-target="#financements-content" type="button" role="tab">
+      🏦 Financements
+    </button>
+  </li>
+  <li class="nav-item" role="presentation">
+    <button class="nav-link" id="programmes-tab" data-bs-toggle="tab" data-bs-target="#programmes-content" type="button" role="tab">
+      🏗️ Programmes
+    </button>
+  </li>
+</ul>
+
+<div class="tab-content">
+
+  <!-- Onglet Réservations -->
+  <div class="tab-pane fade show active" id="reservations-content" role="tabpanel">
+    <h3 class="mb-3">Récapitulatif des réservations</h3>
+    {% if reservations %}
+      <div class="table-responsive">
+        <table class="table table-hover table-sm">
+          <thead class="table-light">
+            <tr>
+              <th>Client</th>
+              <th>Unité</th>
+              <th>Programme</th>
+              <th>Acompte</th>
+              <th>Statut</th>
+              <th>Date</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for res in reservations %}
+              <tr>
+                  <td>
+                    {% if res.client and res.client.user %}
+                      {% if res.client.user.get_full_name %}
+                        {{ res.client.user.get_full_name }}
+                      {% else %}
+                        {% if res.client.user.email %}{{ res.client.user.email }}{% else %}N/A{% endif %}
+                      {% endif %}
+                    {% else %}
+                      N/A
+                    {% endif %}
+                  </td>
+                <td><strong>{{ res.unite.reference_lot }}</strong></td>
+                <td>{{ res.unite.programme.nom }}</td>
+                <td class="fw-bold">{{ res.acompte }} FCFA</td>
+                <td>
+                  {% if res.statut == 'en_cours' %}
+                    <span class="badge bg-warning text-dark">⏳ En cours</span>
+                  {% elif res.statut == 'confirmee' %}
+                    <span class="badge bg-success">✓ Confirmée</span>
+                  {% elif res.statut == 'annulee' %}
+                    <span class="badge bg-danger">✕ Annulée</span>
+                  {% else %}
+                    <span class="badge bg-secondary">{{ res.get_statut_display }}</span>
+                  {% endif %}
+                </td>
+                <td>{{ res.created_at|date:"d/m/Y" }}</td>
+                <td>
+                  <a href="#" class="btn btn-sm btn-outline-primary">Détail</a>
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <div class="alert alert-info">Aucune réservation.</div>
+    {% endif %}
+  </div>
+
+  <!-- Onglet Clients -->
+  <div class="tab-pane fade" id="clients-content" role="tabpanel">
+    <h3 class="mb-3">Liste des clients</h3>
+    {% if clients %}
+      <div class="table-responsive">
+        <table class="table table-hover table-sm">
+          <thead class="table-light">
+            <tr>
+              <th>Nom</th>
+              <th>Email</th>
+              <th>Téléphone</th>
+              <th>Réservations</th>
+              <th>Date d'inscription</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for client in clients %}
+              <tr>
+                <td>
+                  <strong>
+                    {% if client and client.user %}
+                      {% if client.user.get_full_name %}
+                        {{ client.user.get_full_name }}
+                      {% else %}
+                        {% if client.user and client.user.email %}{{ client.user.email }}{% else %}N/A{% endif %}
+                      {% endif %}
+                    {% else %}
+                      N/A
+                    {% endif %}
+                  </strong>
+                </td>
+                <td>{% if client.user and client.user.email %}{{ client.user.email }}{% else %}N/A{% endif %}</td>
+                <td>{{ client.telephone|default:"N/A" }}</td>
+                <td>{{ client.reservations.count }}</td>
+                <td>{{ client.user.date_joined|date:"d/m/Y" }}</td>
+                <td>
+                  <a href="#" class="btn btn-sm btn-outline-secondary">Profil</a>
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <div class="alert alert-info">Aucun client.</div>
+    {% endif %}
+  </div>
+
+  <!-- Onglet Paiements -->
+  <div class="tab-pane fade" id="paiements-content" role="tabpanel">
+    <h3 class="mb-3">Suivi des paiements</h3>
+    {% if paiements %}
+      <div class="table-responsive">
+        <table class="table table-hover table-sm">
+          <thead class="table-light">
+            <tr>
+              <th>Date</th>
+              <th>Client</th>
+              <th>Montant</th>
+              <th>Moyen</th>
+              <th>Statut</th>
+              <th>Réservation</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for p in paiements %}
+              <tr>
+                <td>{{ p.date_paiement|date:"d/m/Y" }}</td>
+                <td>
+                  {% if p.reservation and p.reservation.client and p.reservation.client.user %}
+                    {% if p.reservation and p.reservation.client and p.reservation.client.user %}
+                      {% if p.reservation.client.user.get_full_name %}
+                        {{ p.reservation.client.user.get_full_name }}
+                      {% else %}
+                        {{ p.reservation.client.user.email }}
+                      {% endif %}
+                    {% else %}
+                      N/A
+                    {% endif %}
+                  {% else %}
+                    N/A
+                  {% endif %}
+                </td>
+                <td class="fw-bold text-success">{{ p.montant }} FCFA</td>
+                <td>
+                  {% if p.moyen == 'virement' %}
+                    🏦 Virement
+                  {% elif p.moyen == 'cheque' %}
+                    📋 Chèque
+                  {% elif p.moyen == 'espece' %}
+                    💵 Espèce
+                  {% else %}
+                    {{ p.get_moyen_display }}
+                  {% endif %}
+                </td>
+                <td>
+                  {% if p.statut == 'enregistre' %}
+                    <span class="badge bg-info">⏳ Enregistré</span>
+                  {% elif p.statut == 'valide' %}
+                    <span class="badge bg-success">✓ Validé</span>
+                  {% elif p.statut == 'rejete' %}
+                    <span class="badge bg-danger">✕ Rejeté</span>
+                  {% else %}
+                    <span class="badge bg-secondary">{{ p.get_statut_display }}</span>
+                  {% endif %}
+                </td>
+                <td>{{ p.reservation.unite.reference_lot }}</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <div class="alert alert-info">Aucun paiement.</div>
+    {% endif %}
+  </div>
+
+  <!-- Onglet Financements -->
+  <div class="tab-pane fade" id="financements-content" role="tabpanel">
+    <h3 class="mb-3">Suivi des financements</h3>
+    {% if financements %}
+      <div class="table-responsive">
+        <table class="table table-hover table-sm">
+          <thead class="table-light">
+            <tr>
+              <th>Banque</th>
+              <th>Type</th>
+              <th>Montant</th>
+              <th>Taux</th>
+              <th>Statut</th>
+              <th>Client</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for f in financements %}
+              <tr>
+                <td><strong>{{ f.banque_partenaire.nom }}</strong></td>
+                <td>{{ f.get_type_display }}</td>
+                <td class="fw-bold">{{ f.montant }} FCFA</td>
+                <td>{{ f.taux }}%</td>
+                <td>
+                  {% if f.statut == 'soumis' %}
+                    <span class="badge bg-info">📮 Soumis</span>
+                  {% elif f.statut == 'en_etude' %}
+                    <span class="badge bg-warning text-dark">📚 En étude</span>
+                  {% elif f.statut == 'accepte' %}
+                    <span class="badge bg-success">✓ Accepté</span>
+                  {% elif f.statut == 'refuse' %}
+                    <span class="badge bg-danger">✕ Refusé</span>
+                  {% else %}
+                    <span class="badge bg-secondary">{{ f.get_statut_display }}</span>
+                  {% endif %}
+                </td>
+                <td>
+                  {% if f.reservation and f.reservation.client and f.reservation.client.user %}
+                    {% if f.reservation and f.reservation.client and f.reservation.client.user %}
+                      {% if f.reservation.client.user.get_full_name %}
+                        {{ f.reservation.client.user.get_full_name }}
+                      {% else %}
+                        {{ f.reservation.client.user.email }}
+                      {% endif %}
+                    {% else %}
+                      N/A
+                    {% endif %}
+                  {% else %}
+                    N/A
+                  {% endif %}
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <div class="alert alert-info">Aucun financement.</div>
+    {% endif %}
+  </div>
+
+  <!-- Onglet Programmes -->
+  <div class="tab-pane fade" id="programmes-content" role="tabpanel">
+    <h3 class="mb-3">Suivi des programmes</h3>
+    {% if programmes %}
+      <div class="row g-3">
+        {% for prog in programmes %}
+          <div class="col-lg-6">
+            <div class="card shadow-sm border-0">
+              <div class="card-body">
+                <h5 class="card-title fw-bold">{{ prog.nom }}</h5>
+                <p class="card-text text-muted small">{{ prog.adresse }}</p>
+                <div class="row g-2 small mb-3">
+                  <div class="col-6">
+                    <strong>Unités totales :</strong> {{ prog.unites.count }}
+                  </div>
+                  <div class="col-6">
+                    <strong>Réservées :</strong> {{ prog.unites_reservees_count|default:0 }}
+                  </div>
+                  <div class="col-6">
+                    <strong>Vendues :</strong> {{ prog.unites_vendues_count|default:0 }}
+                  </div>
+                  <div class="col-6">
+                    <strong>Statut :</strong> 
+                    {% if prog.statut == 'actif' %}
+                      <span class="badge bg-success">Actif</span>
+                    {% else %}
+                      <span class="badge bg-secondary">{{ prog.get_statut_display }}</span>
+                    {% endif %}
+                  </div>
+                </div>
+                <a href="{% url 'programme_detail' prog.pk %}" class="btn btn-sm btn-outline-primary">Voir programme</a>
+              </div>
+            </div>
+          </div>
+        {% endfor %}
+      </div>
+    {% else %}
+      <div class="alert alert-info">Aucun programme.</div>
+    {% endif %}
+  </div>
+
+</div>
+
 {% endblock %}

@@ -1,29 +1,97 @@
 {% extends 'base.html' %}
-{% load form_tags %}
+
 {% block content %}
 
-
-<div class="row justify-content-center">
+<div class="row justify-content-center mt-5">
   <div class="col-md-5">
-    <div class="card shadow-sm">
-      <div class="card-body">
-        <h2 class="mb-3">Connexion</h2>
-        <form method="post">
+    <!-- Hero section -->
+    <div class="mb-4 text-center">
+      <h1 class="display-6 fw-bold mb-2">🔐 Connexion</h1>
+      <p class="lead text-muted">Connectez-vous à votre espace SCINDONGO Immo</p>
+    </div>
+
+    <!-- Formulaire -->
+    <div class="card shadow-sm border-0">
+      <div class="card-body p-4">
+        <form method="post" novalidate>
           {% csrf_token %}
-          {{ form.non_field_errors }}
+
+          <!-- Erreurs non-champ -->
+          {% if form.non_field_errors %}
+            <div class="alert alert-danger alert-dismissible fade show" role="alert">
+              <strong>Erreur de connexion :</strong>
+              {% for error in form.non_field_errors %}
+                <div>{{ error }}</div>
+              {% endfor %}
+              <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+          {% endif %}
+
+          <!-- Champ Email -->
           <div class="mb-3">
-            <label class="form-label">Email</label>
-            {{ form.username|add_class:"form-control" }}
+            <label for="{{ form.username.id_for_label }}" class="form-label fw-semibold">
+              📧 Email
+            </label>
+            <input 
+              type="email" 
+              id="{{ form.username.id_for_label }}" 
+              name="{{ form.username.name }}"
+              class="form-control {% if form.username.errors %}is-invalid{% endif %}"
+              placeholder="votre.email@exemple.com"
+              required
+            >
+            {% if form.username.errors %}
+              <div class="invalid-feedback d-block">
+                {% for error in form.username.errors %}{{ error }}{% endfor %}
+              </div>
+            {% endif %}
           </div>
-          <div class="mb-3">
-            <label class="form-label">Mot de passe</label>
-            {{ form.password|add_class:"form-control" }}
+
+          <!-- Champ Mot de passe -->
+          <div class="mb-4">
+            <label for="{{ form.password.id_for_label }}" class="form-label fw-semibold">
+              🔒 Mot de passe
+            </label>
+            <input 
+              type="password" 
+              id="{{ form.password.id_for_label }}" 
+              name="{{ form.password.name }}"
+              class="form-control {% if form.password.errors %}is-invalid{% endif %}"
+              placeholder="Entrez votre mot de passe"
+              required
+            >
+            {% if form.password.errors %}
+              <div class="invalid-feedback d-block">
+                {% for error in form.password.errors %}{{ error }}{% endfor %}
+              </div>
+            {% endif %}
           </div>
-          <button type="submit" class="btn btn-primary w-100">Se connecter</button>
+
+          <!-- Bouton -->
+          <button type="submit" class="btn btn-primary w-100 btn-lg fw-semibold mb-3">
+            ✓ Se connecter
+          </button>
         </form>
-        <p class="mt-3 mb-0 small">Pas encore de compte ? <a href="{% url 'register' %}">Créer un compte</a></p>
+
+        <!-- Lien vers inscription -->
+        <hr>
+        <p class="text-center text-muted mb-0 small">
+          Pas encore de compte ? 
+          <a href="{% url 'register' %}" class="text-decoration-none fw-semibold">
+            ✍️ Créer un compte
+          </a>
+        </p>
       </div>
+    </div>
+
+    <!-- Info -->
+    <div class="alert alert-info mt-4" role="alert">
+      <small>
+        <strong>Conseil :</strong> Utilisez votre adresse email pour vous connecter. 
+        Si vous n'avez pas encore de compte, créez-en un en quelques secondes.
+      </small>
     </div>
   </div>
 </div>
+
 {% endblock %}

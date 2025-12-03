@@ -347,6 +347,22 @@ class ContratSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = ("id", "pdf_hash", "created_at", "updated_at")
 
+    def validate(self, attrs):
+        """Valider que la réservation est confirmée avant de créer un contrat."""
+        from core.choices import ReservationStatus
+        
+        instance = self.instance
+        reservation = attrs.get("reservation") or (instance.reservation if instance else None)
+        
+        if not instance and reservation:
+            # Création : vérifier que la réservation est confirmée
+            if reservation.statut != ReservationStatus.CONFIRMEE:
+                raise serializers.ValidationError(
+                    {"reservation": "Un contrat ne peut être créé que pour une réservation confirmée."}
+                )
+        
+        return attrs
+
     def _compute_pdf_hash(self, pdf_field):
         if not pdf_field:
             return ""

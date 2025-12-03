@@ -1,42 +1,139 @@
 {% extends 'base.html' %}
 {% block content %}
+
+<!-- Breadcrumbs -->
+{% with breadcrumbs_list="Accueil,Programmes,Programme,Unité" %}
+  <nav aria-label="breadcrumb" class="mb-4">
+    <ol class="breadcrumb">
+      <li class="breadcrumb-item"><a href="{% url 'home' %}" class="text-decoration-none">Accueil</a></li>
+      <li class="breadcrumb-item"><a href="{% url 'programme_list' %}" class="text-decoration-none">Programmes</a></li>
+      <li class="breadcrumb-item"><a href="{% url 'programme_detail' unite.programme.pk %}" class="text-decoration-none">{{ unite.programme.nom }}</a></li>
+      <li class="breadcrumb-item active">Unité {{ unite.reference_lot }}</li>
+    </ol>
+  </nav>
+{% endwith %}
+
+<!-- Header Unité -->
 <div class="row mb-4">
   <div class="col-md-7">
-    <h1>Lot {{ unite.reference_lot }}</h1>
-    <p><strong>Programme :</strong> {{ unite.programme.nom }}</p>
-    <p><strong>Modèle :</strong> {{ unite.modele_bien.nom_marketing }}</p>
-    <p><strong>Prix TTC :</strong> {{ unite.prix_ttc }} FCFA</p>
-    <p><strong>Statut :</strong> <span class="badge bg-info">{{ unite.get_statut_disponibilite_display }}</span></p>
-    <h5>Caractéristiques</h5>
-    <pre class="bg-light p-2 rounded small">{{ unite.caracteristiques|default:"Aucune caractéristique" }}</pre>
-    {% if unite.statut_disponibilite == 'disponible' %}
-      <a href="{% url 'reserve_unite' unite.id %}" class="btn btn-success btn-lg mt-3">Réserver ce bien</a>
-    {% else %}
-      <p class="mt-3 text-muted">Ce lot n'est plus disponible à la réservation.</p>
+    <h1 class="display-5 fw-bold">Unité {{ unite.reference_lot }}</h1>
+    
+    <!-- Infos programme et modèle -->
+    <div class="mb-4">
+      <p class="mb-2"><strong>🏢 Programme :</strong> <a href="{% url 'programme_detail' unite.programme.pk %}" class="text-decoration-none">{{ unite.programme.nom }}</a></p>
+      <p class="mb-2"><strong>📐 Modèle :</strong> {{ unite.modele_bien.nom_marketing }}</p>
+      <p class="mb-2"><strong>📍 Adresse :</strong> {{ unite.programme.adresse }}</p>
+    </div>
+
+    <!-- Infos détail -->
+    <div class="row g-3 mb-4">
+      <div class="col-sm-6">
+        <div class="card border-0 bg-light">
+          <div class="card-body">
+            <small class="text-muted">Prix TTC</small>
+            <h4 class="text-success fw-bold">{{ unite.prix_ttc|default:"N/A" }} FCFA</h4>
+          </div>
+        </div>
+      </div>
+      <div class="col-sm-6">
+        <div class="card border-0 bg-light">
+          <div class="card-body">
+            <small class="text-muted">Surface habitable</small>
+            <h4 class="text-primary fw-bold">{{ unite.modele_bien.surface_hab_m2|default:"N/A" }} m²</h4>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Statut -->
+    <div class="mb-4">
+      <strong>État de l'unité :</strong>
+      {% if unite.statut_disponibilite == 'disponible' %}
+        <span class="badge bg-success fs-6">✓ Disponible à la réservation</span>
+      {% elif unite.statut_disponibilite == 'reserve' %}
+        <span class="badge bg-warning text-dark fs-6">⏳ Réservée</span>
+      {% elif unite.statut_disponibilite == 'vendu' %}
+        <span class="badge bg-danger fs-6">✕ Vendue</span>
+      {% else %}
+        <span class="badge bg-secondary fs-6">📦 {{ unite.get_statut_disponibilite_display }}</span>
+      {% endif %}
+    </div>
+
+    <!-- Caractéristiques -->
+    {% if unite.caracteristiques %}
+      <div class="card border-0 bg-light mb-4">
+        <div class="card-body">
+          <h5 class="card-title mb-3">Caractéristiques</h5>
+          <p class="card-text">{{ unite.caracteristiques|linebreaks }}</p>
+        </div>
+      </div>
     {% endif %}
+
+    <!-- Boutons d'action -->
+    <div class="d-grid gap-2 mb-4">
+      {% if unite.statut_disponibilite == 'disponible' %}
+        {% if user.is_authenticated %}
+          <a href="{% url 'reserve_unite' unite.pk %}" class="btn btn-primary btn-lg">
+            🔖 Réserver cette unité
+          </a>
+        {% else %}
+          <a href="{% url 'reserve_unite' unite.pk %}" class="btn btn-primary btn-lg">
+            🔖 Réserver cette unité
+          </a>
+        {% endif %}
+      {% else %}
+        <button class="btn btn-secondary btn-lg" disabled>
+          Cette unité n'est pas disponible à la réservation
+        </button>
+      {% endif %}
+    </div>
   </div>
+
+  <!-- Images et carte -->
   <div class="col-md-5">
     {% if unite.image %}
-      <img src="{{ unite.image.url }}" class="img-fluid rounded shadow-sm mb-3" alt="{{ unite.reference_lot }}">
+      <img src="{{ unite.image.url }}" class="img-fluid rounded shadow-sm mb-4" alt="{{ unite.reference_lot }}" style="max-height: 400px; width: 100%; object-fit: cover;">
+    {% else %}
+      <div class="bg-light rounded shadow-sm mb-4 d-flex align-items-center justify-content-center" style="height: 300px;">
+        <span class="text-muted">📦 Pas d'image disponible</span>
+      </div>
     {% endif %}
-    <div id="unite-map" style="height: 250px;" class="rounded border"></div>
+    
+    {% if unite.gps_lat and unite.gps_lng %}
+      <div id="unite-map" style="height: 300px;" class="rounded shadow-sm border"></div>
+    {% endif %}
   </div>
 </div>
+
+<!-- Section supplémentaire -->
+<hr class="my-5">
+<div class="row mb-4">
+  <div class="col-md-12">
+    <h3 class="mb-3">ℹ️ Informations supplémentaires</h3>
+    <div class="alert alert-info" role="alert">
+      <p class="mb-0">
+        Pour réserver cette unité ou obtenir plus d'informations, connectez-vous à votre compte 
+        ou <a href="{% url 'register' %}" class="alert-link">créez un compte</a>.
+      </p>
+    </div>
+  </div>
+</div>
+
 {% endblock %}
 
 {% block extra_js %}
   {% if unite.gps_lat and unite.gps_lng %}
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
-  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-  <script>
-    const map2 = L.map('unite-map').setView([{{ unite.gps_lat }}, {{ unite.gps_lng }}], 17);
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      maxZoom: 19,
-      attribution: '&copy; OpenStreetMap'
-    }).addTo(map2);
-    L.marker([{{ unite.gps_lat }}, {{ unite.gps_lng }}]).addTo(map2)
-      .bindPopup('Lot {{ unite.reference_lot|escapejs }}')
-      .openPopup();
-  </script>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script>
+      const map2 = L.map('unite-map').setView([{{ unite.gps_lat }}, {{ unite.gps_lng }}], 17);
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        maxZoom: 19,
+        attribution: '&copy; OpenStreetMap'
+      }).addTo(map2);
+      L.marker([{{ unite.gps_lat }}, {{ unite.gps_lng }}]).addTo(map2)
+        .bindPopup('<strong>Lot {{ unite.reference_lot|escapejs }}</strong><br>{{ unite.programme.nom|escapejs }}')
+        .openPopup();
+    </script>
   {% endif %}
 {% endblock %}

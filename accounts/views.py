@@ -14,14 +14,31 @@ class UserLoginView(LoginView):
 
     def get_success_url(self):
         """
-        Si un client venait pour réserver un lot mais n'était pas connecté,
-        on le renvoie directement sur la réservation après login.
-        Sinon, on va sur la home.
+        Redirection intelligente après login :
+        1. Si un client venait pour réserver un lot → reprendre la réservation
+        2. Sinon, rediriger selon le rôle :
+           - CLIENT → dashboard client
+           - COMMERCIAL → dashboard commercial
+           - ADMIN → dashboard admin
+        3. Sinon → accueil
         """
         request = self.request
+        user = request.user
+        
+        # 1) Vérifier si une réservation était en attente
         unite_id = get_pending_unite_and_clear(request)
         if unite_id:
             return reverse_lazy('start_reservation', kwargs={'unite_id': unite_id})
+        
+        # 2) Redirection par rôle
+        if user.is_client:
+            return reverse_lazy('client_dashboard')
+        elif user.is_commercial:
+            return reverse_lazy('commercial_dashboard')
+        elif user.is_admin_scindongo:
+            return reverse_lazy('admin_dashboard')
+        
+        # 3) Sinon accueil
         return self.get_redirect_url() or reverse_lazy('home')
 
 

@@ -1,38 +1,344 @@
 {% extends 'base.html' %}
+
 {% block content %}
-<h1 class="mb-4">Tableau de bord administrateur</h1>
-<div class="row g-3">
-  <div class="col-md-3">
-    <div class="card shadow-sm">
+
+<!-- Header Dashboard -->
+<div class="mb-4">
+  <h1 class="display-6 fw-bold">⚙️ Tableau de bord administrateur</h1>
+  <p class="lead text-muted">Vue d'ensemble de la plateforme SCINDONGO Immo</p>
+</div>
+
+<!-- KPI principaux -->
+<div class="row g-3 mb-5">
+  <div class="col-lg-3">
+    <div class="card border-0 bg-primary text-white">
       <div class="card-body">
-        <h6 class="card-title text-muted">Programmes</h6>
-        <p class="display-6">{{ programmes_count }}</p>
+        <h6 class="card-title text-uppercase fw-bold small">Programmes</h6>
+        <h2 class="display-5 fw-bold">{{ programmes_count }}</h2>
+        {% if programmes_actifs %}
+          <small>{{ programmes_actifs }} actifs</small>
+        {% endif %}
       </div>
     </div>
   </div>
-  <div class="col-md-3">
-    <div class="card shadow-sm">
+  <div class="col-lg-3">
+    <div class="card border-0 bg-info text-white">
       <div class="card-body">
-        <h6 class="card-title text-muted">Unités</h6>
-        <p class="display-6">{{ unites_count }}</p>
+        <h6 class="card-title text-uppercase fw-bold small">Unités</h6>
+        <h2 class="display-5 fw-bold">{{ unites_count }}</h2>
+        {% if unites_disponibles %}
+          <small>{{ unites_disponibles }} disponibles</small>
+        {% endif %}
       </div>
     </div>
   </div>
-  <div class="col-md-3">
-    <div class="card shadow-sm">
+  <div class="col-lg-3">
+    <div class="card border-0 bg-success text-white">
       <div class="card-body">
-        <h6 class="card-title text-muted">Réservations</h6>
-        <p class="display-6">{{ reservations_count }}</p>
+        <h6 class="card-title text-uppercase fw-bold small">Réservations</h6>
+        <h2 class="display-5 fw-bold">{{ reservations_count }}</h2>
+        {% if reservations_confirmees %}
+          <small>{{ reservations_confirmees }} confirmées</small>
+        {% endif %}
       </div>
     </div>
   </div>
-  <div class="col-md-3">
-    <div class="card shadow-sm">
+  <div class="col-lg-3">
+    <div class="card border-0 bg-warning text-dark">
       <div class="card-body">
-        <h6 class="card-title text-muted">Paiements</h6>
-        <p class="display-6">{{ paiements_count }}</p>
+        <h6 class="card-title text-uppercase fw-bold small">Paiements</h6>
+        <h2 class="display-5 fw-bold">{{ paiements_count }}</h2>
+        {% if paiements_valides %}
+          <small>{{ paiements_valides }} validés</small>
+        {% endif %}
       </div>
     </div>
   </div>
 </div>
+
+<!-- Statistiques supplémentaires -->
+<div class="row g-3 mb-5">
+  <div class="col-lg-3">
+    <div class="card border-0">
+      <div class="card-body">
+        <h6 class="card-title text-uppercase fw-bold small text-muted">Utilisateurs</h6>
+        <h3 class="fw-bold text-primary">{{ users_count }}</h3>
+        <small class="text-muted">
+          {% if clients_count %}
+            <strong>Clients :</strong> {{ clients_count }}<br>
+          {% endif %}
+          {% if commercials_count %}
+            <strong>Commerciaux :</strong> {{ commercials_count }}<br>
+          {% endif %}
+          {% if admins_count %}
+            <strong>Admins :</strong> {{ admins_count }}
+          {% endif %}
+        </small>
+      </div>
+    </div>
+  </div>
+  <div class="col-lg-3">
+    <div class="card border-0">
+      <div class="card-body">
+        <h6 class="card-title text-uppercase fw-bold small text-muted">Financements</h6>
+        <h3 class="fw-bold text-info">{{ financements_count }}</h3>
+        <small class="text-muted">
+          {% if financements_acceptes %}
+            <strong>Acceptés :</strong> {{ financements_acceptes }}<br>
+          {% endif %}
+          {% if financements_en_etude %}
+            <strong>En étude :</strong> {{ financements_en_etude }}
+          {% endif %}
+        </small>
+      </div>
+    </div>
+  </div>
+  <div class="col-lg-3">
+    <div class="card border-0">
+      <div class="card-body">
+        <h6 class="card-title text-uppercase fw-bold small text-muted">Contrats</h6>
+        <h3 class="fw-bold text-success">{{ contrats_count }}</h3>
+        <small class="text-muted">
+          {% if contrats_signes %}
+            <strong>Signés :</strong> {{ contrats_signes }}
+          {% endif %}
+        </small>
+      </div>
+    </div>
+  </div>
+  <div class="col-lg-3">
+    <div class="card border-0">
+      <div class="card-body">
+        <h6 class="card-title text-uppercase fw-bold small text-muted">Banques</h6>
+        <h3 class="fw-bold text-warning">{{ banques_count }}</h3>
+        <small class="text-muted">Partenaires</small>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Actions et accès rapides -->
+<div class="row g-3 mb-5">
+  <div class="col-md-6">
+    <div class="card shadow-sm border-0">
+      <div class="card-body">
+        <h5 class="card-title mb-3">🔧 Actions d'administration</h5>
+        <div class="d-grid gap-2">
+          <a href="/admin/" class="btn btn-primary btn-sm">
+            → Accéder à l'interface Django Admin
+          </a>
+          <a href="{% url 'programme_list' %}" class="btn btn-outline-primary btn-sm">
+            → Gérer les programmes
+          </a>
+          <button class="btn btn-outline-secondary btn-sm" disabled>
+            → Gérer les utilisateurs (à implémenter)
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-md-6">
+    <div class="card shadow-sm border-0">
+      <div class="card-body">
+        <h5 class="card-title mb-3">📊 Rapports et exports</h5>
+        <div class="d-grid gap-2">
+          <button class="btn btn-outline-success btn-sm" disabled>
+            → Exporter les réservations (CSV)
+          </button>
+          <button class="btn btn-outline-info btn-sm" disabled>
+            → Rapport de paiements
+          </button>
+          <button class="btn btn-outline-warning btn-sm" disabled>
+            → Rapport des financements
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Listes détaillées -->
+<ul class="nav nav-tabs mb-4" role="tablist">
+  <li class="nav-item" role="presentation">
+    <button class="nav-link active" id="programmes-tab" data-bs-toggle="tab" data-bs-target="#programmes-content" type="button" role="tab">
+      🏗️ Programmes
+    </button>
+  </li>
+  <li class="nav-item" role="presentation">
+    <button class="nav-link" id="derniers-paiements-tab" data-bs-toggle="tab" data-bs-target="#derniers-paiements-content" type="button" role="tab">
+      💳 Derniers paiements
+    </button>
+  </li>
+  <li class="nav-item" role="presentation">
+    <button class="nav-link" id="dernieres-reservations-tab" data-bs-toggle="tab" data-bs-target="#dernieres-reservations-content" type="button" role="tab">
+      📋 Dernières réservations
+    </button>
+  </li>
+</ul>
+
+<div class="tab-content">
+
+  <!-- Onglet Programmes -->
+  <div class="tab-pane fade show active" id="programmes-content" role="tabpanel">
+    {% if programmes %}
+      <div class="table-responsive">
+        <table class="table table-hover table-sm">
+          <thead class="table-light">
+            <tr>
+              <th>Nom</th>
+              <th>Adresse</th>
+              <th>Unités</th>
+              <th>Réservées</th>
+              <th>Vendues</th>
+              <th>Statut</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for prog in programmes %}
+              <tr>
+                <td><strong>{{ prog.nom }}</strong></td>
+                <td>{{ prog.adresse|truncatewords:4 }}</td>
+                <td>{{ prog.unites.count }}</td>
+                <td>
+                  {% with reserved=prog.unites.filter|length %}
+                    {{ reserved }}
+                  {% endwith %}
+                </td>
+                <td>
+                  {% with sold=prog.unites.filter|length %}
+                    {{ sold }}
+                  {% endwith %}
+                </td>
+                <td>
+                  {% if prog.statut == 'actif' %}
+                    <span class="badge bg-success">✓ Actif</span>
+                  {% elif prog.statut == 'brouillon' %}
+                    <span class="badge bg-warning text-dark">⏳ Brouillon</span>
+                  {% else %}
+                    <span class="badge bg-secondary">📦 Archivé</span>
+                  {% endif %}
+                </td>
+                <td>
+                  <a href="{% url 'programme_detail' prog.pk %}" class="btn btn-sm btn-outline-primary">Voir</a>
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <div class="alert alert-info">Aucun programme.</div>
+    {% endif %}
+  </div>
+
+  <!-- Onglet Derniers Paiements -->
+  <div class="tab-pane fade" id="derniers-paiements-content" role="tabpanel">
+    {% if derniers_paiements %}
+      <div class="table-responsive">
+        <table class="table table-hover table-sm">
+          <thead class="table-light">
+            <tr>
+              <th>Date</th>
+              <th>Client</th>
+              <th>Montant</th>
+              <th>Moyen</th>
+              <th>Statut</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for p in derniers_paiements %}
+              <tr>
+                <td>{{ p.date_paiement|date:"d/m/Y H:i" }}</td>
+                <td>
+                  {% if p.reservation and p.reservation.client and p.reservation.client.user %}
+                    {% if p.reservation.client.user.get_full_name %}
+                      {{ p.reservation.client.user.get_full_name }}
+                    {% else %}
+                      {% if p.reservation and p.reservation.client and p.reservation.client.user and p.reservation.client.user.email %}
+                        {{ p.reservation.client.user.email }}
+                      {% else %}
+                        N/A
+                      {% endif %}
+                    {% endif %}
+                  {% else %}
+                    N/A
+                  {% endif %}
+                </td>
+                <td class="fw-bold">{{ p.montant }} FCFA</td>
+                <td>{{ p.get_moyen_display }}</td>
+                <td>
+                  {% if p.statut == 'valide' %}
+                    <span class="badge bg-success">✓ Validé</span>
+                  {% else %}
+                    <span class="badge bg-info">{{ p.get_statut_display }}</span>
+                  {% endif %}
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <div class="alert alert-info">Aucun paiement.</div>
+    {% endif %}
+  </div>
+
+  <!-- Onglet Dernières Réservations -->
+  <div class="tab-pane fade" id="dernieres-reservations-content" role="tabpanel">
+    {% if dernieres_reservations %}
+      <div class="table-responsive">
+        <table class="table table-hover table-sm">
+          <thead class="table-light">
+            <tr>
+              <th>Date</th>
+              <th>Client</th>
+              <th>Unité</th>
+              <th>Programme</th>
+              <th>Acompte</th>
+              <th>Statut</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for res in dernieres_reservations %}
+              <tr>
+                <td>{{ res.created_at|date:"d/m/Y H:i" }}</td>
+                <td>
+                  {% if res.client and res.client.user %}
+                    {% if res.client.user.get_full_name %}
+                      {{ res.client.user.get_full_name }}
+                    {% else %}
+                      {% if res.client and res.client.user and res.client.user.email %}
+                        {{ res.client.user.email }}
+                      {% else %}
+                        N/A
+                      {% endif %}
+                    {% endif %}
+                  {% else %}
+                    N/A
+                  {% endif %}
+                </td>
+                <td><strong>{{ res.unite.reference_lot }}</strong></td>
+                <td>{{ res.unite.programme.nom }}</td>
+                <td class="fw-bold">{{ res.acompte }} FCFA</td>
+                <td>
+                  {% if res.statut == 'confirmee' %}
+                    <span class="badge bg-success">✓ Confirmée</span>
+                  {% else %}
+                    <span class="badge bg-info">{{ res.get_statut_display }}</span>
+                  {% endif %}
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <div class="alert alert-info">Aucune réservation.</div>
+    {% endif %}
+  </div>
+
+</div>
+
 {% endblock %}

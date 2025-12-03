@@ -1,0 +1,64 @@
+<nav class="navbar navbar-expand-lg navbar-dark bg-primary mb-4">
+  <div class="container-fluid">
+    <a class="navbar-brand fw-bold" href="{% url 'home' %}">🏢 SCINDONGO Immo</a>
+    <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+      <span class="navbar-toggler-icon"></span>
+    </button>
+    <div class="collapse navbar-collapse" id="navbarNav">
+      <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+        <li class="nav-item">
+          <a class="nav-link" href="{% url 'programme_list' %}">Programmes</a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link" href="{% url 'pourquoi_investir' %}">Pourquoi investir ?</a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link" href="{% url 'contact' %}">Contact</a>
+        </li>
+      </ul>
+
+      <!-- Authentification -->
+      <ul class="navbar-nav ms-auto">
+        {% if user and user.is_authenticated %}
+          <!-- Menu déroulant utilisateur -->
+          <li class="nav-item dropdown">
+            <a class="nav-link dropdown-toggle" href="#" id="userDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+              {% if user.get_full_name %}
+                👤 {{ user.get_full_name }}
+              {% elif user.email %}
+                👤 {{ user.email }}
+              {% else %}
+                👤 Utilisateur
+              {% endif %}
+            </a>
+            <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="userDropdown">
+              {% if user.is_client %}
+                <li><a class="dropdown-item" href="{% url 'client_dashboard' %}">💼 Mon espace client</a></li>
+              {% endif %}
+              {% if user.is_commercial %}
+                <li><a class="dropdown-item" href="{% url 'commercial_dashboard' %}">📊 Espace commercial</a></li>
+              {% endif %}
+              {% if user.is_admin_scindongo %}
+                <li><a class="dropdown-item" href="{% url 'admin_dashboard' %}">⚙️ Espace admin</a></li>
+              {% endif %}
+              <li><hr class="dropdown-divider"></li>
+              <li>
+                <form method="post" action="{% url 'logout' %}" class="d-inline">
+                  {% csrf_token %}
+                  <button type="submit" class="dropdown-item">🚪 Se déconnecter</button>
+                </form>
+              </li>
+            </ul>
+          </li>
+        {% else %}
+          <li class="nav-item">
+            <a class="nav-link" href="{% url 'login' %}">🔐 Connexion</a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link" href="{% url 'register' %}">✍️ Créer un compte</a>
+          </li>
+        {% endif %}
+      </ul>
+    </div>
+  </div>
+</nav>

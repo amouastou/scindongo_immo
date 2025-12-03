@@ -1,41 +1,347 @@
 {% extends 'base.html' %}
+
 {% block content %}
-<h1 class="mb-4">Mon espace client</h1>
-<div class="row g-3 mb-4">
-  <div class="col-md-6">
-    <div class="card shadow-sm">
+
+<!-- Header Dashboard -->
+<div class="mb-4">
+  <h1 class="display-6 fw-bold">💼 Mon espace client</h1>
+  <p class="lead text-muted">Bienvenue {% if user %}{{ user.first_name|default:user.email }}{% else %}!{% endif %} </p>
+</div>
+
+<!-- Statistiques rapides -->
+<div class="row g-3 mb-5">
+  <div class="col-md-3">
+    <div class="card border-0 bg-primary text-white">
       <div class="card-body">
-        <h5 class="card-title">Mes réservations</h5>
-        <ul class="list-group list-group-flush">
-          {% for r in reservations %}
-          <li class="list-group-item">
-            <strong>{{ r.unite.reference_lot }}</strong> – {{ r.unite.programme.nom }}<br>
-            Statut : <span class="badge bg-info">{{ r.get_statut_display }}</span> · Acompte : {{ r.acompte }} FCFA
-          </li>
-          {% empty %}
-          <li class="list-group-item text-muted">Aucune réservation.</li>
-          {% endfor %}
-        </ul>
+        <h6 class="card-title text-uppercase fw-bold small">Réservations</h6>
+        <h2 class="display-5 fw-bold">{{ reservations.count }}</h2>
       </div>
     </div>
   </div>
-  <div class="col-md-6">
-    <div class="card shadow-sm">
+  <div class="col-md-3">
+    <div class="card border-0 bg-success text-white">
       <div class="card-body">
-        <h5 class="card-title">Mes paiements</h5>
-        <ul class="list-group list-group-flush">
-          {% for p in paiements %}
-          <li class="list-group-item">
-            {{ p.date_paiement }} – {{ p.montant }} FCFA –
-            <span class="badge bg-secondary">{{ p.get_statut_display }}</span><br>
-            Réservation : {{ p.reservation.unite.reference_lot }}
-          </li>
-          {% empty %}
-          <li class="list-group-item text-muted">Aucun paiement enregistré.</li>
-          {% endfor %}
-        </ul>
+        <h6 class="card-title text-uppercase fw-bold small">Paiements</h6>
+        <h2 class="display-5 fw-bold">{{ paiements.count }}</h2>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="card border-0 bg-info text-white">
+      <div class="card-body">
+        <h6 class="card-title text-uppercase fw-bold small">Contrats</h6>
+        <h2 class="display-5 fw-bold">{{ contrats.count }}</h2>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="card border-0 bg-warning text-dark">
+      <div class="card-body">
+        <h6 class="card-title text-uppercase fw-bold small">Financements</h6>
+        <h2 class="display-5 fw-bold">{{ financements.count }}</h2>
       </div>
     </div>
   </div>
 </div>
+
+<!-- Contenu principal en onglets -->
+<ul class="nav nav-tabs mb-4" role="tablist">
+  <li class="nav-item" role="presentation">
+    <button class="nav-link active" id="reservations-tab" data-bs-toggle="tab" data-bs-target="#reservations-content" type="button" role="tab">
+      📋 Réservations
+    </button>
+  </li>
+  <li class="nav-item" role="presentation">
+    <button class="nav-link" id="paiements-tab" data-bs-toggle="tab" data-bs-target="#paiements-content" type="button" role="tab">
+      💳 Paiements
+    </button>
+  </li>
+  <li class="nav-item" role="presentation">
+    <button class="nav-link" id="contrats-tab" data-bs-toggle="tab" data-bs-target="#contrats-content" type="button" role="tab">
+      📄 Contrats
+    </button>
+  </li>
+  <li class="nav-item" role="presentation">
+    <button class="nav-link" id="financement-tab" data-bs-toggle="tab" data-bs-target="#financement-content" type="button" role="tab">
+      🏦 Financement
+    </button>
+  </li>
+  <li class="nav-item" role="presentation">
+    <button class="nav-link" id="profil-tab" data-bs-toggle="tab" data-bs-target="#profil-content" type="button" role="tab">
+      👤 Mon profil
+    </button>
+  </li>
+</ul>
+
+<!-- Contenu des onglets -->
+<div class="tab-content">
+
+  <!-- Onglet Réservations -->
+  <div class="tab-pane fade show active" id="reservations-content" role="tabpanel">
+    <h3 class="mb-3">Mes réservations</h3>
+    {% if reservations %}
+      <div class="row g-3">
+        {% for res in reservations %}
+          <div class="col-lg-6">
+            <div class="card shadow-sm border-0 h-100">
+              <div class="card-body">
+                <div class="d-flex justify-content-between align-items-start mb-2">
+                  <h5 class="card-title fw-bold">{{ res.unite.reference_lot }}</h5>
+                  {% if res.statut == 'en_cours' %}
+                    <span class="badge bg-warning text-dark">⏳ En cours</span>
+                  {% elif res.statut == 'confirmee' %}
+                    <span class="badge bg-success">✓ Confirmée</span>
+                  {% elif res.statut == 'annulee' %}
+                    <span class="badge bg-danger">✕ Annulée</span>
+                  {% else %}
+                    <span class="badge bg-secondary">{{ res.get_statut_display }}</span>
+                  {% endif %}
+                </div>
+                
+                <p class="card-text text-muted mb-3">
+                  <strong>Programme :</strong> {{ res.unite.programme.nom }}
+                </p>
+
+                <div class="row g-2 mb-3 small">
+                  <div class="col-6">
+                    <strong>Prix TTC :</strong> {{ res.unite.prix_ttc }} FCFA
+                  </div>
+                  <div class="col-6">
+                    <strong>Acompte versé :</strong> {{ res.acompte }} FCFA
+                  </div>
+                  <div class="col-6">
+                    <strong>Réservée le :</strong> {{ res.created_at|date:"d/m/Y" }}
+                  </div>
+                  <div class="col-6">
+                    <strong>Mise à jour :</strong> {{ res.updated_at|date:"d/m/Y" }}
+                  </div>
+                </div>
+
+                <hr>
+
+                <div class="d-grid gap-2">
+                  <a href="#" class="btn btn-outline-primary btn-sm">📋 Voir les détails</a>
+                  {% if res.statut == 'en_cours' %}
+                    <a href="{% url 'pay_reservation' res.id %}" class="btn btn-success btn-sm">
+                      💳 Effectuer un paiement
+                    </a>
+                  {% endif %}
+                </div>
+              </div>
+            </div>
+          </div>
+        {% endfor %}
+      </div>
+    {% else %}
+      <div class="alert alert-info" role="alert">
+        <h5 class="alert-heading">Aucune réservation</h5>
+        <p class="mb-0">
+          Vous n'avez pas encore de réservation. 
+          <a href="{% url 'programme_list' %}" class="alert-link">Explorez nos programmes</a> et réservez une unité !
+        </p>
+      </div>
+    {% endif %}
+  </div>
+
+  <!-- Onglet Paiements -->
+  <div class="tab-pane fade" id="paiements-content" role="tabpanel">
+    <h3 class="mb-3">Mes paiements</h3>
+    {% if paiements %}
+      <div class="table-responsive">
+        <table class="table table-hover">
+          <thead class="table-light">
+            <tr>
+              <th>Date</th>
+              <th>Réservation</th>
+              <th>Montant</th>
+              <th>Moyen de paiement</th>
+              <th>Statut</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for p in paiements %}
+              <tr>
+                <td>{{ p.date_paiement|date:"d/m/Y" }}</td>
+                <td>{{ p.reservation.unite.reference_lot }}</td>
+                <td class="fw-bold text-success">{{ p.montant }} FCFA</td>
+                <td>
+                  {% if p.moyen == 'virement' %}
+                    🏦 Virement
+                  {% elif p.moyen == 'cheque' %}
+                    📋 Chèque
+                  {% elif p.moyen == 'espece' %}
+                    💵 Espèce
+                  {% elif p.moyen == 'carte' %}
+                    💳 Carte
+                  {% else %}
+                    {{ p.get_moyen_display }}
+                  {% endif %}
+                </td>
+                <td>
+                  {% if p.statut == 'enregistre' %}
+                    <span class="badge bg-info">⏳ Enregistré</span>
+                  {% elif p.statut == 'valide' %}
+                    <span class="badge bg-success">✓ Validé</span>
+                  {% elif p.statut == 'rejete' %}
+                    <span class="badge bg-danger">✕ Rejeté</span>
+                  {% else %}
+                    <span class="badge bg-secondary">{{ p.get_statut_display }}</span>
+                  {% endif %}
+                </td>
+                <td>
+                  <a href="#" class="btn btn-sm btn-outline-secondary">📄 Reçu</a>
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <div class="alert alert-info" role="alert">
+        <p class="mb-0">Aucun paiement enregistré pour le moment.</p>
+      </div>
+    {% endif %}
+  </div>
+
+  <!-- Onglet Contrats -->
+  <div class="tab-pane fade" id="contrats-content" role="tabpanel">
+    <h3 class="mb-3">Mes contrats</h3>
+    {% if contrats %}
+      <div class="row g-3">
+        {% for c in contrats %}
+          <div class="col-lg-6">
+            <div class="card shadow-sm border-0">
+              <div class="card-body">
+                <div class="d-flex justify-content-between align-items-start mb-2">
+                  <h5 class="card-title fw-bold">{{ c.numero }}</h5>
+                  {% if c.statut == 'brouillon' %}
+                    <span class="badge bg-warning text-dark">⏳ Brouillon</span>
+                  {% elif c.statut == 'signe' %}
+                    <span class="badge bg-success">✓ Signé</span>
+                  {% elif c.statut == 'annule' %}
+                    <span class="badge bg-danger">✕ Annulé</span>
+                  {% else %}
+                    <span class="badge bg-secondary">{{ c.get_statut_display }}</span>
+                  {% endif %}
+                </div>
+
+                <p class="card-text text-muted small mb-2">
+                  Réservation : {{ c.reservation.unite.reference_lot }}
+                </p>
+
+                {% if c.signe_le %}
+                  <p class="card-text small mb-3">
+                    <strong>Signé le :</strong> {{ c.signe_le|date:"d/m/Y" }}
+                  </p>
+                {% endif %}
+
+                <a href="#" class="btn btn-primary btn-sm">📄 Télécharger</a>
+              </div>
+            </div>
+          </div>
+        {% endfor %}
+      </div>
+    {% else %}
+      <div class="alert alert-info" role="alert">
+        <p class="mb-0">Aucun contrat pour le moment.</p>
+      </div>
+    {% endif %}
+  </div>
+
+  <!-- Onglet Financement -->
+  <div class="tab-pane fade" id="financement-content" role="tabpanel">
+    <h3 class="mb-3">Mon financement</h3>
+    {% if financements %}
+      <div class="row g-3">
+        {% for f in financements %}
+          <div class="col-lg-6">
+            <div class="card shadow-sm border-0">
+              <div class="card-body">
+                <div class="d-flex justify-content-between align-items-start mb-2">
+                  <h5 class="card-title fw-bold">{{ f.banque_partenaire.nom }}</h5>
+                  {% if f.statut == 'soumis' %}
+                    <span class="badge bg-info">📮 Soumis</span>
+                  {% elif f.statut == 'en_etude' %}
+                    <span class="badge bg-warning text-dark">📚 En étude</span>
+                  {% elif f.statut == 'accepte' %}
+                    <span class="badge bg-success">✓ Accepté</span>
+                  {% elif f.statut == 'refuse' %}
+                    <span class="badge bg-danger">✕ Refusé</span>
+                  {% elif f.statut == 'clos' %}
+                    <span class="badge bg-secondary">🔒 Clos</span>
+                  {% else %}
+                    <span class="badge bg-secondary">{{ f.get_statut_display }}</span>
+                  {% endif %}
+                </div>
+
+                <div class="mb-3 small">
+                  <p class="mb-1"><strong>Type :</strong> {{ f.get_type_display }}</p>
+                  <p class="mb-1"><strong>Montant :</strong> <span class="text-success fw-bold">{{ f.montant }} FCFA</span></p>
+                  <p class="mb-0"><strong>Taux :</strong> {{ f.taux }}%</p>
+                </div>
+
+                <a href="#" class="btn btn-outline-primary btn-sm">📋 Voir les échéances</a>
+              </div>
+            </div>
+          </div>
+        {% endfor %}
+      </div>
+    {% else %}
+      <div class="alert alert-info" role="alert">
+        <p class="mb-0">Aucun financement enregistré.</p>
+      </div>
+    {% endif %}
+  </div>
+
+  <!-- Onglet Profil -->
+  <div class="tab-pane fade" id="profil-content" role="tabpanel">
+    <h3 class="mb-3">Mon profil</h3>
+    <div class="row">
+      <div class="col-md-6">
+        <div class="card shadow-sm border-0">
+          <div class="card-body">
+            <h5 class="card-title mb-3">Informations personnelles</h5>
+            <dl class="row mb-0">
+              <dt class="col-sm-4">Prénom :</dt>
+              <dd class="col-sm-8">{{ user.first_name|default:"Non renseigné" }}</dd>
+
+              <dt class="col-sm-4">Nom :</dt>
+              <dd class="col-sm-8">{{ user.last_name|default:"Non renseigné" }}</dd>
+
+              <dt class="col-sm-4">Email :</dt>
+              <dd class="col-sm-8">{% if user and user.email %}{{ user.email }}{% else %}<span class="text-muted">Non renseigné</span>{% endif %}</dd>
+
+              <dt class="col-sm-4">Téléphone :</dt>
+              <dd class="col-sm-8">
+                {% if user.client_profile.telephone %}
+                  {{ user.client_profile.telephone }}
+                {% else %}
+                  <span class="text-muted">Non renseigné</span>
+                {% endif %}
+              </dd>
+            </dl>
+          </div>
+        </div>
+      </div>
+      <div class="col-md-6">
+        <div class="card shadow-sm border-0">
+          <div class="card-body">
+            <h5 class="card-title mb-3">Actions</h5>
+            <div class="d-grid gap-2">
+              <a href="#" class="btn btn-outline-primary">📝 Modifier mon profil</a>
+              <a href="#" class="btn btn-outline-secondary">🔐 Changer mon mot de passe</a>
+              <form method="post" action="{% url 'logout' %}" class="d-grid">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-outline-danger">🚪 Se déconnecter</button>
+              </form>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
 {% endblock %}

@@ -1,57 +1,134 @@
 {% extends 'base.html' %}
 {% block content %}
+
+<!-- Breadcrumbs -->
+<nav aria-label="breadcrumb" class="mb-4">
+  <ol class="breadcrumb">
+    <li class="breadcrumb-item"><a href="{% url 'home' %}">Accueil</a></li>
+    <li class="breadcrumb-item"><a href="{% url 'programme_list' %}">Programmes</a></li>
+    <li class="breadcrumb-item active" aria-current="page">{{ programme.nom }}</li>
+  </ol>
+</nav>
+
+<!-- Header Programme -->
 <div class="row mb-4">
   <div class="col-md-7">
-    <h1>{{ programme.nom }}</h1>
-    <p class="text-muted">{{ programme.adresse }}</p>
-    <p>{{ programme.description }}</p>
-    <p><strong>Notaire :</strong> {{ programme.notaire }}</p>
-    <p><strong>Contact :</strong> {{ programme.contact }}</p>
-  </div>
-  <div class="col-md-5">
-    {% if programme.image_principale %}
-      <img src="{{ programme.image_principale.url }}" class="img-fluid rounded shadow-sm mb-3" alt="{{ programme.nom }}">
-    {% endif %}
-    <div id="programme-map" style="height: 250px;" class="rounded border"></div>
-  </div>
-</div>
-
-<h3 class="mb-3">Unités du programme</h3>
-<div class="row g-3">
-  {% for unite in programme.unites.all %}
-  <div class="col-md-4">
-    <div class="card h-100 shadow-sm">
-      {% if unite.image %}
-        <img src="{{ unite.image.url }}" class="card-img-top" alt="{{ unite.reference_lot }}">
-      {% endif %}
-      <div class="card-body d-flex flex-column">
-        <h5 class="card-title">{{ unite.reference_lot }}</h5>
-        <p class="card-text">Modèle : {{ unite.modele_bien.nom_marketing }}</p>
-        <p class="card-text fw-bold">Prix TTC : {{ unite.prix_ttc }} FCFA</p>
-        <p class="card-text"><span class="badge bg-secondary">{{ unite.get_statut_disponibilite_display }}</span></p>
-        <a href="{% url 'unite_detail' unite.id %}" class="btn btn-outline-primary mt-auto">Voir le lot</a>
+    <h1 class="display-5 fw-bold">{{ programme.nom }}</h1>
+    <p class="lead text-muted">📍 {{ programme.adresse }}</p>
+    <p class="mt-3">{{ programme.description }}</p>
+    
+    <!-- Infos complémentaires -->
+    <div class="row g-2 mt-3">
+      <div class="col-auto">
+        <span class="badge bg-info">Notaire : {{ programme.notaire|default:"N/A" }}</span>
+      </div>
+      <div class="col-auto">
+        <span class="badge bg-secondary">Contact : {{ programme.contact|default:"N/A" }}</span>
+      </div>
+      <div class="col-auto">
+        {% if programme.statut == 'actif' %}
+          <span class="badge bg-success">✓ Actif</span>
+        {% elif programme.statut == 'brouillon' %}
+          <span class="badge bg-warning text-dark">⏳ Brouillon</span>
+        {% else %}
+          <span class="badge bg-secondary">📦 Archivé</span>
+        {% endif %}
       </div>
     </div>
   </div>
-  {% empty %}
-  <p>Aucune unité définie pour ce programme.</p>
-  {% endfor %}
+  <div class="col-md-5">
+    {% if programme.image_principale %}
+      <img src="{{ programme.image_principale.url }}" class="img-fluid rounded shadow-sm mb-3" alt="{{ programme.nom }}" style="max-height: 300px; object-fit: cover; width: 100%;">
+    {% else %}
+      <div class="bg-light rounded shadow-sm mb-3 d-flex align-items-center justify-content-center" style="height: 300px;">
+        <span class="text-muted">🏢 Pas d'image disponible</span>
+      </div>
+    {% endif %}
+    <div id="programme-map" style="height: 250px;" class="rounded border shadow-sm"></div>
+  </div>
 </div>
+
+<hr class="my-5">
+
+<!-- Unités du programme -->
+<h2 class="mb-4">Unités disponibles</h2>
+
+{% if programme.unites.all %}
+  <div class="row g-4">
+    {% for unite in programme.unites.all %}
+      <div class="col-lg-4">
+        <div class="card shadow-sm h-100 border-0">
+          {% if unite.image %}
+            <img src="{{ unite.image.url }}" class="card-img-top" alt="{{ unite.reference_lot }}" style="height: 200px; object-fit: cover;">
+          {% else %}
+            <div class="bg-light" style="height: 200px; display: flex; align-items: center; justify-content: center;">
+              <span class="text-muted">📦 Pas d'image</span>
+            </div>
+          {% endif %}
+          <div class="card-body d-flex flex-column">
+            <h5 class="card-title text-primary fw-bold">{{ unite.reference_lot }}</h5>
+            <p class="card-text text-muted small">{{ unite.modele_bien.nom_marketing }}</p>
+            
+            <!-- Détails prix et surface -->
+            <div class="mb-3">
+              <p class="mb-1"><strong>💰 Prix TTC :</strong> <span class="text-success fw-bold">{{ unite.prix_ttc|default:"N/A" }} FCFA</span></p>
+              <p class="mb-0"><strong>📐 Surface :</strong> {{ unite.modele_bien.surface_hab_m2|default:"N/A" }} m²</p>
+            </div>
+
+            <!-- Statut -->
+            <div class="mb-3">
+              {% if unite.statut_disponibilite == 'disponible' %}
+                <span class="badge bg-success">✓ Disponible</span>
+              {% elif unite.statut_disponibilite == 'reserve' %}
+                <span class="badge bg-warning text-dark">⏳ Réservée</span>
+              {% elif unite.statut_disponibilite == 'vendu' %}
+                <span class="badge bg-danger">✕ Vendue</span>
+              {% else %}
+                <span class="badge bg-secondary">📦 {{ unite.get_statut_disponibilite_display }}</span>
+              {% endif %}
+            </div>
+
+            <!-- Boutons d'action -->
+            <div class="d-grid gap-2 mt-auto">
+              <a href="{% url 'unite_detail' unite.pk %}" class="btn btn-outline-primary btn-sm">
+                📋 Voir le détail
+              </a>
+              {% if unite.statut_disponibilite == 'disponible' and user.is_authenticated %}
+                <a href="{% url 'reserve_unite' unite.pk %}" class="btn btn-primary btn-sm">
+                  🔖 Réserver
+                </a>
+              {% elif not user.is_authenticated and unite.statut_disponibilite == 'disponible' %}
+                <a href="{% url 'reserve_unite' unite.pk %}" class="btn btn-primary btn-sm">
+                  🔖 Réserver
+                </a>
+              {% endif %}
+            </div>
+          </div>
+        </div>
+      </div>
+    {% endfor %}
+  </div>
+{% else %}
+  <div class="alert alert-info" role="alert">
+    <h5 class="alert-heading">Aucune unité disponible</h5>
+    <p class="mb-0">Les unités de ce programme seront bientôt disponibles.</p>
+  </div>
+{% endif %}
+
 {% endblock %}
 
 {% block extra_js %}
   {% if programme.gps_lat and programme.gps_lng %}
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
-  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-  <script>
-    const map = L.map('programme-map').setView([{{ programme.gps_lat }}, {{ programme.gps_lng }}], 15);
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      maxZoom: 19,
-      attribution: '&copy; OpenStreetMap'
-    }).addTo(map);
-    L.marker([{{ programme.gps_lat }}, {{ programme.gps_lng }}]).addTo(map)
-      .bindPopup('{{ programme.nom|escapejs }}')
-      .openPopup();
-  </script>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script>
+      const map = L.map('programme-map').setView([{{ programme.gps_lat }}, {{ programme.gps_lng }}], 15);
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        maxZoom: 19,
+        attribution: '&copy; OpenStreetMap'
+      }).addTo(map);
+      L.marker([{{ programme.gps_lat }}, {{ programme.gps_lng }}]).addTo(map)
+        .bindPopup('<strong>{{ programme.nom|escapejs }}</strong><br>{{ programme.adresse|escapejs }}');
+    </script>
   {% endif %}
 {% endblock %}

@@ -1,12 +1,20 @@
 from decimal import Decimal
 from datetime import datetime, timedelta
 
-from rest_framework import viewsets, status
+from rest_framework import viewsets, status, filters
 from rest_framework.permissions import IsAuthenticated, IsAuthenticatedOrReadOnly
 from rest_framework.decorators import action
 from rest_framework.response import Response
+from django_filters.rest_framework import DjangoFilterBackend
 
-from accounts.permissions import IsAdminOrCommercial, IsAdminScindongo
+from accounts.permissions import (
+    IsAdminOrCommercial,
+    IsAdminScindongo,
+    IsCommercial,
+    IsClient,
+    IsReservationOwnerOrAdminOrCommercial,
+    IsClientOwnerOrAdminOrCommercial,
+)
 
 from .serializers import (
     ProgrammeSerializer,
@@ -54,13 +62,23 @@ from sales.models import (
 class ProgrammeViewSet(viewsets.ModelViewSet):
     queryset = Programme.objects.all()
     serializer_class = ProgrammeSerializer
-    permission_classes = [IsAuthenticatedOrReadOnly]
+    permission_classes = [IsAuthenticatedOrReadOnly, IsAdminOrCommercial]
+    filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
+    filterset_fields = ["statut"]
+    search_fields = ["nom", "description", "adresse"]
+    ordering_fields = ["nom", "created_at"]
+    ordering = ["-created_at"]
 
 
 class UniteViewSet(viewsets.ModelViewSet):
     queryset = Unite.objects.all()
     serializer_class = UniteSerializer
     permission_classes = [IsAuthenticatedOrReadOnly]
+    filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
+    filterset_fields = ["programme", "statut_disponibilite", "modele_bien"]
+    search_fields = ["reference_lot"]
+    ordering_fields = ["prix_ttc", "reference_lot", "created_at"]
+    ordering = ["reference_lot"]
 
 
 class TypeBienViewSet(viewsets.ModelViewSet):
@@ -127,13 +145,50 @@ class PhotoChantierViewSet(viewsets.ModelViewSet):
 class ClientViewSet(viewsets.ModelViewSet):
     queryset = Client.objects.all()
     serializer_class = ClientSerializer
-    permission_classes = [IsAdminOrCommercial]
+    permission_classes = [IsAuthenticated, IsAdminOrCommercial]
+    filter_backends = [DjangoFilterBackend, filters.SearchFilter]
+    search_fields = ["nom", "prenom", "email", "telephone"]
+    filterset_fields = ["kyc_statut"]
+
+    def get_queryset(self):
+        """Admin et Commercial voient tous les clients. Client ne voit que son propre profil."""
+        qs = super().get_queryset()
+        user = self.request.user
+        
+        if getattr(user, "is_admin_scindongo", False) or getattr(user, "is_commercial", False):
+            return qs
+        
+        # Client : ne voir que son propre profil
+        client_profile = getattr(user, "client_profile", None)
+        if client_profile:
+            return qs.filter(pk=client_profile.pk)
+        
+        return qs.none()
 
 
 class ReservationViewSet(viewsets.ModelViewSet):
     queryset = Reservation.objects.all()
     serializer_class = ReservationSerializer
-    permission_classes = [IsAdminOrCommercial]
+    permission_classes = [IsAuthenticated, IsReservationOwnerOrAdminOrCommercial]
+    filter_backends = [DjangoFilterBackend, filters.OrderingFilter]
+    filterset_fields = ["statut", "client", "unite__programme"]
+    ordering_fields = ["date_reservation", "created_at"]
+    ordering = ["-date_reservation"]
+
+    def get_queryset(self):
+        """Admin/Commercial voient tout. Client ne voit que SES réservations."""
+        qs = super().get_queryset()
+        user = self.request.user
+        
+        if getattr(user, "is_admin_scindongo", False) or getattr(user, "is_commercial", False):
+            return qs
+        
+        # Client : ne voir que ses réservations
+        client_profile = getattr(user, "client_profile", None)
+        if client_profile:
+            return qs.filter(client=client_profile)
+        
+        return qs.none()
 
 
 # ============================
@@ -144,13 +199,31 @@ class ReservationViewSet(viewsets.ModelViewSet):
 class BanquePartenaireViewSet(viewsets.ModelViewSet):
     queryset = BanquePartenaire.objects.all()
     serializer_class = BanquePartenaireSerializer
-    permission_classes = [IsAdminScindongo]
+    permission_classes = [IsAuthenticated, IsAdminScindongo]
 
 
 class FinancementViewSet(viewsets.ModelViewSet):
     queryset = Financement.objects.all()
     serializer_class = FinancementSerializer
-    permission_classes = [IsAdminOrCommercial]
+    permission_classes = [IsAuthenticated, IsAdminOrCommercial]
+    filter_backends = [DjangoFilterBackend, filters.OrderingFilter]
+    filterset_fields = ["statut", "reservation__client"]
+    ordering_fields = ["created_at", "montant"]
+
+    def get_queryset(self):
+        """Admin/Commercial voient tout. Client voit SES financements."""
+        qs = super().get_queryset()
+        user = self.request.user
+        
+        if getattr(user, "is_admin_scindongo", False) or getattr(user, "is_commercial", False):
+            return qs
+        
+        # Client : ne voir que ses financements
+        client_profile = getattr(user, "client_profile", None)
+        if client_profile:
+            return qs.filter(reservation__client=client_profile)
+        
+        return qs.none()
 
     @action(detail=True, methods=["post"], url_path="generer-echeances")
     def generer_echeances(self, request, pk=None):
@@ -207,7 +280,25 @@ class FinancementViewSet(viewsets.ModelViewSet):
 class EcheanceViewSet(viewsets.ModelViewSet):
     queryset = Echeance.objects.all()
     serializer_class = EcheanceSerializer
-    permission_classes = [IsAdminOrCommercial]
+    permission_classes = [IsAuthenticated, IsAdminOrCommercial]
+    filter_backends = [DjangoFilterBackend, filters.OrderingFilter]
+    filterset_fields = ["statut", "financement__reservation__client"]
+    ordering_fields = ["date_echeance"]
+
+    def get_queryset(self):
+        """Admin/Commercial voient tout. Client voit SES échéances."""
+        qs = super().get_queryset()
+        user = self.request.user
+        
+        if getattr(user, "is_admin_scindongo", False) or getattr(user, "is_commercial", False):
+            return qs
+        
+        # Client : ne voir que ses échéances
+        client_profile = getattr(user, "client_profile", None)
+        if client_profile:
+            return qs.filter(financement__reservation__client=client_profile)
+        
+        return qs.none()
 
 
 # ============================
@@ -218,10 +309,46 @@ class EcheanceViewSet(viewsets.ModelViewSet):
 class ContratViewSet(viewsets.ModelViewSet):
     queryset = Contrat.objects.all()
     serializer_class = ContratSerializer
-    permission_classes = [IsAdminOrCommercial]
+    permission_classes = [IsAuthenticated, IsAdminOrCommercial]
+    filter_backends = [DjangoFilterBackend, filters.OrderingFilter]
+    filterset_fields = ["statut", "reservation__client"]
+    ordering_fields = ["created_at", "signe_le"]
+
+    def get_queryset(self):
+        """Admin/Commercial voient tout. Client voit SES contrats."""
+        qs = super().get_queryset()
+        user = self.request.user
+        
+        if getattr(user, "is_admin_scindongo", False) or getattr(user, "is_commercial", False):
+            return qs
+        
+        # Client : ne voir que ses contrats
+        client_profile = getattr(user, "client_profile", None)
+        if client_profile:
+            return qs.filter(reservation__client=client_profile)
+        
+        return qs.none()
 
 
 class PaiementViewSet(viewsets.ModelViewSet):
     queryset = Paiement.objects.all()
     serializer_class = PaiementSerializer
-    permission_classes = [IsAdminOrCommercial]
+    permission_classes = [IsAuthenticated, IsAdminOrCommercial]
+    filter_backends = [DjangoFilterBackend, filters.OrderingFilter]
+    filterset_fields = ["statut", "moyen", "reservation__client"]
+    ordering_fields = ["date_paiement", "montant"]
+
+    def get_queryset(self):
+        """Admin/Commercial voient tout. Client voit SES paiements."""
+        qs = super().get_queryset()
+        user = self.request.user
+        
+        if getattr(user, "is_admin_scindongo", False) or getattr(user, "is_commercial", False):
+            return qs
+        
+        # Client : ne voir que ses paiements
+        client_profile = getattr(user, "client_profile", None)
+        if client_profile:
+            return qs.filter(reservation__client=client_profile)
+        
+        return qs.none()

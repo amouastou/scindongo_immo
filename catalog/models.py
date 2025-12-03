@@ -1,19 +1,7 @@
 import uuid
 from django.db import models
 from core.models import TimeStampedModel
-
-PROGRAMME_STATUT_CHOICES = [
-    ("brouillon", "Brouillon"),
-    ("actif", "Actif"),
-    ("archive", "Archivé"),
-]
-
-UNITE_STATUT_CHOICES = [
-    ("disponible", "Disponible"),
-    ("reserve", "Réservé"),
-    ("vendu", "Vendu"),
-    ("livre", "Livré"),
-]
+from core.choices import ProgrammeStatus, UniteStatus
 
 
 class Programme(TimeStampedModel):
@@ -34,12 +22,12 @@ class Programme(TimeStampedModel):
     notaire_contact = models.CharField(max_length=255, blank=True)
     contact_commercial_nom = models.CharField(max_length=255, blank=True)
     contact_commercial_tel = models.CharField(max_length=50, blank=True)
-
+    
     # Statut du programme
     statut = models.CharField(
         max_length=20,
-        choices=PROGRAMME_STATUT_CHOICES,
-        default="brouillon",
+        choices=ProgrammeStatus.choices,
+        default=ProgrammeStatus.BROUILLON,
     )
 
     date_livraison_prevue = models.DateField(null=True, blank=True)
@@ -117,8 +105,8 @@ class Unite(TimeStampedModel):
     # Statut de disponibilité
     statut_disponibilite = models.CharField(
         max_length=20,
-        choices=UNITE_STATUT_CHOICES,
-        default="disponible",
+        choices=UniteStatus.choices,
+        default=UniteStatus.DISPONIBLE,
     )
 
     # Caractéristiques techniques / commerciales dynamiques

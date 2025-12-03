@@ -1,0 +1,30 @@
+<footer class="bg-dark text-light border-top py-4 mt-5">
+  <div class="container">
+    <div class="row mb-3">
+      <div class="col-md-4">
+        <h6 class="fw-bold mb-2">SCINDONGO Immo</h6>
+        <p class="small text-muted mb-0">Plateforme immobilière moderne pour la gestion de vos projets au Sénégal.</p>
+      </div>
+      <div class="col-md-4">
+        <h6 class="fw-bold mb-2">Liens rapides</h6>
+        <ul class="list-unstyled small">
+          <li><a href="{% url 'home' %}" class="text-decoration-none text-light">Accueil</a></li>
+          <li><a href="{% url 'programme_list' %}" class="text-decoration-none text-light">Programmes</a></li>
+          <li><a href="{% url 'contact' %}" class="text-decoration-none text-light">Contact</a></li>
+        </ul>
+      </div>
+      <div class="col-md-4">
+        <h6 class="fw-bold mb-2">Nous contacter</h6>
+        <p class="small text-muted mb-0">
+          📧 contact@scindongo-immo.sn<br>
+          📱 +221 XX XXX XX XX<br>
+          📍 Dakar, Sénégal
+        </p>
+      </div>
+    </div>
+    <hr class="bg-secondary">
+    <div class="small text-muted text-center">
+      République du Sénégal — Un Peuple, Un But, Une Foi · SCINDONGO Immo © 2025 · {{ now|date:"Y" }}
+    </div>
+  </div>
+</footer>
