@@ -1,14 +1,16 @@
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse_lazy
-from django.views.generic import TemplateView, View
+from django.views.generic import TemplateView, View, ListView, CreateView, UpdateView, DeleteView
 from django.contrib.auth.decorators import login_required
 from django.utils.decorators import method_decorator
+from django.contrib import messages
+from django.http import Http404
 
 from accounts.mixins import RoleRequiredMixin
 from accounts.models import User, Role
 from catalog.models import Unite
-from .models import Client, Reservation, Paiement
-from .forms import ReservationForm, PaiementForm
+from .models import Client, Reservation, Paiement, Contrat, Financement, BanquePartenaire
+from .forms import ReservationForm, PaiementForm, ClientForm, FinancementForm, ContratForm
 from .utils import set_pending_unite
 from .mixins import ReservationRequiredMixin, FinancementFormMixin, ContratFormMixin, PaiementFormMixin
 from core.utils import audit_log
@@ -278,3 +280,226 @@ class DashboardAdminView(LoginRequiredMixin, UserPassesTestMixin, TemplateView):
             }
         )
         return context
+
+
+# ============================================================================
+# COMMERCIAL ACTIONS - Gestion des clients, réservations, financements, etc.
+# ============================================================================
+
+class CommercialClientListView(RoleRequiredMixin, ListView):
+    """Liste des clients pour le commercial"""
+    model = Client
+    template_name = 'sales/commercial_client_list.html'
+    context_object_name = 'clients'
+    paginate_by = 20
+    required_roles = ["COMMERCIAL"]
+    
+    def get_queryset(self):
+        return Client.objects.select_related('user').order_by('-created_at')
+
+
+class CommercialClientCreateView(RoleRequiredMixin, CreateView):
+    """Créer un nouveau client"""
+    model = Client
+    form_class = ClientForm
+    template_name = 'sales/commercial_client_form.html'
+    required_roles = ["COMMERCIAL"]
+    success_url = reverse_lazy('commercial_client_list')
+    
+    def form_valid(self, form):
+        response = super().form_valid(form)
+        messages.success(self.request, f"Client {self.object.nom} créé avec succès")
+        audit_log(self.request.user, self.object, "client_create", {"nom": self.object.nom}, self.request)
+        return response
+
+
+class CommercialClientUpdateView(RoleRequiredMixin, UpdateView):
+    """Modifier un client"""
+    model = Client
+    form_class = ClientForm
+    template_name = 'sales/commercial_client_form.html'
+    required_roles = ["COMMERCIAL"]
+    success_url = reverse_lazy('commercial_client_list')
+    
+    def form_valid(self, form):
+        response = super().form_valid(form)
+        messages.success(self.request, f"Client {self.object.nom} mis à jour")
+        audit_log(self.request.user, self.object, "client_update", {"nom": self.object.nom}, self.request)
+        return response
+
+
+class CommercialReservationListView(RoleRequiredMixin, ListView):
+    """Liste des réservations pour le commercial"""
+    model = Reservation
+    template_name = 'sales/commercial_reservation_list.html'
+    context_object_name = 'reservations'
+    paginate_by = 20
+    required_roles = ["COMMERCIAL"]
+    
+    def get_queryset(self):
+        return Reservation.objects.select_related('client', 'unite', 'unite__programme').order_by('-created_at')
+
+
+class CommercialReservationDetailView(RoleRequiredMixin, TemplateView):
+    """Détail d'une réservation avec actions possibles"""
+    template_name = 'sales/commercial_reservation_detail.html'
+    required_roles = ["COMMERCIAL"]
+    
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        reservation = get_object_or_404(Reservation, id=self.kwargs.get('reservation_id'))
+        ctx['reservation'] = reservation
+        ctx['banques'] = BanquePartenaire.objects.all()
+        
+        # Statuts possibles suivants
+        ctx['can_add_financement'] = not hasattr(reservation, 'financement')
+        ctx['can_sign_contrat'] = not hasattr(reservation, 'contrat')
+        ctx['can_add_paiement'] = True
+        
+        return ctx
+
+
+class CommercialFinancementCreateView(RoleRequiredMixin, CreateView):
+    """Créer un financement pour une réservation"""
+    model = Financement
+    form_class = FinancementForm
+    template_name = 'sales/commercial_financement_form.html'
+    required_roles = ["COMMERCIAL"]
+    
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        reservation = get_object_or_404(Reservation, id=self.kwargs.get('reservation_id'))
+        ctx['reservation'] = reservation
+        return ctx
+    
+    def form_valid(self, form):
+        reservation = get_object_or_404(Reservation, id=self.kwargs.get('reservation_id'))
+        
+        # Vérifier qu'il n'y a pas déjà un financement
+        if hasattr(reservation, 'financement'):
+            messages.error(self.request, "Un financement existe déjà pour cette réservation")
+            return self.form_invalid(form)
+        
+        financement = form.save(commit=False)
+        financement.reservation = reservation
+        financement.statut = "soumis"
+        financement.save()
+        
+        messages.success(self.request, "Financement créé et soumis à la banque")
+        audit_log(self.request.user, financement, "financement_create", 
+                 {"banque": financement.banque.nom, "montant": str(financement.montant)}, self.request)
+        
+        return redirect('commercial_reservation_detail', reservation_id=reservation.id)
+    
+    def get_form_kwargs(self):
+        kwargs = super().get_form_kwargs()
+        reservation = get_object_or_404(Reservation, id=self.kwargs.get('reservation_id'))
+        # Pré-remplir le montant avec le prix de l'unité
+        kwargs['initial'] = {'montant': reservation.unite.prix_ttc}
+        return kwargs
+
+
+class CommercialFinancementUpdateView(RoleRequiredMixin, UpdateView):
+    """Mettre à jour le statut d'un financement"""
+    model = Financement
+    fields = ['statut']
+    template_name = 'sales/commercial_financement_update.html'
+    required_roles = ["COMMERCIAL"]
+    
+    def get_object(self):
+        reservation = get_object_or_404(Reservation, id=self.kwargs.get('reservation_id'))
+        return get_object_or_404(Financement, reservation=reservation)
+    
+    def get_success_url(self):
+        return reverse_lazy('commercial_reservation_detail', kwargs={'reservation_id': self.object.reservation.id})
+    
+    def form_valid(self, form):
+        response = super().form_valid(form)
+        messages.success(self.request, f"Financement mis à jour: {self.object.get_statut_display()}")
+        audit_log(self.request.user, self.object, "financement_update", 
+                 {"statut": self.object.statut}, self.request)
+        return response
+
+
+class CommercialContratCreateView(RoleRequiredMixin, CreateView):
+    """Créer un contrat pour une réservation"""
+    model = Contrat
+    form_class = ContratForm
+    template_name = 'sales/commercial_contrat_form.html'
+    required_roles = ["COMMERCIAL"]
+    
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        reservation = get_object_or_404(Reservation, id=self.kwargs.get('reservation_id'))
+        ctx['reservation'] = reservation
+        return ctx
+    
+    def form_valid(self, form):
+        reservation = get_object_or_404(Reservation, id=self.kwargs.get('reservation_id'))
+        
+        # Vérifier qu'il n'y a pas déjà un contrat
+        if hasattr(reservation, 'contrat'):
+            messages.error(self.request, "Un contrat existe déjà pour cette réservation")
+            return self.form_invalid(form)
+        
+        contrat = form.save(commit=False)
+        contrat.reservation = reservation
+        contrat.numero = f"CTR-{reservation.id}-{reservation.created_at.strftime('%Y%m%d')}"
+        contrat.statut = "brouillon"
+        contrat.save()
+        
+        messages.success(self.request, f"Contrat {contrat.numero} créé. À signer via OTP")
+        audit_log(self.request.user, contrat, "contrat_create", 
+                 {"numero": contrat.numero}, self.request)
+        
+        return redirect('commercial_reservation_detail', reservation_id=reservation.id)
+
+
+class CommercialContratUpdateView(RoleRequiredMixin, UpdateView):
+    """Mettre à jour le statut d'un contrat"""
+    model = Contrat
+    fields = ['statut']
+    template_name = 'sales/commercial_contrat_update.html'
+    required_roles = ["COMMERCIAL"]
+    
+    def get_object(self):
+        reservation = get_object_or_404(Reservation, id=self.kwargs.get('reservation_id'))
+        return get_object_or_404(Contrat, reservation=reservation)
+    
+    def get_success_url(self):
+        return reverse_lazy('commercial_reservation_detail', kwargs={'reservation_id': self.object.reservation.id})
+    
+    def form_valid(self, form):
+        response = super().form_valid(form)
+        messages.success(self.request, f"Contrat mis à jour: {self.object.get_statut_display()}")
+        audit_log(self.request.user, self.object, "contrat_update", 
+                 {"statut": self.object.statut}, self.request)
+        return response
+
+
+class CommercialPaiementCreateView(RoleRequiredMixin, CreateView):
+    """Créer un paiement pour une réservation"""
+    model = Paiement
+    form_class = PaiementForm
+    template_name = 'sales/commercial_paiement_form.html'
+    required_roles = ["COMMERCIAL"]
+    
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        reservation = get_object_or_404(Reservation, id=self.kwargs.get('reservation_id'))
+        ctx['reservation'] = reservation
+        return ctx
+    
+    def form_valid(self, form):
+        reservation = get_object_or_404(Reservation, id=self.kwargs.get('reservation_id'))
+        
+        paiement = form.save(commit=False)
+        paiement.reservation = reservation
+        paiement.statut = "valide"  # Le commercial valide directement
+        paiement.save()
+        
+        messages.success(self.request, f"Paiement de {paiement.montant} enregistré et validé")
+        audit_log(self.request.user, paiement, "paiement_create", 
+                 {"montant": str(paiement.montant), "moyen": paiement.moyen}, self.request)
+        
+        return redirect('commercial_reservation_detail', reservation_id=reservation.id)

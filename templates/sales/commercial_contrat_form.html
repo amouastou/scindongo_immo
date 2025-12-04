@@ -1,0 +1,72 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Créer Contrat{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header bg-warning text-dark">
+                    <h3 class="mb-0">
+                        📄 Créer Contrat
+                    </h3>
+                </div>
+                <div class="card-body">
+                    <div class="alert alert-warning mb-4">
+                        <strong>Réservation:</strong> {{ reservation.client.prenom }} {{ reservation.client.nom }}<br>
+                        <strong>Unité:</strong> {{ reservation.unite.reference }} - {{ reservation.unite.programme.nom }}<br>
+                        <strong>Prix:</strong> {{ reservation.unite.prix_ttc|floatformat:0 }} FCFA
+                    </div>
+
+                    <form method="post" class="needs-validation">
+                        {% csrf_token %}
+                        
+                        <div class="mb-3">
+                            <label for="{{ form.pdf.id_for_label }}" class="form-label">Document PDF du Contrat</label>
+                            {{ form.pdf }}
+                            <small class="form-text text-muted d-block mt-1">
+                                Téléchargez le contrat PDF à faire signer par OTP
+                            </small>
+                            {% if form.pdf.errors %}
+                                <div class="text-danger small">{{ form.pdf.errors.0 }}</div>
+                            {% endif %}
+                        </div>
+
+                        <div class="alert alert-info">
+                            <i class="fas fa-info-circle"></i>
+                            <strong>Processus:</strong>
+                            <ol class="mb-0 mt-2">
+                                <li>Téléchargez le PDF du contrat</li>
+                                <li>Un OTP sera envoyé au client</li>
+                                <li>Le client signera le contrat via OTP</li>
+                                <li>Le contrat passera au statut "signé"</li>
+                            </ol>
+                        </div>
+
+                        <div class="d-flex gap-2 justify-content-end">
+                            <a href="{% url 'commercial_reservation_detail' reservation.id %}" class="btn btn-secondary">
+                                <i class="fas fa-times"></i> Annuler
+                            </a>
+                            <button type="submit" class="btn btn-warning">
+                                <i class="fas fa-save"></i> Créer et Envoyer OTP
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .form-control {
+        border: 1px solid #dee2e6;
+    }
+    .form-control:focus {
+        border-color: #ffc107;
+        box-shadow: 0 0 0 0.25rem rgba(255, 193, 7, 0.25);
+    }
+</style>
+{% endblock %}

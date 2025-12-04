@@ -1,0 +1,84 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Enregistrer Paiement{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header bg-success text-white">
+                    <h3 class="mb-0">
+                        💳 Enregistrer Paiement
+                    </h3>
+                </div>
+                <div class="card-body">
+                    <div class="alert alert-success mb-4">
+                        <strong>Réservation:</strong> {{ reservation.client.prenom }} {{ reservation.client.nom }}<br>
+                        <strong>Unité:</strong> {{ reservation.unite.reference }} - {{ reservation.unite.programme.nom }}<br>
+                        <strong>Prix Total:</strong> {{ reservation.unite.prix_ttc|floatformat:0 }} FCFA<br>
+                        <strong>Acompte:</strong> {{ reservation.acompte|floatformat:0 }} FCFA<br>
+                        <strong>Restant:</strong> {{ reservation.unite.prix_ttc|add:reservation.a|floatformat:0 }} FCFA
+                    </div>
+
+                    <form method="post" class="needs-validation">
+                        {% csrf_token %}
+                        
+                        <div class="mb-3">
+                            <label for="{{ form.montant.id_for_label }}" class="form-label">Montant du Paiement</label>
+                            {{ form.montant }}
+                            {% if form.montant.errors %}
+                                <div class="text-danger small">{{ form.montant.errors.0 }}</div>
+                            {% endif %}
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="{{ form.moyen.id_for_label }}" class="form-label">Moyen de Paiement</label>
+                            {{ form.moyen }}
+                            {% if form.moyen.errors %}
+                                <div class="text-danger small">{{ form.moyen.errors.0 }}</div>
+                            {% endif %}
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="{{ form.source.id_for_label }}" class="form-label">Source/Référence</label>
+                            {{ form.source }}
+                            <small class="form-text text-muted d-block mt-1">
+                                Numéro de compte, numéro de chèque, etc.
+                            </small>
+                            {% if form.source.errors %}
+                                <div class="text-danger small">{{ form.source.errors.0 }}</div>
+                            {% endif %}
+                        </div>
+
+                        <div class="alert alert-info">
+                            <i class="fas fa-info-circle"></i>
+                            <strong>Note:</strong> Ce paiement sera automatiquement validé après enregistrement
+                        </div>
+
+                        <div class="d-flex gap-2 justify-content-end">
+                            <a href="{% url 'commercial_reservation_detail' reservation.id %}" class="btn btn-secondary">
+                                <i class="fas fa-times"></i> Annuler
+                            </a>
+                            <button type="submit" class="btn btn-success">
+                                <i class="fas fa-save"></i> Enregistrer
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .form-control, .form-select {
+        border: 1px solid #dee2e6;
+    }
+    .form-control:focus, .form-select:focus {
+        border-color: #198754;
+        box-shadow: 0 0 0 0.25rem rgba(25, 135, 84, 0.25);
+    }
+</style>
+{% endblock %}

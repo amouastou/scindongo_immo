@@ -1,0 +1,103 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Réservations - Commercial{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2>📌 Gestion des Réservations</h2>
+        <a href="{% url 'commercial_dashboard' %}" class="btn btn-outline-secondary">
+            <i class="fas fa-arrow-left"></i> Retour au Dashboard
+        </a>
+    </div>
+
+    {% if messages %}
+        {% for message in messages %}
+            <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                {{ message }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+        {% endfor %}
+    {% endif %}
+
+    <div class="card">
+        <div class="card-body">
+            {% if reservations %}
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Client</th>
+                                <th>Unité</th>
+                                <th>Programme</th>
+                                <th>Prix</th>
+                                <th>Acompte</th>
+                                <th>Statut</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for reservation in reservations %}
+                                <tr>
+                                    <td>
+                                        <strong>{{ reservation.client.prenom }} {{ reservation.client.nom }}</strong><br>
+                                        <small class="text-muted">{{ reservation.client.email }}</small>
+                                    </td>
+                                    <td>{{ reservation.unite.reference }}</td>
+                                    <td>{{ reservation.unite.programme.nom }}</td>
+                                    <td>{{ reservation.unite.prix_ttc|floatformat:0 }} FCFA</td>
+                                    <td>{{ reservation.acompte|floatformat:0 }} FCFA</td>
+                                    <td>
+                                        <span class="badge bg-{% if reservation.statut == 'confirmee' %}success{% elif reservation.statut == 'en_cours' %}info{% elif reservation.statut == 'annulee' %}danger{% else %}warning{% endif %}">
+                                            {{ reservation.get_statut_display }}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <a href="{% url 'commercial_reservation_detail' reservation.id %}" class="btn btn-sm btn-outline-primary">
+                                            <i class="fas fa-eye"></i> Détails
+                                        </a>
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Pagination -->
+                {% if is_paginated %}
+                    <nav aria-label="Page navigation">
+                        <ul class="pagination justify-content-center">
+                            {% if page_obj.has_previous %}
+                                <li class="page-item">
+                                    <a class="page-link" href="?page=1">Première</a>
+                                </li>
+                                <li class="page-item">
+                                    <a class="page-link" href="?page={{ page_obj.previous_page_number }}">Précédente</a>
+                                </li>
+                            {% endif %}
+
+                            <li class="page-item active">
+                                <span class="page-link">Page {{ page_obj.number }} sur {{ page_obj.paginator.num_pages }}</span>
+                            </li>
+
+                            {% if page_obj.has_next %}
+                                <li class="page-item">
+                                    <a class="page-link" href="?page={{ page_obj.next_page_number }}">Suivante</a>
+                                </li>
+                                <li class="page-item">
+                                    <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}">Dernière</a>
+                                </li>
+                            {% endif %}
+                        </ul>
+                    </nav>
+                {% endif %}
+            {% else %}
+                <div class="alert alert-info">
+                    <i class="fas fa-info-circle"></i> Aucune réservation pour le moment.
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}
