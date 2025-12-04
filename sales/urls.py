@@ -5,6 +5,7 @@ from .views import (
     AdminDashboardView,
     StartReservationView,
     ReservationSuccessView,
+    ClientReservationDetailView,
     PayReservationView,
     start_reservation_or_auth,
     # Commercial views
@@ -27,6 +28,7 @@ urlpatterns = [
     path('reserver/<uuid:unite_id>/', start_reservation_or_auth, name='reserve_unite'),
     path('reservation/<uuid:unite_id>/demarrer/', StartReservationView.as_view(), name='start_reservation'),
     path('reservation/<uuid:reservation_id>/confirmation/', ReservationSuccessView.as_view(), name='reservation_success'),
+    path('reservation/<uuid:reservation_id>/detail/', ClientReservationDetailView.as_view(), name='client_reservation_detail'),
     path('reservation/<uuid:reservation_id>/payer/', PayReservationView.as_view(), name='pay_reservation'),
     
     # Commercial actions - Clients

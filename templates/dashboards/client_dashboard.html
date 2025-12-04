@@ -120,7 +120,7 @@
                 <hr>
 
                 <div class="d-grid gap-2">
-                  <a href="#" class="btn btn-outline-primary btn-sm">📋 Voir les détails</a>
+                  <a href="{% url 'client_reservation_detail' res.id %}" class="btn btn-outline-primary btn-sm">📋 Voir les détails</a>
                   {% if res.statut == 'en_cours' %}
                     <a href="{% url 'pay_reservation' res.id %}" class="btn btn-success btn-sm">
                       💳 Effectuer un paiement

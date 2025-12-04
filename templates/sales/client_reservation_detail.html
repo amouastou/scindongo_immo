@@ -1,0 +1,386 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Détail de Ma Réservation{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2>📋 Détail de ma Réservation</h2>
+        <a href="{% url 'client_dashboard' %}" class="btn btn-outline-secondary">
+            <i class="fas fa-arrow-left"></i> Retour
+        </a>
+    </div>
+
+    <!-- Informations principales -->
+    <div class="row mb-4">
+        <!-- Réservation -->
+        <div class="col-md-6 mb-4">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0">📌 Informations Réservation</h5>
+                </div>
+                <div class="card-body">
+                    <table class="table table-borderless">
+                        <tr>
+                            <td class="fw-bold">ID Réservation:</td>
+                            <td><code>{{ reservation.id }}</code></td>
+                        </tr>
+                        <tr>
+                            <td class="fw-bold">Unité:</td>
+                            <td>{{ reservation.unite.reference }}<br>
+                                <small class="text-muted">{{ reservation.unite.programme.nom }}</small>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td class="fw-bold">Prix:</td>
+                            <td><strong>{{ reservation.unite.prix_ttc|floatformat:0 }} FCFA</strong></td>
+                        </tr>
+                        <tr>
+                            <td class="fw-bold">Acompte:</td>
+                            <td>{{ reservation.acompte|floatformat:0 }} FCFA</td>
+                        </tr>
+                        <tr>
+                            <td class="fw-bold">Statut:</td>
+                            <td>
+                                <span class="badge bg-{% if reservation.statut == 'confirmee' %}success{% elif reservation.statut == 'en_cours' %}info{% elif reservation.statut == 'annulee' %}danger{% else %}warning{% endif %} fs-6">
+                                    {{ reservation.get_statut_display }}
+                                </span>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td class="fw-bold">Réservée le:</td>
+                            <td>{{ reservation.date_reservation|date:"d/m/Y" }}</td>
+                        </tr>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Unité -->
+        <div class="col-md-6 mb-4">
+            <div class="card">
+                <div class="card-header bg-info text-white">
+                    <h5 class="mb-0">🏠 Détails de l'Unité</h5>
+                </div>
+                <div class="card-body">
+                    <table class="table table-borderless">
+                        <tr>
+                            <td class="fw-bold">Référence:</td>
+                            <td>{{ reservation.unite.reference }}</td>
+                        </tr>
+                        <tr>
+                            <td class="fw-bold">Programme:</td>
+                            <td><a href="{% url 'programme_detail' reservation.unite.programme.id %}">{{ reservation.unite.programme.nom }}</a></td>
+                        </tr>
+                        <tr>
+                            <td class="fw-bold">Modèle:</td>
+                            <td>{{ reservation.unite.modele.nom }}<br>
+                                <small class="text-muted">{{ reservation.unite.modele.surface_hab_m2 }} m²</small>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td class="fw-bold">Type:</td>
+                            <td>{{ reservation.unite.modele.type.libelle }}</td>
+                        </tr>
+                        <tr>
+                            <td class="fw-bold">Statut:</td>
+                            <td>
+                                <span class="badge bg-{% if reservation.unite.statut_disponibilite == 'disponible' %}success{% elif reservation.unite.statut_disponibilite == 'reserve' %}warning{% elif reservation.unite.statut_disponibilite == 'vendu' %}danger{% else %}secondary{% endif %}">
+                                    {{ reservation.unite.get_statut_disponibilite_display }}
+                                </span>
+                            </td>
+                        </tr>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Prochaines étapes -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header bg-success text-white">
+                    <h5 class="mb-0">⚙️ Prochaines Étapes</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <!-- Financement -->
+                        <div class="col-md-3 mb-3">
+                            {% if has_financement %}
+                                <div class="card border-success bg-light">
+                                    <div class="card-body text-center">
+                                        <i class="fas fa-check-circle text-success fs-3 mb-2"></i>
+                                        <div class="fw-bold">Financement</div>
+                                        <small class="text-muted">Enregistré</small>
+                                    </div>
+                                </div>
+                            {% else %}
+                                <div class="card border-warning">
+                                    <div class="card-body text-center">
+                                        <i class="fas fa-coins text-warning fs-3 mb-2"></i>
+                                        <div class="fw-bold">Financement</div>
+                                        <small class="text-muted">Non ajouté</small>
+                                    </div>
+                                </div>
+                            {% endif %}
+                        </div>
+
+                        <!-- Contrat -->
+                        <div class="col-md-3 mb-3">
+                            {% if has_contrat %}
+                                <div class="card border-success bg-light">
+                                    <div class="card-body text-center">
+                                        <i class="fas fa-check-circle text-success fs-3 mb-2"></i>
+                                        <div class="fw-bold">Contrat</div>
+                                        <small class="text-muted">
+                                            {% if reservation.contrat.statut == 'signe' %}
+                                                ✓ Signé
+                                            {% else %}
+                                                En attente
+                                            {% endif %}
+                                        </small>
+                                    </div>
+                                </div>
+                            {% else %}
+                                <div class="card border-warning">
+                                    <div class="card-body text-center">
+                                        <i class="fas fa-file-contract text-warning fs-3 mb-2"></i>
+                                        <div class="fw-bold">Contrat</div>
+                                        <small class="text-muted">Non créé</small>
+                                    </div>
+                                </div>
+                            {% endif %}
+                        </div>
+
+                        <!-- Paiement -->
+                        <div class="col-md-3 mb-3">
+                            {% if paiements %}
+                                <div class="card border-success bg-light">
+                                    <div class="card-body text-center">
+                                        <i class="fas fa-check-circle text-success fs-3 mb-2"></i>
+                                        <div class="fw-bold">Paiement</div>
+                                        <small class="text-muted">
+                                            {{ paiements|length }} paiement(s)
+                                        </small>
+                                    </div>
+                                </div>
+                            {% else %}
+                                <div class="card border-warning">
+                                    <div class="card-body text-center">
+                                        <i class="fas fa-money-bill-wave text-warning fs-3 mb-2"></i>
+                                        <div class="fw-bold">Paiement</div>
+                                        <small class="text-muted">Non enregistré</small>
+                                    </div>
+                                </div>
+                            {% endif %}
+                        </div>
+
+                        <!-- Statut Général -->
+                        <div class="col-md-3 mb-3">
+                            {% if reservation.statut == 'confirmee' %}
+                                <div class="card border-success bg-light">
+                                    <div class="card-body text-center">
+                                        <i class="fas fa-check-double text-success fs-3 mb-2"></i>
+                                        <div class="fw-bold">Confirmée</div>
+                                        <small class="text-muted">✓ Complète</small>
+                                    </div>
+                                </div>
+                            {% elif reservation.statut == 'en_cours' %}
+                                <div class="card border-info">
+                                    <div class="card-body text-center">
+                                        <i class="fas fa-hourglass-half text-info fs-3 mb-2"></i>
+                                        <div class="fw-bold">En cours</div>
+                                        <small class="text-muted">À compléter</small>
+                                    </div>
+                                </div>
+                            {% else %}
+                                <div class="card border-danger">
+                                    <div class="card-body text-center">
+                                        <i class="fas fa-times-circle text-danger fs-3 mb-2"></i>
+                                        <div class="fw-bold">{{ reservation.get_statut_display }}</div>
+                                        <small class="text-muted">-</small>
+                                    </div>
+                                </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Détails Financement -->
+    {% if has_financement %}
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="card border-success">
+                    <div class="card-header bg-success text-white">
+                        <h5 class="mb-0">💰 Financement</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-3">
+                                <strong>Banque:</strong><br>
+                                {{ reservation.financement.banque.nom }}
+                            </div>
+                            <div class="col-md-3">
+                                <strong>Type:</strong><br>
+                                {{ reservation.financement.type }}
+                            </div>
+                            <div class="col-md-3">
+                                <strong>Montant:</strong><br>
+                                {{ reservation.financement.montant|floatformat:0 }} FCFA
+                            </div>
+                            <div class="col-md-3">
+                                <strong>Statut:</strong><br>
+                                <span class="badge bg-{% if reservation.financement.statut == 'accepte' %}success{% elif reservation.financement.statut == 'refuse' %}danger{% elif reservation.financement.statut == 'en_etude' %}info{% else %}warning{% endif %}">
+                                    {{ reservation.financement.get_statut_display }}
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    {% endif %}
+
+    <!-- Détails Contrat -->
+    {% if has_contrat %}
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="card border-warning">
+                    <div class="card-header bg-warning text-dark">
+                        <h5 class="mb-0">📄 Contrat</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row align-items-center">
+                            <div class="col-md-3">
+                                <strong>Numéro:</strong><br>
+                                <code>{{ reservation.contrat.numero }}</code>
+                            </div>
+                            <div class="col-md-3">
+                                <strong>Statut:</strong><br>
+                                <span class="badge bg-{% if reservation.contrat.statut == 'signe' %}success{% elif reservation.contrat.statut == 'annule' %}danger{% else %}warning{% endif %}">
+                                    {{ reservation.contrat.get_statut_display }}
+                                </span>
+                            </div>
+                            <div class="col-md-3">
+                                {% if reservation.contrat.signe_le %}
+                                    <strong>Signé le:</strong><br>
+                                    {{ reservation.contrat.signe_le|date:"d/m/Y H:i" }}
+                                {% else %}
+                                    <strong>En attente de signature</strong>
+                                {% endif %}
+                            </div>
+                            <div class="col-md-3">
+                                {% if reservation.contrat.pdf %}
+                                    <a href="{{ reservation.contrat.pdf.url }}" target="_blank" class="btn btn-sm btn-outline-primary">
+                                        <i class="fas fa-download"></i> Télécharger
+                                    </a>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    {% endif %}
+
+    <!-- Paiements -->
+    {% if paiements %}
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header bg-info text-white">
+                        <h5 class="mb-0">💳 Historique des Paiements</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>Date</th>
+                                        <th>Montant</th>
+                                        <th>Moyen</th>
+                                        <th>Source</th>
+                                        <th>Statut</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for paiement in paiements %}
+                                        <tr>
+                                            <td>{{ paiement.date_paiement|date:"d/m/Y" }}</td>
+                                            <td><strong>{{ paiement.montant|floatformat:0 }} FCFA</strong></td>
+                                            <td>{{ paiement.get_moyen_display }}</td>
+                                            <td>{{ paiement.source }}</td>
+                                            <td>
+                                                <span class="badge bg-{% if paiement.statut == 'valide' %}success{% elif paiement.statut == 'rejete' %}danger{% else %}warning{% endif %}">
+                                                    {{ paiement.get_statut_display }}
+                                                </span>
+                                            </td>
+                                        </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <!-- Résumé des paiements -->
+                        <div class="row mt-3 pt-3 border-top">
+                            <div class="col-md-3">
+                                <strong>Total Payé:</strong><br>
+                                <span class="badge bg-success fs-5">{{ total_payes|floatformat:0 }} FCFA</span>
+                            </div>
+                            <div class="col-md-3">
+                                <strong>Montant Total:</strong><br>
+                                <span class="badge bg-info fs-5">{{ reservation.unite.prix_ttc|floatformat:0 }} FCFA</span>
+                            </div>
+                            <div class="col-md-3">
+                                <strong>Restant à Payer:</strong><br>
+                                <span class="badge bg-{% if montant_restant <= 0 %}success{% else %}warning{% endif %} fs-5">
+                                    {{ montant_restant|floatformat:0 }} FCFA
+                                </span>
+                            </div>
+                            <div class="col-md-3 text-end">
+                                {% if montant_restant > 0 %}
+                                    <a href="{% url 'pay_reservation' reservation.id %}" class="btn btn-success">
+                                        <i class="fas fa-money-bill-wave"></i> Payer
+                                    </a>
+                                {% else %}
+                                    <span class="badge bg-success fs-6">✓ Payé intégralement</span>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    {% else %}
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="alert alert-info">
+                    <i class="fas fa-info-circle"></i> Aucun paiement enregistré pour cette réservation.
+                    {% if reservation.statut == 'en_cours' %}
+                        <a href="{% url 'pay_reservation' reservation.id %}" class="alert-link">Effectuer un paiement</a>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    {% endif %}
+
+    <!-- Actions -->
+    <div class="row">
+        <div class="col-12">
+            <a href="{% url 'client_dashboard' %}" class="btn btn-secondary">
+                <i class="fas fa-arrow-left"></i> Retour au Tableau de Bord
+            </a>
+            {% if reservation.statut == 'en_cours' and montant_restant > 0 %}
+                <a href="{% url 'pay_reservation' reservation.id %}" class="btn btn-success">
+                    <i class="fas fa-money-bill-wave"></i> Effectuer un Paiement
+                </a>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

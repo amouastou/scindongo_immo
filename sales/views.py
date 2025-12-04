@@ -211,6 +211,36 @@ class ReservationSuccessView(RoleRequiredMixin, TemplateView):
         return ctx
 
 
+@method_decorator(login_required(login_url='login'), name='dispatch')
+class ClientReservationDetailView(RoleRequiredMixin, TemplateView):
+    """
+    Détail d'une réservation côté client.
+    Affiche le résumé, l'historique et les actions possibles
+    """
+    template_name = 'sales/client_reservation_detail.html'
+    required_roles = ["CLIENT"]
+    
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        reservation_id = self.kwargs.get('reservation_id')
+        client = get_object_or_404(Client, user=self.request.user)
+        
+        # Vérifier que la réservation appartient au client
+        reservation = get_object_or_404(Reservation, id=reservation_id, client=client)
+        
+        ctx['reservation'] = reservation
+        ctx['banques'] = BanquePartenaire.objects.all()
+        
+        # Vérifier les statuts et actions disponibles
+        ctx['has_financement'] = hasattr(reservation, 'financement')
+        ctx['has_contrat'] = hasattr(reservation, 'contrat')
+        ctx['paiements'] = reservation.paiements.all()
+        ctx['total_payes'] = sum(p.montant for p in ctx['paiements'] if p.statut == 'valide')
+        ctx['montant_restant'] = reservation.unite.prix_ttc - ctx['total_payes']
+        
+        return ctx
+
+
 class DashboardAdminView(LoginRequiredMixin, UserPassesTestMixin, TemplateView):
     template_name = "sales/admin_dashboard.html"
 
