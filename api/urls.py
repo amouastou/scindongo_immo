@@ -7,6 +7,7 @@ from .views import (
     UniteViewSet,
     ClientViewSet,
     ReservationViewSet,
+    ReservationDocumentViewSet,
     TypeBienViewSet,
     ModeleBienViewSet,
     EtapeChantierViewSet,
@@ -33,6 +34,7 @@ router.register("photos-chantier", PhotoChantierViewSet)
 # Commercial
 router.register("clients", ClientViewSet)
 router.register("reservations", ReservationViewSet)
+router.register("reservation-documents", ReservationDocumentViewSet)
 
 # Banques / Financement / Contrats / Paiements
 router.register("banques", BanquePartenaireViewSet)

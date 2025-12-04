@@ -153,3 +153,53 @@ class Echeance(TimeStampedModel):
 
     def __str__(self):
         return f"{self.date_echeance} - {self.montant_total}"
+
+
+class ReservationDocument(TimeStampedModel):
+    """Documents requis pour la réservation (CNI, photo, résidence)"""
+    
+    DOCUMENT_TYPES = [
+        ('cni', 'CNI'),
+        ('photo', 'Photo/Selfie'),
+        ('residence', 'Preuve de résidence'),
+    ]
+    
+    STATUS_CHOICES = [
+        ('en_attente', 'En attente de validation'),
+        ('valide', 'Validé'),
+        ('rejete', 'Rejeté'),
+    ]
+    
+    reservation = models.ForeignKey(
+        Reservation,
+        on_delete=models.CASCADE,
+        related_name='documents'
+    )
+    document_type = models.CharField(
+        max_length=50,
+        choices=DOCUMENT_TYPES
+    )
+    fichier = models.FileField(upload_to='documents/reservations/%Y/%m/')
+    statut = models.CharField(
+        max_length=20,
+        choices=STATUS_CHOICES,
+        default='en_attente'
+    )
+    raison_rejet = models.TextField(blank=True)
+    verifie_par = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='reservation_documents_verifies'
+    )
+    verifie_le = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        unique_together = ('reservation', 'document_type')
+        ordering = ['-created_at']
+        verbose_name = "Document de réservation"
+        verbose_name_plural = "Documents de réservation"
+
+    def __str__(self):
+        return f"{self.reservation} - {self.get_document_type_display()}"
