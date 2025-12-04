@@ -114,11 +114,11 @@
         <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
       </div>
       <div class="modal-body">
-        <form method="post" action="#">
+        <form method="post" action="{% url 'client_financing_request' reservation.id %}">
           {% csrf_token %}
           <div class="mb-3">
             <label for="selectBanque" class="form-label">Choisir une banque</label>
-            <select class="form-select" id="selectBanque">
+            <select class="form-select" id="selectBanque" name="banque" required>
               <option value="">--- Sélectionner une banque ---</option>
               {% for banque in banques %}
                 <option value="{{ banque.id }}">{{ banque.nom }}</option>
@@ -127,7 +127,10 @@
           </div>
           <div class="mb-3">
             <label for="montantFinance" class="form-label">Montant à financer (FCFA)</label>
-            <input type="number" class="form-control" id="montantFinance" value="{{ reservation.unite.prix_ttc }}" min="0">
+            <input type="number" class="form-control" id="montantFinance" name="montant" value="{{ remaining_amount }}" min="0" required>
+            <small class="text-muted d-block mt-1">
+              Montant maximum : {{ remaining_amount|floatformat:0 }} FCFA
+            </small>
           </div>
           <button type="submit" class="btn btn-primary w-100">Confirmer le financement</button>
         </form>

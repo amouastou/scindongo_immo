@@ -1,0 +1,202 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Validation des Paiements{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <!-- Header -->
+    <div class="mb-4">
+        <div class="d-flex justify-content-between align-items-center">
+            <div>
+                <h1 class="display-6 fw-bold">
+                    💳 Validation des Paiements
+                </h1>
+                <p class="lead text-muted">
+                    Validez les paiements enregistrés en attente
+                </p>
+            </div>
+            <div class="text-end">
+                <div class="bg-danger text-white p-3 rounded">
+                    <div class="fs-5 fw-bold">{{ pending_count }}</div>
+                    <div class="small">En attente</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Alert if no pending -->
+    {% if not payments %}
+        <div class="alert alert-success alert-dismissible fade show" role="alert">
+            <i class="fas fa-check-circle"></i>
+            <strong>Bravo !</strong> Aucun paiement en attente de validation.
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    {% else %}
+        <!-- Paiements Table -->
+        <div class="card mb-4">
+            <div class="card-header bg-danger text-white">
+                <h5 class="mb-0">
+                    <i class="fas fa-hourglass-half"></i> 
+                    Paiements En Attente ({{ pending_count }})
+                </h5>
+            </div>
+            <div class="table-responsive">
+                <table class="table table-hover table-sm mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Date</th>
+                            <th>Client</th>
+                            <th>Unité</th>
+                            <th>Montant</th>
+                            <th>Moyen</th>
+                            <th>Détails</th>
+                            <th>Statut</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for payment in payments %}
+                            <tr class="border-start border-warning border-5">
+                                <td>
+                                    <strong>{{ payment.created_at|date:"d/m/Y" }}</strong><br>
+                                    <small class="text-muted">{{ payment.created_at|time:"H:i" }}</small>
+                                </td>
+                                <td>
+                                    <strong>{{ payment.reservation.client.prenom }} {{ payment.reservation.client.nom }}</strong><br>
+                                    <small class="text-muted">{{ payment.reservation.client.email }}</small>
+                                </td>
+                                <td>
+                                    <strong>{{ payment.reservation.unite.reference }}</strong><br>
+                                    <small class="text-muted">{{ payment.reservation.unite.programme.nom }}</small>
+                                </td>
+                                <td class="fw-bold text-success fs-5">
+                                    {{ payment.montant|floatformat:0 }} FCFA
+                                </td>
+                                <td>
+                                    {% if payment.moyen == 'virement' %}
+                                        🏦 Virement
+                                    {% elif payment.moyen == 'cheque' %}
+                                        💳 Chèque
+                                    {% elif payment.moyen == 'espece' %}
+                                        💵 Espèces
+                                    {% elif payment.moyen == 'carte' %}
+                                        💳 Carte
+                                    {% else %}
+                                        {{ payment.moyen }}
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <small class="text-muted">{{ payment.source }}</small>
+                                </td>
+                                <td>
+                                    <span class="badge bg-warning text-dark">
+                                        ⏳ {{ payment.get_statut_display }}
+                                    </span>
+                                </td>
+                                <td>
+                                    <div class="btn-group btn-group-sm" role="group">
+                                        <a href="{% url 'commercial_reservation_detail' payment.reservation.id %}" 
+                                           class="btn btn-outline-secondary" title="Voir réservation">
+                                            <i class="fas fa-eye"></i>
+                                        </a>
+                                        <form method="post" action="{% url 'commercial_payment_validate' payment.id %}" 
+                                              style="display: inline;" 
+                                              onsubmit="return confirm('Confirmer la validation de ce paiement ?');">
+                                            {% csrf_token %}
+                                            <button type="submit" class="btn btn-success btn-sm" title="Valider le paiement">
+                                                <i class="fas fa-check"></i>
+                                            </button>
+                                        </form>
+                                    </div>
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Pagination -->
+        {% if is_paginated %}
+            <nav aria-label="Page navigation">
+                <ul class="pagination justify-content-center">
+                    {% if page_obj.has_previous %}
+                        <li class="page-item">
+                            <a class="page-link" href="?page=1">Première</a>
+                        </li>
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ page_obj.previous_page_number }}">Précédente</a>
+                        </li>
+                    {% endif %}
+
+                    <li class="page-item active">
+                        <span class="page-link">
+                            Page {{ page_obj.number }} sur {{ page_obj.paginator.num_pages }}
+                        </span>
+                    </li>
+
+                    {% if page_obj.has_next %}
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ page_obj.next_page_number }}">Suivante</a>
+                        </li>
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}">Dernière</a>
+                        </li>
+                    {% endif %}
+                </ul>
+            </nav>
+        {% endif %}
+    {% endif %}
+
+    <!-- Info Box -->
+    <div class="alert alert-info mt-4">
+        <i class="fas fa-info-circle"></i>
+        <strong>Processus de Validation :</strong>
+        <ul class="mb-0 mt-2">
+            <li>Les paiements directs des clients apparaissent en attente de validation ici</li>
+            <li>Vérifiez que vous avez bien reçu le paiement avant de valider</li>
+            <li>Une fois validé, le paiement sera confirmé au client</li>
+            <li>Le contrat pourra être généré après validation</li>
+        </ul>
+    </div>
+
+    <!-- Quick Stats -->
+    <div class="row g-3 mt-4">
+        <div class="col-md-3">
+            <div class="card border-0 bg-light">
+                <div class="card-body text-center">
+                    <h6 class="text-muted">Montant Total En Attente</h6>
+                    <h3 class="text-warning fw-bold">
+                        {% widthratio payments|length 1 1 %}
+                        {% for payment in payments %}
+                            +{{ payment.montant }}
+                        {% endfor %}
+                    </h3>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card border-0 bg-light">
+                <div class="card-body text-center">
+                    <h6 class="text-muted">Paiements à Valider</h6>
+                    <h3 class="text-danger fw-bold">{{ pending_count }}</h3>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="card border-0 bg-light">
+                <div class="card-body">
+                    <h6 class="text-muted mb-2">Moyens de paiement</h6>
+                    <small class="text-muted">
+                        <i class="fas fa-check"></i> Virement bancaire<br>
+                        <i class="fas fa-check"></i> Chèque<br>
+                        <i class="fas fa-check"></i> Espèces<br>
+                        <i class="fas fa-check"></i> Carte bancaire
+                    </small>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

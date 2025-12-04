@@ -47,7 +47,188 @@
       </div>
     </div>
   </div>
+  <div class="col-lg-3">
+    <a href="{% url 'banque_partenaire_list' %}" class="text-decoration-none">
+      <div class="card border-0 bg-light text-dark h-100" style="cursor: pointer; transition: transform 0.2s;">
+        <div class="card-body">
+          <h6 class="card-title text-uppercase fw-bold small">Banques</h6>
+          <h2 class="display-5 fw-bold">🏦</h2>
+          <div class="small text-muted">Gérer les banques partenaires</div>
+        </div>
+      </div>
+    </a>
+  </div>
+  <div class="col-lg-3">
+    <a href="{% url 'commercial_financing_list' %}" class="text-decoration-none">
+      <div class="card border-0 bg-success text-white h-100" style="cursor: pointer; transition: transform 0.2s;">
+        <div class="card-body">
+          <h6 class="card-title text-uppercase fw-bold small">Financement</h6>
+          <h2 class="display-5 fw-bold">💰</h2>
+          <div class="small">Gérer les demandes</div>
+        </div>
+      </div>
+    </a>
+  </div>
 </div>
+
+<!-- ÉTAPE 3: Réservations en attente (PRIORITÉ HAUTE) -->
+{% if pending_count > 0 %}
+<div class="alert alert-danger alert-dismissible fade show mb-5" role="alert">
+  <div class="d-flex align-items-center">
+    <div class="me-3">
+      <i class="fas fa-clock fa-2x"></i>
+    </div>
+    <div>
+      <h4 class="alert-heading">⚠️ Réservations En Attente de Validation</h4>
+      <p class="mb-0">Vous avez <strong>{{ pending_count }} réservation(s)</strong> à confirmer.</p>
+      <p class="mb-0 mt-2">Les clients sont en attente de votre validation commerciale avant de pouvoir procéder au paiement.</p>
+    </div>
+    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+  </div>
+</div>
+
+<!-- Tableau des réservations en attente -->
+<div class="card mb-5 border-danger">
+  <div class="card-header bg-danger text-white">
+    <h5 class="mb-0">🔔 Réservations En Attente ({{ pending_count }})</h5>
+  </div>
+  <div class="card-body">
+    {% if pending_reservations %}
+      <div class="table-responsive">
+        <table class="table table-hover table-sm table-striped">
+          <thead class="table-light">
+            <tr>
+              <th>Client</th>
+              <th>Téléphone</th>
+              <th>Unité</th>
+              <th>Acompte</th>
+              <th>Date Réservation</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for res in pending_reservations %}
+              <tr class="border-start border-danger border-5">
+                <td>
+                  <strong>{{ res.client.prenom }} {{ res.client.nom }}</strong><br>
+                  <small class="text-muted">{{ res.client.email }}</small>
+                </td>
+                <td>{{ res.client.telephone }}</td>
+                <td>
+                  <strong>{{ res.unite.reference }}</strong><br>
+                  <small class="text-muted">{{ res.unite.programme.nom }} - {{ res.unite.modele.nom }}</small>
+                </td>
+                <td class="fw-bold text-success">{{ res.acompte|floatformat:0 }} FCFA</td>
+                <td>{{ res.created_at|date:"d/m/Y" }}</td>
+                <td>
+                  <a href="{% url 'commercial_reservation_detail' res.id %}" class="btn btn-sm btn-info">
+                    <i class="fas fa-eye"></i> Voir
+                  </a>
+                  <a href="{% url 'commercial_reservation_confirm' res.id %}" class="btn btn-sm btn-success">
+                    <i class="fas fa-check"></i> Confirmer
+                  </a>
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <div class="alert alert-success mb-0">
+        <i class="fas fa-check-circle"></i> Aucune réservation en attente. Excellent travail !
+      </div>
+    {% endif %}
+  </div>
+</div>
+{% endif %}
+
+<!-- ÉTAPE 8: Paiements en attente de validation -->
+{% if pending_payments_count > 0 %}
+<div class="alert alert-warning alert-dismissible fade show mb-5" role="alert">
+  <div class="d-flex align-items-center">
+    <div class="me-3">
+      <i class="fas fa-credit-card fa-2x"></i>
+    </div>
+    <div>
+      <h4 class="alert-heading">⚠️ Paiements En Attente de Validation</h4>
+      <p class="mb-0">Vous avez <strong>{{ pending_payments_count }} paiement(s)</strong> à valider.</p>
+      <p class="mb-0 mt-2">Les clients attendent la confirmation de leurs paiements avant de générer les contrats.</p>
+    </div>
+    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+  </div>
+</div>
+
+<!-- Tableau des paiements en attente -->
+<div class="card mb-5 border-warning">
+  <div class="card-header bg-warning text-dark">
+    <h5 class="mb-0">💳 Paiements En Attente ({{ pending_payments_count }})</h5>
+  </div>
+  <div class="card-body">
+    {% if pending_payments %}
+      <div class="table-responsive">
+        <table class="table table-hover table-sm table-striped">
+          <thead class="table-light">
+            <tr>
+              <th>Date</th>
+              <th>Client</th>
+              <th>Unité</th>
+              <th>Montant</th>
+              <th>Moyen</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for payment in pending_payments %}
+              <tr class="border-start border-warning border-5">
+                <td>
+                  <strong>{{ payment.created_at|date:"d/m/Y" }}</strong><br>
+                  <small class="text-muted">{{ payment.created_at|time:"H:i" }}</small>
+                </td>
+                <td>
+                  <strong>{{ payment.reservation.client.prenom }} {{ payment.reservation.client.nom }}</strong><br>
+                  <small class="text-muted">{{ payment.reservation.client.email }}</small>
+                </td>
+                <td>
+                  <strong>{{ payment.reservation.unite.reference }}</strong><br>
+                  <small class="text-muted">{{ payment.reservation.unite.programme.nom }}</small>
+                </td>
+                <td class="fw-bold text-success">{{ payment.montant|floatformat:0 }} FCFA</td>
+                <td>
+                  {% if payment.moyen == 'virement' %}
+                    🏦 Virement
+                  {% elif payment.moyen == 'cheque' %}
+                    💳 Chèque
+                  {% elif payment.moyen == 'espece' %}
+                    💵 Espèces
+                  {% elif payment.moyen == 'carte' %}
+                    💳 Carte
+                  {% else %}
+                    {{ payment.moyen }}
+                  {% endif %}
+                </td>
+                <td>
+                  <a href="{% url 'commercial_payment_validation_list' %}" class="btn btn-sm btn-warning">
+                    <i class="fas fa-list"></i> Voir Tous
+                  </a>
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      <div class="text-end mt-2">
+        <a href="{% url 'commercial_payment_validation_list' %}" class="btn btn-warning">
+          <i class="fas fa-arrow-right"></i> Valider les Paiements
+        </a>
+      </div>
+    {% else %}
+      <div class="alert alert-success mb-0">
+        <i class="fas fa-check-circle"></i> Aucun paiement en attente. Excellent travail !
+      </div>
+    {% endif %}
+  </div>
+</div>
+{% endif %}
 
 <!-- Actions principales -->
 <div class="row g-3 mb-5">

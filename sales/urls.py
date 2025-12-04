@@ -7,8 +7,14 @@ from .views import (
     ReservationSuccessView,
     ClientReservationDetailView,
     PayReservationView,
+    ClientPaymentModeChoiceView,
+    ClientDirectPaymentView,
+    ClientFinancingRequestView,
+    CommercialPaymentValidationListView,
+    CommercialPaymentValidateView,
     start_reservation_or_auth,
     # Commercial views
+    CommercialReservationConfirmView,
     CommercialClientListView,
     CommercialClientCreateView,
     CommercialClientUpdateView,
@@ -19,6 +25,13 @@ from .views import (
     CommercialContratCreateView,
     CommercialContratUpdateView,
     CommercialPaiementCreateView,
+    # Banque Partenaire views
+    BanquePartenaireCreateView,
+    BanquePartenaireUpdateView,
+    BanquePartenaireListView,
+    # Financing Management views
+    CommercialFinancingListView,
+    CommercialFinancingDetailView,
 )
 
 urlpatterns = [
@@ -30,6 +43,9 @@ urlpatterns = [
     path('reservation/<uuid:reservation_id>/confirmation/', ReservationSuccessView.as_view(), name='reservation_success'),
     path('reservation/<uuid:reservation_id>/detail/', ClientReservationDetailView.as_view(), name='client_reservation_detail'),
     path('reservation/<uuid:reservation_id>/payer/', PayReservationView.as_view(), name='pay_reservation'),
+    path('reservation/<uuid:reservation_id>/choix-paiement/', ClientPaymentModeChoiceView.as_view(), name='client_payment_mode_choice'),
+    path('reservation/<uuid:reservation_id>/paiement-direct/', ClientDirectPaymentView.as_view(), name='client_direct_payment'),
+    path('reservation/<uuid:reservation_id>/financement-bancaire/', ClientFinancingRequestView.as_view(), name='client_financing_request'),
     
     # Commercial actions - Clients
     path('commercial/clients/', CommercialClientListView.as_view(), name='commercial_client_list'),
@@ -39,6 +55,7 @@ urlpatterns = [
     # Commercial actions - Réservations
     path('commercial/reservations/', CommercialReservationListView.as_view(), name='commercial_reservation_list'),
     path('commercial/reservations/<uuid:reservation_id>/', CommercialReservationDetailView.as_view(), name='commercial_reservation_detail'),
+    path('commercial/reservations/<uuid:reservation_id>/confirmer/', CommercialReservationConfirmView.as_view(), name='commercial_reservation_confirm'),
     
     # Commercial actions - Financements
     path('commercial/reservations/<uuid:reservation_id>/financement/creer/', CommercialFinancementCreateView.as_view(), name='commercial_financement_create'),
@@ -50,4 +67,15 @@ urlpatterns = [
     
     # Commercial actions - Paiements
     path('commercial/reservations/<uuid:reservation_id>/paiement/creer/', CommercialPaiementCreateView.as_view(), name='commercial_paiement_create'),
+    path('commercial/paiements/validation/', CommercialPaymentValidationListView.as_view(), name='commercial_payment_validation_list'),
+    path('commercial/paiements/<uuid:paiement_id>/valider/', CommercialPaymentValidateView.as_view(), name='commercial_payment_validate'),
+    
+    # Banques partenaires
+    path('banques/', BanquePartenaireListView.as_view(), name='banque_partenaire_list'),
+    path('banques/add/', BanquePartenaireCreateView.as_view(), name='banque_partenaire_add'),
+    path('banques/<uuid:pk>/edit/', BanquePartenaireUpdateView.as_view(), name='banque_partenaire_edit'),
+    
+    # Gestion des demandes de financement
+    path('commercial/financements/', CommercialFinancingListView.as_view(), name='commercial_financing_list'),
+    path('commercial/financements/<uuid:financement_id>/', CommercialFinancingDetailView.as_view(), name='commercial_financing_detail'),
 ]

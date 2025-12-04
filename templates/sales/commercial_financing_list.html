@@ -1,0 +1,74 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="container py-4">
+  <h2 class="mb-4">📋 Gestion des Demandes de Financement</h2>
+
+  <!-- Filtres par statut -->
+  <div class="mb-4">
+    <div class="btn-group" role="group">
+      {% for code, label in statuts %}
+        <a href="?statut={{ code }}" class="btn btn-sm {% if statut_filter == code %}btn-primary{% else %}btn-outline-primary{% endif %}">
+          {{ label }}
+        </a>
+      {% endfor %}
+    </div>
+  </div>
+
+  <!-- Tableau des financements -->
+  {% if financements %}
+    <div class="table-responsive">
+      <table class="table table-hover table-sm table-striped">
+        <thead class="table-light">
+          <tr>
+            <th>Client</th>
+            <th>Unité</th>
+            <th>Banque</th>
+            <th>Montant</th>
+            <th>Statut</th>
+            <th>Date</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for fin in financements %}
+          <tr>
+            <td>
+              <strong>{{ fin.reservation.client.prenom }} {{ fin.reservation.client.nom }}</strong><br>
+              <small class="text-muted">{{ fin.reservation.client.email }}</small>
+            </td>
+            <td>{{ fin.reservation.unite.reference }}</td>
+            <td>{{ fin.banque.nom }}</td>
+            <td class="fw-bold">{{ fin.montant|floatformat:0 }} FCFA</td>
+            <td>
+              {% if fin.statut == 'soumis' %}
+                <span class="badge bg-info">📮 Soumis</span>
+              {% elif fin.statut == 'en_etude' %}
+                <span class="badge bg-warning text-dark">📚 En étude</span>
+              {% elif fin.statut == 'accepte' %}
+                <span class="badge bg-success">✅ Accepté</span>
+              {% elif fin.statut == 'refuse' %}
+                <span class="badge bg-danger">❌ Refusé</span>
+              {% elif fin.statut == 'clos' %}
+                <span class="badge bg-secondary">🏁 Clos</span>
+              {% endif %}
+            </td>
+            <td>{{ fin.created_at|date:"d/m/Y" }}</td>
+            <td>
+              <a href="{% url 'commercial_financing_detail' fin.id %}" class="btn btn-sm btn-primary">
+                Voir détails
+              </a>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  {% else %}
+    <div class="alert alert-info">
+      Aucune demande de financement pour ce statut.
+    </div>
+  {% endif %}
+
+  <a href="{% url 'commercial_dashboard' %}" class="btn btn-link mt-3">← Retour au tableau de bord</a>
+</div>
+{% endblock %}

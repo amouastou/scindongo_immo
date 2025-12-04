@@ -1,0 +1,133 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="container py-4">
+  <h2 class="mb-4">📋 Détails de la Demande de Financement</h2>
+
+  <div class="row">
+    <!-- Informations du client -->
+    <div class="col-md-6">
+      <div class="card mb-4">
+        <div class="card-header bg-primary text-white">
+          <h5 class="mb-0">👤 Informations du Client</h5>
+        </div>
+        <div class="card-body">
+          <p><strong>Nom :</strong> {{ client.prenom }} {{ client.nom }}</p>
+          <p><strong>Email :</strong> {{ client.email }}</p>
+          <p><strong>Téléphone :</strong> {{ client.telephone }}</p>
+          <p><strong>Statut KYC :</strong> {{ client.kyc_statut|default:"Non renseigné" }}</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Informations de la réservation -->
+    <div class="col-md-6">
+      <div class="card mb-4">
+        <div class="card-header bg-info text-white">
+          <h5 class="mb-0">🏘️ Unité Réservée</h5>
+        </div>
+        <div class="card-body">
+          <p><strong>Référence :</strong> {{ unite.reference }}</p>
+          <p><strong>Programme :</strong> {{ unite.programme.nom }}</p>
+          <p><strong>Type :</strong> {{ unite.type_bien.libelle }}</p>
+          <p><strong>Prix TTC :</strong> {{ unite.prix_ttc|floatformat:0 }} FCFA</p>
+          <p><strong>Acompte versé :</strong> {{ reservation.acompte|floatformat:0 }} FCFA</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="row">
+    <!-- Détails du financement -->
+    <div class="col-md-6">
+      <div class="card mb-4">
+        <div class="card-header bg-warning text-dark">
+          <h5 class="mb-0">💰 Demande de Financement</h5>
+        </div>
+        <div class="card-body">
+          <p><strong>Banque :</strong> {{ banque.nom }}</p>
+          <p><strong>Code banque :</strong> {{ banque.code_banque }}</p>
+          <p><strong>Contact :</strong> {{ banque.contact }}</p>
+          <hr>
+          <p><strong>Montant demandé :</strong> <span class="display-6 text-warning fw-bold">{{ financement.montant|floatformat:0 }} FCFA</span></p>
+          <p><strong>Type :</strong> {{ financement.type }}</p>
+          <p><strong>Date de demande :</strong> {{ financement.created_at|date:"d/m/Y H:i" }}</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Statut actuel et actions -->
+    <div class="col-md-6">
+      <div class="card mb-4">
+        <div class="card-header bg-secondary text-white">
+          <h5 class="mb-0">📊 Statut de la Demande</h5>
+        </div>
+        <div class="card-body">
+          <p class="mb-3">
+            <strong>Statut actuel :</strong><br>
+            {% if financement.statut == 'soumis' %}
+              <span class="badge bg-info p-2">📮 Soumis</span>
+            {% elif financement.statut == 'en_etude' %}
+              <span class="badge bg-warning text-dark p-2">📚 En étude</span>
+            {% elif financement.statut == 'accepte' %}
+              <span class="badge bg-success p-2">✅ Accepté</span>
+            {% elif financement.statut == 'refuse' %}
+              <span class="badge bg-danger p-2">❌ Refusé</span>
+            {% elif financement.statut == 'clos' %}
+              <span class="badge bg-secondary p-2">🏁 Clos</span>
+            {% endif %}
+          </p>
+
+          <!-- Formulaire de changement de statut -->
+          <form method="post">
+            {% csrf_token %}
+            <div class="mb-3">
+              <label for="statut" class="form-label"><strong>Changer le statut :</strong></label>
+              <select name="statut" id="statut" class="form-select" required>
+                <option value="">-- Sélectionnez un statut --</option>
+                <option value="soumis" {% if financement.statut == 'soumis' %}selected{% endif %}>📮 Soumis</option>
+                <option value="en_etude" {% if financement.statut == 'en_etude' %}selected{% endif %}>📚 En étude</option>
+                <option value="accepte" {% if financement.statut == 'accepte' %}selected{% endif %}>✅ Accepté</option>
+                <option value="refuse" {% if financement.statut == 'refuse' %}selected{% endif %}>❌ Refusé</option>
+                <option value="clos" {% if financement.statut == 'clos' %}selected{% endif %}>🏁 Clos</option>
+              </select>
+            </div>
+            <button type="submit" class="btn btn-primary">💾 Mettre à jour le statut</button>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Messages de statut -->
+  {% if financement.statut == 'soumis' %}
+    <div class="alert alert-info">
+      <strong>📮 Demande soumise</strong><br>
+      Cette demande vient d'être soumise par le client. Passez-la en "En étude" pour indiquer que vous l'examinez.
+    </div>
+  {% elif financement.statut == 'en_etude' %}
+    <div class="alert alert-warning">
+      <strong>📚 Demande en cours d'étude</strong><br>
+      Cette demande est actuellement examinée. Passez-la à "Accepté" ou "Refusé" selon la décision de la banque.
+    </div>
+  {% elif financement.statut == 'accepte' %}
+    <div class="alert alert-success">
+      <strong>✅ Demande acceptée</strong><br>
+      Le financement a été accepté par la banque. Le client a été notifié. Passez le dossier à "Clos" une fois le financement complété.
+    </div>
+  {% elif financement.statut == 'refuse' %}
+    <div class="alert alert-danger">
+      <strong>❌ Demande refusée</strong><br>
+      La demande de financement a été refusée par la banque. Le client a été notifié. Vous pouvez clore le dossier.
+    </div>
+  {% elif financement.statut == 'clos' %}
+    <div class="alert alert-secondary">
+      <strong>🏁 Dossier clôturé</strong><br>
+      Ce dossier de financement est terminé et archivé.
+    </div>
+  {% endif %}
+
+  <div class="mt-4">
+    <a href="{% url 'commercial_financing_list' %}" class="btn btn-secondary">← Retour à la liste</a>
+  </div>
+</div>
+{% endblock %}

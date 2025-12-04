@@ -1,0 +1,186 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Confirmer Réservation{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header bg-info text-white">
+                    <h3 class="mb-0">
+                        ✅ Confirmer la Réservation
+                    </h3>
+                </div>
+                <div class="card-body">
+                    <!-- Statut actuel -->
+                    <div class="alert alert-warning mb-4">
+                        <i class="fas fa-exclamation-triangle"></i>
+                        <strong>Statut Actuel :</strong> 
+                        <span class="badge bg-warning text-dark">EN COURS</span>
+                        <br>
+                        <small>Cette réservation est en attente de votre validation commerciale</small>
+                    </div>
+
+                    <!-- Informations Client -->
+                    <div class="card mb-4 border-primary">
+                        <div class="card-header bg-light">
+                            <h5 class="mb-0">👤 Client</h5>
+                        </div>
+                        <div class="card-body">
+                            <table class="table table-borderless">
+                                <tr>
+                                    <td class="fw-bold">Nom Complet :</td>
+                                    <td>{{ client.prenom }} {{ client.nom }}</td>
+                                </tr>
+                                <tr>
+                                    <td class="fw-bold">Email :</td>
+                                    <td>{{ client.email }}</td>
+                                </tr>
+                                <tr>
+                                    <td class="fw-bold">Téléphone :</td>
+                                    <td>{{ client.telephone }}</td>
+                                </tr>
+                                <tr>
+                                    <td class="fw-bold">KYC Statut :</td>
+                                    <td>
+                                        {% if client.kyc_statut %}
+                                            <span class="badge bg-{% if client.kyc_statut == 'vérifiée' %}success{% else %}warning{% endif %}">
+                                                {{ client.kyc_statut }}
+                                            </span>
+                                        {% else %}
+                                            <span class="badge bg-danger">NON VÉRIFIÉE</span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- Informations Unité -->
+                    <div class="card mb-4 border-success">
+                        <div class="card-header bg-light">
+                            <h5 class="mb-0">🏠 Unité Réservée</h5>
+                        </div>
+                        <div class="card-body">
+                            <table class="table table-borderless">
+                                <tr>
+                                    <td class="fw-bold">Référence :</td>
+                                    <td><strong>{{ unite.reference }}</strong></td>
+                                </tr>
+                                <tr>
+                                    <td class="fw-bold">Programme :</td>
+                                    <td>{{ unite.programme.nom }}</td>
+                                </tr>
+                                <tr>
+                                    <td class="fw-bold">Modèle :</td>
+                                    <td>{{ unite.modele.nom }} ({{ unite.modele.surface_hab_m2 }} m²)</td>
+                                </tr>
+                                <tr>
+                                    <td class="fw-bold">Prix TTC :</td>
+                                    <td><strong>{{ unite.prix_ttc|floatformat:0 }} FCFA</strong></td>
+                                </tr>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- Informations Réservation -->
+                    <div class="card mb-4 border-info">
+                        <div class="card-header bg-light">
+                            <h5 class="mb-0">📋 Détails Réservation</h5>
+                        </div>
+                        <div class="card-body">
+                            <table class="table table-borderless">
+                                <tr>
+                                    <td class="fw-bold">Date Réservation :</td>
+                                    <td>{{ reservation.date_reservation|date:"d/m/Y" }}</td>
+                                </tr>
+                                <tr>
+                                    <td class="fw-bold">Acompte :</td>
+                                    <td><strong>{{ reservation.acompte|floatformat:0 }} FCFA</strong></td>
+                                </tr>
+                                <tr>
+                                    <td class="fw-bold">Montant Restant :</td>
+                                    <td>{{ unite.prix_ttc|add:reservation.acompte|floatformat:0 }} FCFA</td>
+                                </tr>
+                                <tr>
+                                    <td class="fw-bold">Statut :</td>
+                                    <td>
+                                        <span class="badge bg-warning text-dark fs-6">EN COURS</span>
+                                    </td>
+                                </tr>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- Checklist avant confirmation -->
+                    <div class="card mb-4 border-warning">
+                        <div class="card-header bg-light">
+                            <h5 class="mb-0">📋 Avant de Confirmer</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="form-check mb-2">
+                                <input class="form-check-input" type="checkbox" id="kyc_check" required>
+                                <label class="form-check-label" for="kyc_check">
+                                    ✓ J'ai vérifié la KYC du client
+                                </label>
+                            </div>
+                            <div class="form-check mb-2">
+                                <input class="form-check-input" type="checkbox" id="acompte_check" required>
+                                <label class="form-check-label" for="acompte_check">
+                                    ✓ L'acompte a été reçu et enregistré
+                                </label>
+                            </div>
+                            <div class="form-check mb-2">
+                                <input class="form-check-input" type="checkbox" id="documents_check" required>
+                                <label class="form-check-label" for="documents_check">
+                                    ✓ Tous les documents du client sont en ordre
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Info importante -->
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle"></i>
+                        <strong>Après confirmation :</strong>
+                        <ul class="mb-0 mt-2">
+                            <li>Le client recevra une notification</li>
+                            <li>Le client pourra choisir entre paiement direct ou financement bancaire</li>
+                            <li>Vous devrez générer le contrat ensuite</li>
+                        </ul>
+                    </div>
+
+                    <!-- Boutons d'action -->
+                    <div class="d-flex gap-2 justify-content-end">
+                        <a href="{% url 'commercial_reservation_detail' reservation.id %}" class="btn btn-secondary">
+                            <i class="fas fa-times"></i> Annuler
+                        </a>
+                        <form method="post" class="d-inline" onsubmit="return validateChecks();">
+                            {% csrf_token %}
+                            <button type="submit" class="btn btn-success btn-lg">
+                                <i class="fas fa-check"></i> Confirmer la Réservation
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function validateChecks() {
+    const kyc = document.getElementById('kyc_check').checked;
+    const acompte = document.getElementById('acompte_check').checked;
+    const documents = document.getElementById('documents_check').checked;
+    
+    if (!kyc || !acompte || !documents) {
+        alert('Veuillez vérifier tous les points avant de confirmer');
+        return false;
+    }
+    return true;
+}
+</script>
+{% endblock %}

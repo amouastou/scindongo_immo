@@ -109,46 +109,64 @@
                         <!-- Financement -->
                         <div class="col-md-3 mb-3">
                             {% if has_financement %}
-                                <div class="card border-success bg-light">
-                                    <div class="card-body text-center">
-                                        <i class="fas fa-check-circle text-success fs-3 mb-2"></i>
-                                        <div class="fw-bold">Financement</div>
-                                        <small class="text-muted">Enregistré</small>
+                                <a href="#financementDetails" class="text-decoration-none" data-bs-toggle="collapse">
+                                    <div class="card border-success bg-light h-100 hover-shadow" style="cursor: pointer;">
+                                        <div class="card-body text-center">
+                                            <i class="fas fa-check-circle text-success fs-3 mb-2"></i>
+                                            <div class="fw-bold">Financement</div>
+                                            <small class="text-muted">{{ reservation.financement.get_statut_display }}</small>
+                                            <div class="mt-2">
+                                                <span class="badge bg-info">{{ reservation.financement.montant|floatformat:0 }} FCFA</span>
+                                            </div>
+                                        </div>
                                     </div>
-                                </div>
+                                </a>
                             {% else %}
-                                <div class="card border-warning">
-                                    <div class="card-body text-center">
-                                        <i class="fas fa-coins text-warning fs-3 mb-2"></i>
-                                        <div class="fw-bold">Financement</div>
-                                        <small class="text-muted">Non ajouté</small>
+                                <a href="{% url 'client_payment_mode_choice' reservation.id %}" class="text-decoration-none">
+                                    <div class="card border-warning h-100 hover-shadow" style="cursor: pointer;">
+                                        <div class="card-body text-center">
+                                            <i class="fas fa-coins text-warning fs-3 mb-2"></i>
+                                            <div class="fw-bold">Financement</div>
+                                            <small class="text-muted">Non ajouté</small>
+                                            <div class="mt-2">
+                                                <span class="badge bg-warning">Cliquez pour ajouter</span>
+                                            </div>
+                                        </div>
                                     </div>
-                                </div>
+                                </a>
                             {% endif %}
                         </div>
 
                         <!-- Contrat -->
                         <div class="col-md-3 mb-3">
                             {% if has_contrat %}
-                                <div class="card border-success bg-light">
-                                    <div class="card-body text-center">
-                                        <i class="fas fa-check-circle text-success fs-3 mb-2"></i>
-                                        <div class="fw-bold">Contrat</div>
-                                        <small class="text-muted">
-                                            {% if reservation.contrat.statut == 'signe' %}
-                                                ✓ Signé
-                                            {% else %}
-                                                En attente
-                                            {% endif %}
-                                        </small>
+                                <a href="#contratDetails" class="text-decoration-none" data-bs-toggle="collapse">
+                                    <div class="card border-success bg-light h-100 hover-shadow" style="cursor: pointer;">
+                                        <div class="card-body text-center">
+                                            <i class="fas fa-check-circle text-success fs-3 mb-2"></i>
+                                            <div class="fw-bold">Contrat</div>
+                                            <small class="text-muted">
+                                                {% if reservation.contrat.statut == 'signe' %}
+                                                    ✓ Signé
+                                                {% else %}
+                                                    {{ reservation.contrat.get_statut_display }}
+                                                {% endif %}
+                                            </small>
+                                            <div class="mt-2">
+                                                <span class="badge bg-success">Voir détails</span>
+                                            </div>
+                                        </div>
                                     </div>
-                                </div>
+                                </a>
                             {% else %}
-                                <div class="card border-warning">
+                                <div class="card border-warning h-100">
                                     <div class="card-body text-center">
                                         <i class="fas fa-file-contract text-warning fs-3 mb-2"></i>
                                         <div class="fw-bold">Contrat</div>
                                         <small class="text-muted">Non créé</small>
+                                        <div class="mt-2">
+                                            <span class="badge bg-secondary">En attente</span>
+                                        </div>
                                     </div>
                                 </div>
                             {% endif %}
@@ -157,23 +175,33 @@
                         <!-- Paiement -->
                         <div class="col-md-3 mb-3">
                             {% if paiements %}
-                                <div class="card border-success bg-light">
-                                    <div class="card-body text-center">
-                                        <i class="fas fa-check-circle text-success fs-3 mb-2"></i>
-                                        <div class="fw-bold">Paiement</div>
-                                        <small class="text-muted">
-                                            {{ paiements|length }} paiement(s)
-                                        </small>
+                                <a href="#paiementsDetails" class="text-decoration-none" data-bs-toggle="collapse">
+                                    <div class="card border-success bg-light h-100 hover-shadow" style="cursor: pointer;">
+                                        <div class="card-body text-center">
+                                            <i class="fas fa-check-circle text-success fs-3 mb-2"></i>
+                                            <div class="fw-bold">Paiement</div>
+                                            <small class="text-muted">
+                                                {{ paiements|length }} paiement(s)
+                                            </small>
+                                            <div class="mt-2">
+                                                <span class="badge bg-info">{{ total_payes|floatformat:0 }} FCFA</span>
+                                            </div>
+                                        </div>
                                     </div>
-                                </div>
+                                </a>
                             {% else %}
-                                <div class="card border-warning">
-                                    <div class="card-body text-center">
-                                        <i class="fas fa-money-bill-wave text-warning fs-3 mb-2"></i>
-                                        <div class="fw-bold">Paiement</div>
-                                        <small class="text-muted">Non enregistré</small>
+                                <a href="{% url 'client_payment_mode_choice' reservation.id %}" class="text-decoration-none">
+                                    <div class="card border-warning h-100 hover-shadow" style="cursor: pointer;">
+                                        <div class="card-body text-center">
+                                            <i class="fas fa-money-bill-wave text-warning fs-3 mb-2"></i>
+                                            <div class="fw-bold">Paiement</div>
+                                            <small class="text-muted">Non enregistré</small>
+                                            <div class="mt-2">
+                                                <span class="badge bg-warning">Cliquez pour payer</span>
+                                            </div>
+                                        </div>
                                     </div>
-                                </div>
+                                </a>
                             {% endif %}
                         </div>
 
@@ -213,31 +241,49 @@
 
     <!-- Détails Financement -->
     {% if has_financement %}
-        <div class="row mb-4">
-            <div class="col-12">
-                <div class="card border-success">
-                    <div class="card-header bg-success text-white">
-                        <h5 class="mb-0">💰 Financement</h5>
-                    </div>
-                    <div class="card-body">
-                        <div class="row">
-                            <div class="col-md-3">
-                                <strong>Banque:</strong><br>
-                                {{ reservation.financement.banque.nom }}
+        <div class="collapse" id="financementDetails">
+            <div class="row mb-4">
+                <div class="col-12">
+                    <div class="card border-success">
+                        <div class="card-header bg-success text-white">
+                            <h5 class="mb-0">💰 Détails du Financement</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-md-3">
+                                    <strong>Banque:</strong><br>
+                                    {{ reservation.financement.banque.nom }}
+                                </div>
+                                <div class="col-md-3">
+                                    <strong>Type:</strong><br>
+                                    {{ reservation.financement.type }}
+                                </div>
+                                <div class="col-md-3">
+                                    <strong>Montant:</strong><br>
+                                    {{ reservation.financement.montant|floatformat:0 }} FCFA
+                                </div>
+                                <div class="col-md-3">
+                                    <strong>Statut:</strong><br>
+                                    <span class="badge bg-{% if reservation.financement.statut == 'accepte' %}success{% elif reservation.financement.statut == 'refuse' %}danger{% elif reservation.financement.statut == 'en_etude' %}info{% else %}warning{% endif %}">
+                                        {{ reservation.financement.get_statut_display }}
+                                    </span>
+                                </div>
                             </div>
-                            <div class="col-md-3">
-                                <strong>Type:</strong><br>
-                                {{ reservation.financement.type }}
-                            </div>
-                            <div class="col-md-3">
-                                <strong>Montant:</strong><br>
-                                {{ reservation.financement.montant|floatformat:0 }} FCFA
-                            </div>
-                            <div class="col-md-3">
-                                <strong>Statut:</strong><br>
-                                <span class="badge bg-{% if reservation.financement.statut == 'accepte' %}success{% elif reservation.financement.statut == 'refuse' %}danger{% elif reservation.financement.statut == 'en_etude' %}info{% else %}warning{% endif %}">
-                                    {{ reservation.financement.get_statut_display }}
-                                </span>
+                            <hr>
+                            <div class="alert alert-info mb-0">
+                                <i class="fas fa-info-circle"></i>
+                                <strong>Suivi du dossier :</strong><br>
+                                {% if reservation.financement.statut == 'soumis' %}
+                                    Votre demande a été soumise à la banque. Elle sera étudiée dans les 5-10 jours.
+                                {% elif reservation.financement.statut == 'en_etude' %}
+                                    Votre dossier est en cours d'étude par la banque. Vous serez notifié de la décision.
+                                {% elif reservation.financement.statut == 'accepte' %}
+                                    🎉 Félicitations ! Votre demande de financement a été acceptée par la banque.
+                                {% elif reservation.financement.statut == 'refuse' %}
+                                    ❌ Votre demande de financement a été refusée. Contactez-nous pour plus d'informations.
+                                {% elif reservation.financement.statut == 'clos' %}
+                                    Dossier de financement clôturé.
+                                {% endif %}
                             </div>
                         </div>
                     </div>
@@ -248,38 +294,40 @@
 
     <!-- Détails Contrat -->
     {% if has_contrat %}
-        <div class="row mb-4">
-            <div class="col-12">
-                <div class="card border-warning">
-                    <div class="card-header bg-warning text-dark">
-                        <h5 class="mb-0">📄 Contrat</h5>
-                    </div>
-                    <div class="card-body">
-                        <div class="row align-items-center">
-                            <div class="col-md-3">
-                                <strong>Numéro:</strong><br>
-                                <code>{{ reservation.contrat.numero }}</code>
-                            </div>
-                            <div class="col-md-3">
-                                <strong>Statut:</strong><br>
-                                <span class="badge bg-{% if reservation.contrat.statut == 'signe' %}success{% elif reservation.contrat.statut == 'annule' %}danger{% else %}warning{% endif %}">
-                                    {{ reservation.contrat.get_statut_display }}
-                                </span>
-                            </div>
-                            <div class="col-md-3">
-                                {% if reservation.contrat.signe_le %}
-                                    <strong>Signé le:</strong><br>
-                                    {{ reservation.contrat.signe_le|date:"d/m/Y H:i" }}
-                                {% else %}
-                                    <strong>En attente de signature</strong>
-                                {% endif %}
-                            </div>
-                            <div class="col-md-3">
-                                {% if reservation.contrat.pdf %}
-                                    <a href="{{ reservation.contrat.pdf.url }}" target="_blank" class="btn btn-sm btn-outline-primary">
-                                        <i class="fas fa-download"></i> Télécharger
-                                    </a>
-                                {% endif %}
+        <div class="collapse" id="contratDetails">
+            <div class="row mb-4">
+                <div class="col-12">
+                    <div class="card border-warning">
+                        <div class="card-header bg-warning text-dark">
+                            <h5 class="mb-0">📄 Détails du Contrat</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="row align-items-center">
+                                <div class="col-md-3">
+                                    <strong>Numéro:</strong><br>
+                                    <code>{{ reservation.contrat.numero }}</code>
+                                </div>
+                                <div class="col-md-3">
+                                    <strong>Statut:</strong><br>
+                                    <span class="badge bg-{% if reservation.contrat.statut == 'signe' %}success{% elif reservation.contrat.statut == 'annule' %}danger{% else %}warning{% endif %}">
+                                        {{ reservation.contrat.get_statut_display }}
+                                    </span>
+                                </div>
+                                <div class="col-md-3">
+                                    {% if reservation.contrat.signe_le %}
+                                        <strong>Signé le:</strong><br>
+                                        {{ reservation.contrat.signe_le|date:"d/m/Y" }}
+                                    {% else %}
+                                        <strong>En attente de signature</strong>
+                                    {% endif %}
+                                </div>
+                                <div class="col-md-3">
+                                    {% if reservation.contrat.pdf %}
+                                        <a href="{{ reservation.contrat.pdf.url }}" target="_blank" class="btn btn-sm btn-primary">
+                                            <i class="fas fa-download"></i> Télécharger le Contrat
+                                        </a>
+                                    {% endif %}
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -290,36 +338,40 @@
 
     <!-- Paiements -->
     {% if paiements %}
-        <div class="row mb-4">
-            <div class="col-12">
-                <div class="card">
-                    <div class="card-header bg-info text-white">
-                        <h5 class="mb-0">💳 Historique des Paiements</h5>
-                    </div>
-                    <div class="card-body">
-                        <div class="table-responsive">
-                            <table class="table table-hover">
-                                <thead class="table-light">
-                                    <tr>
-                                        <th>Date</th>
-                                        <th>Montant</th>
-                                        <th>Moyen</th>
-                                        <th>Source</th>
-                                        <th>Statut</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {% for paiement in paiements %}
+        <div class="collapse" id="paiementsDetails">
+            <div class="row mb-4">
+                <div class="col-12">
+                    <div class="card">
+                        <div class="card-header bg-info text-white d-flex justify-content-between align-items-center">
+                            <h5 class="mb-0">💳 Historique des Paiements</h5>
+                            <a href="{% url 'client_payment_mode_choice' reservation.id %}" class="btn btn-sm btn-light">
+                                <i class="fas fa-plus"></i> Ajouter un paiement
+                            </a>
+                        </div>
+                        <div class="card-body">
+                            <div class="table-responsive">
+                                <table class="table table-hover">
+                                    <thead class="table-light">
                                         <tr>
-                                            <td>{{ paiement.date_paiement|date:"d/m/Y" }}</td>
-                                            <td><strong>{{ paiement.montant|floatformat:0 }} FCFA</strong></td>
-                                            <td>{{ paiement.get_moyen_display }}</td>
-                                            <td>{{ paiement.source }}</td>
-                                            <td>
-                                                <span class="badge bg-{% if paiement.statut == 'valide' %}success{% elif paiement.statut == 'rejete' %}danger{% else %}warning{% endif %}">
-                                                    {{ paiement.get_statut_display }}
-                                                </span>
-                                            </td>
+                                            <th>Date</th>
+                                            <th>Montant</th>
+                                            <th>Moyen</th>
+                                            <th>Source</th>
+                                            <th>Statut</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for paiement in paiements %}
+                                            <tr>
+                                                <td>{{ paiement.date_paiement|date:"d/m/Y" }}</td>
+                                                <td><strong>{{ paiement.montant|floatformat:0 }} FCFA</strong></td>
+                                                <td>{{ paiement.get_moyen_display }}</td>
+                                                <td>{{ paiement.source }}</td>
+                                                <td>
+                                                    <span class="badge bg-{% if paiement.statut == 'valide' %}success{% elif paiement.statut == 'rejete' %}danger{% else %}warning{% endif %}">
+                                                        {{ paiement.get_statut_display }}
+                                                    </span>
+                                                </td>
                                         </tr>
                                     {% endfor %}
                                 </tbody>
@@ -383,4 +435,14 @@
         </div>
     </div>
 </div>
+
+<style>
+.hover-shadow {
+    transition: all 0.3s ease;
+}
+.hover-shadow:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+}
+</style>
 {% endblock %}

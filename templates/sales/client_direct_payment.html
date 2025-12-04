@@ -1,0 +1,193 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Paiement Direct{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <!-- Breadcrumb -->
+            <nav aria-label="breadcrumb" class="mb-4">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="{% url 'client_reservation_detail' reservation.id %}">Réservation</a></li>
+                    <li class="breadcrumb-item"><a href="{% url 'client_payment_mode_choice' reservation.id %}">Choix Paiement</a></li>
+                    <li class="breadcrumb-item active">Paiement Direct</li>
+                </ol>
+            </nav>
+
+            <!-- Header -->
+            <div class="mb-4">
+                <h1 class="display-6 fw-bold">
+                    💰 Effectuer un paiement direct
+                </h1>
+                <p class="lead text-muted">
+                    Complétez le formulaire pour enregistrer votre paiement
+                </p>
+            </div>
+
+            <!-- Recap Card -->
+            <div class="card mb-4 border-info bg-light">
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <p class="mb-2">
+                                <strong>Unité :</strong> {{ unite.reference }}
+                            </p>
+                            <p class="mb-0">
+                                <strong>Programme :</strong> {{ unite.programme.nom }}
+                            </p>
+                        </div>
+                        <div class="col-md-6 text-md-end">
+                            <div class="bg-white p-2 rounded text-center">
+                                <strong class="d-block text-muted">Montant à payer</strong>
+                                <span class="display-6 text-danger fw-bold">{{ remaining_amount|floatformat:0 }} FCFA</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Payment Form -->
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0">📝 Détails du Paiement</h5>
+                </div>
+                <div class="card-body">
+                    <form method="post" class="needs-validation">
+                        {% csrf_token %}
+
+                        <!-- Montant -->
+                        <div class="mb-3">
+                            <label for="{{ form.montant.id_for_label }}" class="form-label">
+                                Montant (FCFA) *
+                            </label>
+                            {{ form.montant }}
+                            {% if form.montant.errors %}
+                                <div class="text-danger small mt-1">
+                                    {% for error in form.montant.errors %}
+                                        {{ error }}<br>
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                            <small class="d-block mt-2 text-muted">
+                                Maximum : {{ remaining_amount|floatformat:0 }} FCFA
+                            </small>
+                        </div>
+
+                        <!-- Moyen de Paiement -->
+                        <div class="mb-3">
+                            <label for="{{ form.moyen.id_for_label }}" class="form-label">
+                                Moyen de paiement *
+                            </label>
+                            {{ form.moyen }}
+                            {% if form.moyen.errors %}
+                                <div class="text-danger small mt-1">
+                                    {% for error in form.moyen.errors %}
+                                        {{ error }}<br>
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                            <small class="d-block mt-2 text-muted">
+                                Choisissez le moyen de paiement que vous utiliserez
+                            </small>
+                        </div>
+
+                        <!-- Source / Details -->
+                        <div class="mb-4">
+                            <label for="{{ form.source.id_for_label }}" class="form-label">
+                                Détails (Numéro compte, N° chèque, etc) *
+                            </label>
+                            {{ form.source }}
+                            {% if form.source.errors %}
+                                <div class="text-danger small mt-1">
+                                    {% for error in form.source.errors %}
+                                        {{ error }}<br>
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                            <small class="d-block mt-2 text-muted">
+                                Exemple : Numéro de compte bancaire, numéro du chèque, etc.
+                            </small>
+                        </div>
+
+                        <!-- General Form Errors -->
+                        {% if form.non_field_errors %}
+                            <div class="alert alert-danger">
+                                {% for error in form.non_field_errors %}
+                                    {{ error }}<br>
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+
+                        <!-- Info Box -->
+                        <div class="alert alert-info mb-4">
+                            <i class="fas fa-info-circle"></i>
+                            <strong>Important :</strong>
+                            <ul class="mb-0 mt-2">
+                                <li>Votre paiement sera enregistré en attente de validation commerciale</li>
+                                <li>Le commercial validera et confirmera votre paiement dans 24h</li>
+                                <li>Vous recevrez une notification une fois validé</li>
+                            </ul>
+                        </div>
+
+                        <!-- Buttons -->
+                        <div class="d-grid gap-2">
+                            <button type="submit" class="btn btn-success btn-lg">
+                                <i class="fas fa-check"></i> Enregistrer le Paiement
+                            </button>
+                            <a href="{% url 'client_payment_mode_choice' reservation.id %}" class="btn btn-outline-secondary">
+                                <i class="fas fa-arrow-left"></i> Retour
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Payment Methods Info -->
+            <div class="row g-3 mt-4">
+                <div class="col-md-6">
+                    <div class="card border-0 bg-light">
+                        <div class="card-body">
+                            <h6 class="card-title">🏦 Virement Bancaire</h6>
+                            <p class="small text-muted mb-0">
+                                Transférez le montant directement sur le compte SCINDONGO. Rapidement crédité.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="card border-0 bg-light">
+                        <div class="card-body">
+                            <h6 class="card-title">💳 Chèque</h6>
+                            <p class="small text-muted mb-0">
+                                Établissez un chèque à l'ordre de SCINDONGO Immo.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="card border-0 bg-light">
+                        <div class="card-body">
+                            <h6 class="card-title">💵 Espèces</h6>
+                            <p class="small text-muted mb-0">
+                                Versez en espèces à nos agences avec justificatif.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="card border-0 bg-light">
+                        <div class="card-body">
+                            <h6 class="card-title">💳 Carte Bancaire</h6>
+                            <p class="small text-muted mb-0">
+                                Paiement par carte bancaire (frais applicables).
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

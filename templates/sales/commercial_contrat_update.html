@@ -18,7 +18,7 @@
                         <strong>Numéro:</strong> {{ object.numero }}<br>
                         <strong>Statut Actuel:</strong> <span class="badge bg-warning">{{ object.get_statut_display }}</span><br>
                         {% if object.signe_le %}
-                            <strong>Signé le:</strong> {{ object.signe_le|date:"d/m/Y H:i" }}
+                            <strong>Signé le:</strong> {{ object.signe_le|date:"d/m/Y" }}
                         {% endif %}
                     </div>
 

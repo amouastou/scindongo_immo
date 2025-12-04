@@ -199,7 +199,9 @@ class ReservationViewSet(viewsets.ModelViewSet):
 class BanquePartenaireViewSet(viewsets.ModelViewSet):
     queryset = BanquePartenaire.objects.all()
     serializer_class = BanquePartenaireSerializer
-    permission_classes = [IsAuthenticated, IsAdminScindongo]
+    # Admins et commerciaux peuvent gérer les banques partenaires
+    from accounts.permissions import IsAdminScindongo, IsCommercial
+    permission_classes = [IsAuthenticated, IsAdminScindongo | IsCommercial]
 
 
 class FinancementViewSet(viewsets.ModelViewSet):

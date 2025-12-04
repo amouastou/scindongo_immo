@@ -136,6 +136,9 @@
           <a href="{% url 'unite_list' %}" class="btn btn-outline-secondary btn-sm">
             🏘️ Gérer les unités / lots
           </a>
+          <a href="{% url 'banque_partenaire_list' %}" class="btn btn-outline-warning btn-sm">
+            🏦 Gérer les banques partenaires
+          </a>
         </div>
       </div>
     </div>
@@ -271,7 +274,7 @@
           <tbody>
             {% for p in derniers_paiements %}
               <tr>
-                <td>{{ p.date_paiement|date:"d/m/Y H:i" }}</td>
+                <td>{{ p.date_paiement|date:"d/m/Y" }}</td>
                 <td>
                   {% if p.reservation and p.reservation.client and p.reservation.client.user %}
                     {% if p.reservation.client.user.get_full_name %}
@@ -324,7 +327,7 @@
           <tbody>
             {% for res in dernieres_reservations %}
               <tr>
-                <td>{{ res.created_at|date:"d/m/Y H:i" }}</td>
+                <td>{{ res.created_at|date:"d/m/Y" }}</td>
                 <td>
                   {% if res.client and res.client.user %}
                     {% if res.client.user.get_full_name %}

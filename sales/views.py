@@ -10,7 +10,7 @@ from accounts.mixins import RoleRequiredMixin
 from accounts.models import User, Role
 from catalog.models import Unite
 from .models import Client, Reservation, Paiement, Contrat, Financement, BanquePartenaire
-from .forms import ReservationForm, PaiementForm, ClientForm, FinancementForm, ContratForm
+from .forms import ReservationForm, PaiementForm, ClientForm, FinancementForm, ContratForm, PaymentModeForm, FinancingRequestForm
 from .utils import set_pending_unite
 from .mixins import ReservationRequiredMixin, FinancementFormMixin, ContratFormMixin, PaiementFormMixin
 from core.utils import audit_log
@@ -61,6 +61,18 @@ class CommercialDashboardView(RoleRequiredMixin, TemplateView):
         ctx["reservations_count"] = Reservation.objects.count()
         ctx["paiements_count"] = Paiement.objects.count()
         ctx["financements_count"] = Financement.objects.count()
+        
+        # ÉTAPE 3: Réservations en attente (en_cours) en priorité
+        ctx["pending_reservations"] = Reservation.objects.filter(
+            statut="en_cours"
+        ).select_related("client", "unite", "unite__programme").order_by('-created_at')
+        ctx["pending_count"] = ctx["pending_reservations"].count()
+        
+        # ÉTAPE 8: Paiements en attente de validation
+        ctx["pending_payments"] = Paiement.objects.filter(
+            statut="enregistre"
+        ).select_related("reservation", "reservation__client", "reservation__unite").order_by('-created_at')
+        ctx["pending_payments_count"] = ctx["pending_payments"].count()
         
         # Listes détaillées
         ctx["reservations"] = Reservation.objects.select_related("client", "unite", "unite__programme").all()[:20]
@@ -208,6 +220,19 @@ class ReservationSuccessView(RoleRequiredMixin, TemplateView):
         reservation = get_object_or_404(Reservation, id=reservation_id, client__user=self.request.user)
         ctx['reservation'] = reservation
         ctx['banques'] = BanquePartenaire.objects.all()
+        
+        # Calculer le montant restant à financer
+        prix_total = reservation.unite.prix_ttc
+        acompte = reservation.acompte or 0
+        
+        # Soustraire les paiements validés déjà effectués
+        paiements_valides = Paiement.objects.filter(
+            reservation=reservation,
+            statut='valide'
+        ).aggregate(total=Sum('montant'))['total'] or 0
+        
+        ctx['remaining_amount'] = prix_total - acompte - paiements_valides
+        
         return ctx
 
 
@@ -315,6 +340,44 @@ class DashboardAdminView(LoginRequiredMixin, UserPassesTestMixin, TemplateView):
 # ============================================================================
 # COMMERCIAL ACTIONS - Gestion des clients, réservations, financements, etc.
 # ============================================================================
+
+class CommercialReservationConfirmView(RoleRequiredMixin, TemplateView):
+    """
+    Vue pour que le commercial CONFIRME une réservation (en_cours → confirmée)
+    Avant confirmation, vérifier la KYC du client
+    """
+    template_name = 'sales/commercial_reservation_confirm.html'
+    required_roles = ["COMMERCIAL"]
+    
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        reservation_id = self.kwargs.get('reservation_id')
+        reservation = get_object_or_404(Reservation, id=reservation_id)
+        
+        ctx['reservation'] = reservation
+        ctx['client'] = reservation.client
+        ctx['unite'] = reservation.unite
+        
+        return ctx
+    
+    def post(self, request, reservation_id):
+        """Valider la réservation"""
+        reservation = get_object_or_404(Reservation, id=reservation_id)
+        
+        # Vérifier que la réservation est bien en "en_cours"
+        if reservation.statut != "en_cours":
+            messages.error(request, "Cette réservation ne peut pas être confirmée")
+            return redirect('commercial_reservation_detail', reservation_id=reservation_id)
+        
+        # Changer le statut à "confirmée"
+        reservation.statut = "confirmee"
+        reservation.save(update_fields=['statut'])
+        
+        messages.success(request, f"Réservation de {reservation.client.prenom} {reservation.client.nom} confirmée !")
+        audit_log(request.user, reservation, "reservation_confirm", {"ancien_statut": "en_cours"}, request)
+        
+        return redirect('commercial_reservation_detail', reservation_id=reservation_id)
+
 
 class CommercialClientListView(RoleRequiredMixin, ListView):
     """Liste des clients pour le commercial"""
@@ -533,3 +596,397 @@ class CommercialPaiementCreateView(RoleRequiredMixin, CreateView):
                  {"montant": str(paiement.montant), "moyen": paiement.moyen}, self.request)
         
         return redirect('commercial_reservation_detail', reservation_id=reservation.id)
+
+
+# ÉTAPE 5: Client choose payment mode (Direct vs Financing)
+class ClientPaymentModeChoiceView(RoleRequiredMixin, TemplateView):
+    """ÉTAPE 5: Client choisit le mode de paiement après confirmation"""
+    required_roles = ["CLIENT"]
+    template_name = 'sales/client_payment_mode_choice.html'
+    
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        reservation = get_object_or_404(
+            Reservation, 
+            id=kwargs['reservation_id'],
+            client__user=self.request.user,
+            statut='confirmee'  # Only confirmed reservations
+        )
+        ctx['reservation'] = reservation
+        ctx['unite'] = reservation.unite
+        ctx['remaining_amount'] = reservation.unite.prix_ttc - reservation.acompte
+        ctx['form'] = PaymentModeForm()
+        return ctx
+    
+    def post(self, request, reservation_id):
+        reservation = get_object_or_404(
+            Reservation,
+            id=reservation_id,
+            client__user=request.user,
+            statut='confirmee'
+        )
+        
+        form = PaymentModeForm(request.POST)
+        if not form.is_valid():
+            return self.get(request, reservation_id=reservation_id)
+        
+        payment_mode = form.cleaned_data['payment_mode']
+        
+        if payment_mode == 'direct':
+            # Redirect to direct payment
+            return redirect('client_direct_payment', reservation_id=reservation_id)
+        else:  # financing
+            # Redirect to financing request
+            return redirect('client_financing_request', reservation_id=reservation_id)
+
+
+# ÉTAPE 6: Direct Payment View
+class ClientDirectPaymentView(RoleRequiredMixin, TemplateView):
+    """ÉTAPE 6: Client fait un paiement direct (virement, chèque, espèces, carte)"""
+    required_roles = ["CLIENT"]
+    template_name = 'sales/client_direct_payment.html'
+    
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        reservation = get_object_or_404(
+            Reservation,
+            id=kwargs['reservation_id'],
+            client__user=self.request.user,
+            statut='confirmee'
+        )
+        ctx['reservation'] = reservation
+        ctx['unite'] = reservation.unite
+        ctx['remaining_amount'] = reservation.unite.prix_ttc - reservation.acompte
+        ctx['form'] = PaiementForm()
+        return ctx
+    
+    def post(self, request, reservation_id):
+        reservation = get_object_or_404(
+            Reservation,
+            id=reservation_id,
+            client__user=request.user,
+            statut='confirmee'
+        )
+        
+        form = PaiementForm(request.POST)
+        if not form.is_valid():
+            # Re-render the form with errors
+            context = self.get_context_data(reservation_id=reservation_id)
+            context['form'] = form
+            return self.render_to_response(context)
+        
+        paiement = form.save(commit=False)
+        paiement.reservation = reservation
+        paiement.statut = 'enregistre'  # Pending commercial validation
+        
+        # Validation: montant ne peut pas dépasser le montant restant
+        max_amount = reservation.unite.prix_ttc - reservation.acompte
+        if paiement.montant > max_amount:
+            form.add_error('montant', f'Montant maximum : {max_amount} FCFA')
+            context = self.get_context_data(reservation_id=reservation_id)
+            context['form'] = form
+            return self.render_to_response(context)
+        
+        paiement.save()
+        
+        # Audit log
+        audit_log(
+            request.user,
+            paiement,
+            'direct_payment_request',
+            {
+                'montant': str(paiement.montant),
+                'moyen': paiement.moyen,
+                'statut': 'enregistre'
+            },
+            request
+        )
+        
+        messages.success(
+            request,
+            f"✅ Paiement de {paiement.montant} FCFA enregistré ! "
+            "Le commercial validera votre paiement dans les 24h."
+        )
+        
+        return redirect('client_reservation_detail', reservation_id=reservation_id)
+
+
+# ÉTAPE 7: Financing Request View
+class ClientFinancingRequestView(RoleRequiredMixin, TemplateView):
+    """ÉTAPE 7: Client demande un financement bancaire"""
+    required_roles = ["CLIENT"]
+    template_name = 'sales/client_financing_request.html'
+    
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        reservation = get_object_or_404(
+            Reservation,
+            id=kwargs['reservation_id'],
+            client__user=self.request.user,
+            statut='confirmee'
+        )
+        ctx['reservation'] = reservation
+        ctx['unite'] = reservation.unite
+        
+        # Calculer le montant restant à financer
+        prix_total = reservation.unite.prix_ttc
+        acompte = reservation.acompte or 0
+        
+        # Soustraire les paiements validés déjà effectués
+        paiements_valides = Paiement.objects.filter(
+            reservation=reservation,
+            statut='valide'
+        ).aggregate(total=Sum('montant'))['total'] or 0
+        
+        ctx['remaining_amount'] = prix_total - acompte - paiements_valides
+        ctx['banks'] = BanquePartenaire.objects.all()
+
+        # Import form here to avoid circular imports
+        from .forms import FinancingRequestForm
+        ctx['form'] = FinancingRequestForm()
+
+        return ctx
+    
+    def post(self, request, reservation_id):
+        from .forms import FinancingRequestForm
+        
+        reservation = get_object_or_404(
+            Reservation,
+            id=reservation_id,
+            client__user=request.user,
+            statut='confirmee'
+        )
+        
+        form = FinancingRequestForm(request.POST)
+        if not form.is_valid():
+            context = self.get_context_data(reservation_id=reservation_id)
+            context['form'] = form
+            return self.render_to_response(context)
+        
+        financement = form.save(commit=False)
+        financement.reservation = reservation
+        financement.statut = 'soumis'  # Initial status
+        
+        # Validation: montant ne peut pas dépasser le montant restant
+        prix_total = reservation.unite.prix_ttc
+        acompte = reservation.acompte or 0
+        
+        # Soustraire les paiements validés déjà effectués
+        paiements_valides = Paiement.objects.filter(
+            reservation=reservation,
+            statut='valide'
+        ).aggregate(total=Sum('montant'))['total'] or 0
+        
+        max_amount = prix_total - acompte - paiements_valides
+        
+        if financement.montant > max_amount:
+            form.add_error('montant', f'Montant maximum : {max_amount} FCFA')
+            context = self.get_context_data(reservation_id=reservation_id)
+            context['form'] = form
+            return self.render_to_response(context)
+        
+        financement.save()
+        
+        # Audit log
+        audit_log(
+            request.user,
+            financement,
+            'financing_request',
+            {
+                'montant': str(financement.montant),
+                'banque': str(financement.banque),
+                'statut': 'soumis'
+            },
+            request
+        )
+        
+        messages.success(
+            request,
+            f"✅ Demande de financement de {financement.montant} FCFA soumise ! "
+            "La banque étudiera votre dossier dans 5-10 jours."
+        )
+        
+        return redirect('client_reservation_detail', reservation_id=reservation_id)
+
+
+# ÉTAPE 8: Commercial Payment Validation View
+class CommercialPaymentValidationListView(RoleRequiredMixin, ListView):
+    """ÉTAPE 8: Commercial valide les paiements enregistrés"""
+    required_roles = ["COMMERCIAL"]
+    model = Paiement
+    template_name = 'sales/commercial_payment_validation_list.html'
+    context_object_name = 'payments'
+    paginate_by = 20
+    
+    def get_queryset(self):
+        return Paiement.objects.filter(
+            statut='enregistre'  # Only pending payments
+        ).select_related('reservation', 'reservation__client', 'reservation__unite').order_by('-created_at')
+    
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        ctx['pending_count'] = self.get_queryset().count()
+        return ctx
+
+
+class CommercialPaymentValidateView(RoleRequiredMixin, View):
+    """ÉTAPE 8: Commercial valide un paiement (enregistré -> validé)"""
+    required_roles = ["COMMERCIAL"]
+    
+    def post(self, request, paiement_id):
+        paiement = get_object_or_404(Paiement, id=paiement_id, statut='enregistre')
+        
+        # Change status to validated
+        paiement.statut = 'valide'
+        paiement.save(update_fields=['statut'])
+        
+        # Audit log
+        audit_log(
+            request.user,
+            paiement,
+            'payment_validated',
+            {'previous_status': 'enregistre', 'new_status': 'valide'},
+            request
+        )
+        
+        messages.success(
+            request,
+            f"✅ Paiement de {paiement.montant} FCFA validé ! "
+            f"Client : {paiement.reservation.client.prenom} {paiement.reservation.client.nom}"
+        )
+        
+        return redirect('commercial_payment_validation_list')
+
+
+# --- VUES BANQUE PARTENAIRE ---
+from django.urls import reverse
+from .forms_banque import BanquePartenaireForm
+
+class BanquePartenaireCreateView(RoleRequiredMixin, CreateView):
+    model = BanquePartenaire
+    form_class = BanquePartenaireForm
+    template_name = "sales/banque_partenaire_form.html"
+    required_roles = ["ADMIN", "COMMERCIAL"]
+
+    def get_success_url(self):
+        messages.success(self.request, "Banque partenaire ajoutée avec succès.")
+        return reverse("banque_partenaire_list")
+
+
+class BanquePartenaireUpdateView(RoleRequiredMixin, UpdateView):
+    model = BanquePartenaire
+    form_class = BanquePartenaireForm
+    template_name = "sales/banque_partenaire_form.html"
+    required_roles = ["ADMIN", "COMMERCIAL"]
+
+    def get_success_url(self):
+        messages.success(self.request, "Banque partenaire modifiée avec succès.")
+        return reverse("banque_partenaire_list")
+
+
+# --- VUES GESTION DES FINANCEMENTS (COMMERCIAL/ADMIN) ---
+class CommercialFinancingListView(RoleRequiredMixin, TemplateView):
+    """Liste toutes les demandes de financement pour étude par le commercial"""
+    template_name = "sales/commercial_financing_list.html"
+    required_roles = ["ADMIN", "COMMERCIAL"]
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        
+        # Filtrer par statut
+        statut = self.request.GET.get('statut', 'soumis')
+        
+        if statut == 'all':
+            financements = Financement.objects.select_related(
+                'reservation', 'reservation__client', 'reservation__unite', 'banque'
+            ).order_by('-created_at')
+        else:
+            financements = Financement.objects.filter(
+                statut=statut
+            ).select_related(
+                'reservation', 'reservation__client', 'reservation__unite', 'banque'
+            ).order_by('-created_at')
+        
+        ctx['financements'] = financements
+        ctx['statut_filter'] = statut
+        ctx['statuts'] = [
+            ('soumis', '📮 Soumis'),
+            ('en_etude', '📚 En étude'),
+            ('accepte', '✅ Accepté'),
+            ('refuse', '❌ Refusé'),
+            ('clos', '🏁 Clos'),
+            ('all', 'Tous'),
+        ]
+        
+        return ctx
+
+
+class CommercialFinancingDetailView(RoleRequiredMixin, TemplateView):
+    """Détail d'une demande de financement avec possibilité de changer le statut"""
+    template_name = "sales/commercial_financing_detail.html"
+    required_roles = ["ADMIN", "COMMERCIAL"]
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        
+        financement = get_object_or_404(
+            Financement,
+            id=kwargs['financement_id']
+        )
+        
+        ctx['financement'] = financement
+        ctx['reservation'] = financement.reservation
+        ctx['client'] = financement.reservation.client
+        ctx['unite'] = financement.reservation.unite
+        ctx['banque'] = financement.banque
+        
+        return ctx
+
+    def post(self, request, financement_id):
+        financement = get_object_or_404(Financement, id=financement_id)
+        
+        nouveau_statut = request.POST.get('statut')
+        ancien_statut = financement.statut
+        
+        if nouveau_statut not in ['soumis', 'en_etude', 'accepte', 'refuse', 'clos']:
+            messages.error(request, "Statut invalide.")
+            return redirect('commercial_financing_detail', financement_id=financement_id)
+        
+        financement.statut = nouveau_statut
+        financement.save(update_fields=['statut'])
+        
+        # Audit log
+        audit_log(
+            request.user,
+            financement,
+            'financing_status_change',
+            {'ancien_statut': ancien_statut, 'nouveau_statut': nouveau_statut},
+            request
+        )
+        
+        # Message de succès avec emoji selon le statut
+        messages_dict = {
+            'soumis': '📮 Demande remise en attente de soumission',
+            'en_etude': '📚 Demande en cours d\'étude',
+            'accepte': '✅ Demande acceptée',
+            'refuse': '❌ Demande refusée',
+            'clos': '🏁 Dossier de financement clôturé'
+        }
+        
+        messages.success(
+            request,
+            f"{messages_dict.get(nouveau_statut, 'Statut mis à jour')} - "
+            f"Client : {financement.reservation.client.prenom} {financement.reservation.client.nom}"
+        )
+        
+        return redirect('commercial_financing_detail', financement_id=financement_id)
+
+
+class BanquePartenaireListView(RoleRequiredMixin, TemplateView):
+    template_name = "sales/banque_partenaire_list.html"
+    required_roles = ["ADMIN", "COMMERCIAL"]
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        ctx["banques"] = BanquePartenaire.objects.all().order_by("nom")
+        return ctx
