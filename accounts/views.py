@@ -1,11 +1,15 @@
 from django.urls import reverse_lazy
-from django.views.generic import CreateView
+from django.views.generic import CreateView, ListView, UpdateView, DeleteView
 from django.contrib.auth.views import LoginView, LogoutView
 from django.shortcuts import redirect
-from django.contrib.auth import authenticate, login  # important
+from django.contrib.auth import authenticate, login, get_user_model
+from django.contrib import messages
 
-from .forms import LoginForm, RegisterForm
+from .forms import LoginForm, RegisterForm, UserManagementForm, UserCreationFormWithPassword
+from .mixins import RoleRequiredMixin
 from sales.utils import get_pending_unite_and_clear
+
+User = get_user_model()
 
 
 class UserLoginView(LoginView):
@@ -82,3 +86,55 @@ class RegisterView(CreateView):
     def get_success_url(self):
         # ne sera normalement pas utilisée car on fait déjà les redirects dans form_valid
         return reverse_lazy('home')
+
+
+# === Gestion des utilisateurs (ADMIN uniquement) ===
+
+class UserListView(RoleRequiredMixin, ListView):
+    """Liste des utilisateurs (ADMIN uniquement)"""
+    model = User
+    template_name = 'accounts/user_list.html'
+    context_object_name = 'users'
+    required_roles = ["ADMIN"]
+    paginate_by = 20
+
+    def get_queryset(self):
+        return User.objects.all().prefetch_related('roles').order_by('-date_joined')
+
+
+class UserCreateView(RoleRequiredMixin, CreateView):
+    """Créer un nouvel utilisateur (ADMIN uniquement)"""
+    model = User
+    form_class = UserCreationFormWithPassword
+    template_name = 'accounts/user_form.html'
+    required_roles = ["ADMIN"]
+    success_url = reverse_lazy('user_list')
+
+    def form_valid(self, form):
+        messages.success(self.request, f"Utilisateur {form.cleaned_data['username']} créé avec succès.")
+        return super().form_valid(form)
+
+
+class UserUpdateView(RoleRequiredMixin, UpdateView):
+    """Modifier un utilisateur (ADMIN uniquement)"""
+    model = User
+    form_class = UserManagementForm
+    template_name = 'accounts/user_form.html'
+    required_roles = ["ADMIN"]
+    success_url = reverse_lazy('user_list')
+
+    def form_valid(self, form):
+        messages.success(self.request, f"Utilisateur {form.cleaned_data['username']} modifié avec succès.")
+        return super().form_valid(form)
+
+
+class UserDeleteView(RoleRequiredMixin, DeleteView):
+    """Supprimer un utilisateur (ADMIN uniquement)"""
+    model = User
+    required_roles = ["ADMIN"]
+    success_url = reverse_lazy('user_list')
+
+    def post(self, request, *args, **kwargs):
+        """Suppression directe sans page de confirmation"""
+        messages.success(request, "Utilisateur supprimé avec succès.")
+        return self.delete(request, *args, **kwargs)

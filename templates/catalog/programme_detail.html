@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+
 {% block content %}
 
 <!-- Breadcrumbs -->
@@ -118,17 +119,22 @@
 {% endblock %}
 
 {% block extra_js %}
-  {% if programme.gps_lat and programme.gps_lng %}
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    <script>
+{% if programme.gps_lat and programme.gps_lng %}
+<script>
+  // Initialiser la carte après le chargement de la page
+  document.addEventListener('DOMContentLoaded', function() {
+    const mapElement = document.getElementById('programme-map');
+    if (mapElement && typeof L !== 'undefined') {
       const map = L.map('programme-map').setView([{{ programme.gps_lat }}, {{ programme.gps_lng }}], 15);
       L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         maxZoom: 19,
-        attribution: '&copy; OpenStreetMap'
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
       }).addTo(map);
       L.marker([{{ programme.gps_lat }}, {{ programme.gps_lng }}]).addTo(map)
-        .bindPopup('<strong>{{ programme.nom|escapejs }}</strong><br>{{ programme.adresse|escapejs }}');
-    </script>
-  {% endif %}
+        .bindPopup('<strong>{{ programme.nom|escapejs }}</strong><br>{{ programme.adresse|escapejs }}')
+        .openPopup();
+    }
+  });
+</script>
+{% endif %}
 {% endblock %}

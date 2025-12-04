@@ -2,15 +2,22 @@
 {% block content %}
 
 <div class="row mb-4 align-items-center">
-  <div class="col-md-8">
+  <div class="col-md-6">
     <h1 class="display-6 fw-bold">Programmes disponibles</h1>
     <p class="lead text-muted">Découvrez nos projets immobiliers de qualité au Sénégal.</p>
   </div>
-  <div class="col-md-4">
+  <div class="col-md-3">
     <form method="get" class="d-flex gap-2">
       <input type="text" name="search" class="form-control form-control-sm" placeholder="Rechercher..." value="{{ request.GET.search }}">
       <button type="submit" class="btn btn-primary btn-sm">🔍</button>
     </form>
+  </div>
+  <div class="col-md-3 text-end">
+    {% if user.is_authenticated and user.is_admin_scindongo or user.is_commercial %}
+      <a href="{% url 'programme_create' %}" class="btn btn-success">
+        ➕ Ajouter un programme
+      </a>
+    {% endif %}
   </div>
 </div>
 
@@ -49,9 +56,20 @@
               </small>
             </div>
 
-            <a href="{% url 'programme_detail' prog.pk %}" class="btn btn-primary btn-sm">
-              Voir le détail →
-            </a>
+            <div class="d-flex gap-2">
+              <a href="{% url 'programme_detail' prog.pk %}" class="btn btn-primary btn-sm">
+                Voir le détail →
+              </a>
+              {% if user.is_authenticated and user.is_admin_scindongo or user.is_commercial %}
+                <a href="{% url 'programme_edit' prog.pk %}" class="btn btn-warning btn-sm">
+                  ✏️ Modifier
+                </a>
+                <form method="post" action="{% url 'programme_delete' prog.pk %}" style="display: inline;" onsubmit="return confirm('Êtes-vous sûr de vouloir supprimer ce programme ?');">
+                  {% csrf_token %}
+                  <button type="submit" class="btn btn-danger btn-sm">🗑️ Supprimer</button>
+                </form>
+              {% endif %}
+            </div>
           </div>
         </div>
       </div>

@@ -112,7 +112,6 @@ class Financement(TimeStampedModel):
     class Meta:
         verbose_name = "Financement"
         verbose_name_plural = "Financements"
-
     def __str__(self):
         return f"{self.reservation} - {self.banque}"
 

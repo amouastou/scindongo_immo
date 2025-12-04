@@ -12,9 +12,22 @@ from .models import (
 
 @admin.register(Programme)
 class ProgrammeAdmin(admin.ModelAdmin):
-    list_display = ("nom", "statut", "adresse", "gps_lat", "gps_lng", "date_livraison_prevue", "created_at")
+    list_display = ("nom", "statut", "adresse", "contact_commercial", "date_livraison_prevue", "created_at")
     list_filter = ("statut",)
-    search_fields = ("nom", "description", "adresse", "notaire_nom", "contact_commercial_nom")
+    search_fields = ("nom", "description", "adresse", "notaire_nom", "contact_commercial__username")
+    fields = (
+        "nom",
+        "description",
+        "image_principale",
+        "adresse",
+        "gps_lat",
+        "gps_lng",
+        "notaire_nom",
+        "notaire_contact",
+        "contact_commercial",
+        "statut",
+        "date_livraison_prevue",
+    )
 
 
 @admin.register(TypeBien)

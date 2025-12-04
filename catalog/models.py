@@ -1,5 +1,6 @@
 import uuid
 from django.db import models
+from django.conf import settings
 from core.models import TimeStampedModel
 from core.choices import ProgrammeStatus, UniteStatus
 
@@ -11,6 +12,7 @@ class Programme(TimeStampedModel):
 
     nom = models.CharField(max_length=255)
     description = models.TextField(blank=True)
+    image_principale = models.ImageField(upload_to="programmes/", null=True, blank=True)
 
     # Localisation
     adresse = models.CharField(max_length=255, blank=True)
@@ -20,8 +22,14 @@ class Programme(TimeStampedModel):
     # Notaire / contact
     notaire_nom = models.CharField(max_length=255, blank=True)
     notaire_contact = models.CharField(max_length=255, blank=True)
-    contact_commercial_nom = models.CharField(max_length=255, blank=True)
-    contact_commercial_tel = models.CharField(max_length=50, blank=True)
+    contact_commercial = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="programmes",
+        limit_choices_to={"roles__code": "COMMERCIAL"}
+    )
     
     # Statut du programme
     statut = models.CharField(
