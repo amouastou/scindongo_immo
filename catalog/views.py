@@ -2,8 +2,9 @@ from django.views.generic import TemplateView, ListView, DetailView, UpdateView,
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.urls import reverse_lazy
 from django.shortcuts import redirect
+from django.contrib import messages
 from accounts.mixins import RoleRequiredMixin
-from .models import Programme, Unite
+from .models import Programme, Unite, TypeBien, ModeleBien
 from .forms import ProgrammeForm
 
 
@@ -84,3 +85,125 @@ class ProgrammeDeleteView(RoleRequiredMixin, DeleteView):
     def post(self, request, *args, **kwargs):
         """Suppression directe sans page de confirmation"""
         return self.delete(request, *args, **kwargs)
+
+
+# === Gestion des Types de biens ===
+
+class TypeBienListView(RoleRequiredMixin, ListView):
+    """Liste des types de biens (ADMIN/COMMERCIAL)"""
+    model = TypeBien
+    template_name = 'catalog/typebien_list.html'
+    context_object_name = 'types'
+    required_roles = ["ADMIN", "COMMERCIAL"]
+    paginate_by = 20
+
+
+class TypeBienCreateView(RoleRequiredMixin, CreateView):
+    """Créer un type de bien (ADMIN/COMMERCIAL)"""
+    model = TypeBien
+    template_name = 'catalog/typebien_form.html'
+    fields = ['code', 'libelle']
+    required_roles = ["ADMIN", "COMMERCIAL"]
+    success_url = reverse_lazy('typebien_list')
+
+
+class TypeBienUpdateView(RoleRequiredMixin, UpdateView):
+    """Modifier un type de bien (ADMIN/COMMERCIAL)"""
+    model = TypeBien
+    template_name = 'catalog/typebien_form.html'
+    fields = ['code', 'libelle']
+    required_roles = ["ADMIN", "COMMERCIAL"]
+    success_url = reverse_lazy('typebien_list')
+
+
+class TypeBienDeleteView(RoleRequiredMixin, DeleteView):
+    """Supprimer un type de bien (ADMIN uniquement)"""
+    model = TypeBien
+    required_roles = ["ADMIN"]
+    success_url = reverse_lazy('typebien_list')
+    
+    def post(self, request, *args, **kwargs):
+        return self.delete(request, *args, **kwargs)
+
+
+# === Gestion des Modèles de biens ===
+
+class ModeleBienListView(RoleRequiredMixin, ListView):
+    """Liste des modèles de biens (ADMIN/COMMERCIAL)"""
+    model = ModeleBien
+    template_name = 'catalog/modelebien_list.html'
+    context_object_name = 'modeles'
+    required_roles = ["ADMIN", "COMMERCIAL"]
+    paginate_by = 20
+
+
+class ModeleBienCreateView(RoleRequiredMixin, CreateView):
+    """Créer un modèle de bien (ADMIN/COMMERCIAL)"""
+    model = ModeleBien
+    template_name = 'catalog/modelebien_form.html'
+    fields = ['type_bien', 'nom_marketing', 'surface_hab_m2', 'prix_base_ttc', 'description']
+    required_roles = ["ADMIN", "COMMERCIAL"]
+    success_url = reverse_lazy('modelebien_list')
+
+
+class ModeleBienUpdateView(RoleRequiredMixin, UpdateView):
+    """Modifier un modèle de bien (ADMIN/COMMERCIAL)"""
+    model = ModeleBien
+    template_name = 'catalog/modelebien_form.html'
+    fields = ['type_bien', 'nom_marketing', 'surface_hab_m2', 'prix_base_ttc', 'description']
+    required_roles = ["ADMIN", "COMMERCIAL"]
+    success_url = reverse_lazy('modelebien_list')
+
+
+class ModeleBienDeleteView(RoleRequiredMixin, DeleteView):
+    """Supprimer un modèle de bien (ADMIN uniquement)"""
+    model = ModeleBien
+    required_roles = ["ADMIN"]
+    success_url = reverse_lazy('modelebien_list')
+    
+    def post(self, request, *args, **kwargs):
+        return self.delete(request, *args, **kwargs)
+
+
+# === Gestion des Unités ===
+
+class UniteListView(RoleRequiredMixin, ListView):
+    """Liste des unités (ADMIN/COMMERCIAL)"""
+    model = Unite
+    template_name = 'catalog/unite_list.html'
+    context_object_name = 'unites'
+    required_roles = ["ADMIN", "COMMERCIAL"]
+    paginate_by = 20
+    
+    def get_queryset(self):
+        return Unite.objects.select_related('programme', 'modele_bien', 'modele_bien__type_bien').all()
+
+
+class UniteCreateView(RoleRequiredMixin, CreateView):
+    """Créer une unité (ADMIN/COMMERCIAL)"""
+    model = Unite
+    template_name = 'catalog/unite_form.html'
+    fields = ['programme', 'modele_bien', 'reference_lot', 'prix_ttc', 'statut_disponibilite', 'gps_lat', 'gps_lng', 'image']
+    required_roles = ["ADMIN", "COMMERCIAL"]
+    success_url = reverse_lazy('unite_list')
+
+
+class UniteUpdateView(RoleRequiredMixin, UpdateView):
+    """Modifier une unité (ADMIN/COMMERCIAL)"""
+    model = Unite
+    template_name = 'catalog/unite_form.html'
+    fields = ['programme', 'modele_bien', 'reference_lot', 'prix_ttc', 'statut_disponibilite', 'gps_lat', 'gps_lng', 'image']
+    required_roles = ["ADMIN", "COMMERCIAL"]
+    success_url = reverse_lazy('unite_list')
+
+
+class UniteDeleteView(RoleRequiredMixin, DeleteView):
+    """Supprimer une unité (ADMIN uniquement)"""
+    model = Unite
+    required_roles = ["ADMIN"]
+    success_url = reverse_lazy('unite_list')
+    
+    def post(self, request, *args, **kwargs):
+        messages.success(self.request, "Unité supprimée avec succès.")
+        return self.delete(request, *args, **kwargs)
+

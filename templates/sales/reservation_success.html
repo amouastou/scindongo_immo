@@ -1,0 +1,163 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="row mb-4">
+  <div class="col-lg-8 mx-auto">
+    <!-- Succès -->
+    <div class="alert alert-success alert-dismissible fade show" role="alert">
+      <h4 class="alert-heading">✅ Réservation confirmée !</h4>
+      <p class="mb-0">Votre réservation a été enregistrée avec succès. Vous pouvez maintenant procéder aux étapes suivantes.</p>
+      <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+
+    <!-- Résumé de la réservation -->
+    <div class="card shadow-sm border-0 mb-4">
+      <div class="card-header bg-primary text-white">
+        <h5 class="mb-0">📋 Résumé de votre réservation</h5>
+      </div>
+      <div class="card-body">
+        <div class="row">
+          <div class="col-md-6">
+            <p><strong>Programme :</strong> {{ reservation.unite.programme.nom }}</p>
+            <p><strong>Lot/Unité :</strong> {{ reservation.unite.reference_lot }}</p>
+            <p><strong>Modèle :</strong> {{ reservation.unite.modele_bien.nom_marketing }}</p>
+          </div>
+          <div class="col-md-6">
+            <p><strong>Prix TTC :</strong> <span class="text-success fw-bold">{{ reservation.unite.prix_ttc|floatformat:0 }} FCFA</span></p>
+            <p><strong>Acompte versé :</strong> <span class="text-info fw-bold">{{ reservation.acompte|floatformat:0 }} FCFA</span></p>
+            <p><strong>Statut :</strong> <span class="badge bg-info">{{ reservation.get_statut_display }}</span></p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Prochaines étapes -->
+    <div class="card shadow-sm border-0">
+      <div class="card-header bg-success text-white">
+        <h5 class="mb-0">🚀 Prochaines étapes</h5>
+      </div>
+      <div class="card-body">
+        <div class="row g-3">
+          <!-- Étape 1: Financement -->
+          <div class="col-md-6">
+            <div class="card h-100 border-left-primary">
+              <div class="card-body">
+                <h6 class="card-title">💰 Étape 1 : Financement (Optionnel)</h6>
+                <p class="card-text text-muted small">Choisissez une banque partenaire pour un financement si vous le souhaitez.</p>
+                <button class="btn btn-outline-primary btn-sm" data-bs-toggle="modal" data-bs-target="#financementModal">
+                  Ajouter un financement
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Étape 2: Contrat -->
+          <div class="col-md-6">
+            <div class="card h-100 border-left-warning">
+              <div class="card-body">
+                <h6 class="card-title">📝 Étape 2 : Signer le contrat</h6>
+                <p class="card-text text-muted small">Consultez et signez votre contrat d'achat. <strong>Recommandé avant paiement.</strong></p>
+                <button class="btn btn-outline-warning btn-sm" data-bs-toggle="modal" data-bs-target="#contratModal">
+                  Voir le contrat
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Étape 3: Paiement -->
+          <div class="col-md-6">
+            <div class="card h-100 border-left-danger">
+              <div class="card-body">
+                <h6 class="card-title">💳 Étape 3 : Effectuer un paiement</h6>
+                <p class="card-text text-muted small">Vous pouvez procéder au paiement de votre acompte ou solde.</p>
+                <a href="{% url 'pay_reservation' reservation.pk %}" class="btn btn-danger btn-sm">
+                  Payer maintenant
+                </a>
+              </div>
+            </div>
+          </div>
+
+          <!-- Retour au dashboard -->
+          <div class="col-md-6">
+            <div class="card h-100 border-left-info">
+              <div class="card-body">
+                <h6 class="card-title">📊 Retour à votre espace client</h6>
+                <p class="card-text text-muted small">Retrouvez vos réservations, contrats et paiements dans votre tableau de bord.</p>
+                <a href="{% url 'client_dashboard' %}" class="btn btn-info btn-sm">
+                  Aller au dashboard
+                </a>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Informations utiles -->
+    <div class="alert alert-info mt-4">
+      <h6 class="alert-heading">ℹ️ Informations importantes</h6>
+      <ul class="mb-0">
+        <li>Votre réservation est valide pour <strong>30 jours</strong> (consultez les conditions générales)</li>
+        <li>Vous pouvez à tout moment consulter vos financements, contrats et paiements dans votre espace client</li>
+        <li>Pour modifier ou annuler votre réservation, contactez notre équipe commerciale</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Financement -->
+<div class="modal fade" id="financementModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header bg-primary text-white">
+        <h5 class="modal-title">💰 Ajouter un financement</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <form method="post" action="#">
+          {% csrf_token %}
+          <div class="mb-3">
+            <label for="selectBanque" class="form-label">Choisir une banque</label>
+            <select class="form-select" id="selectBanque">
+              <option value="">--- Sélectionner une banque ---</option>
+              {% for banque in banques %}
+                <option value="{{ banque.id }}">{{ banque.nom }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="mb-3">
+            <label for="montantFinance" class="form-label">Montant à financer (FCFA)</label>
+            <input type="number" class="form-control" id="montantFinance" value="{{ reservation.unite.prix_ttc }}" min="0">
+          </div>
+          <button type="submit" class="btn btn-primary w-100">Confirmer le financement</button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Contrat -->
+<div class="modal fade" id="contratModal" tabindex="-1">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header bg-warning text-dark">
+        <h5 class="modal-title">📝 Contrat d'achat</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <div class="alert alert-info">
+          <strong>Contrat en préparation</strong> - Un contrat signé numériquement sera généré et envoyé à votre email dans les 24 heures.
+        </div>
+        <p><strong>Détails du contrat :</strong></p>
+        <ul>
+          <li>Programme : {{ reservation.unite.programme.nom }}</li>
+          <li>Unité : {{ reservation.unite.reference_lot }}</li>
+          <li>Prix total : {{ reservation.unite.prix_ttc|floatformat:0 }} FCFA</li>
+          <li>Date de signature : En attente</li>
+        </ul>
+        <button type="button" class="btn btn-warning w-100">Signer le contrat (via email)</button>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

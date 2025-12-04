@@ -1,0 +1,61 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="row mb-4 align-items-center">
+  <div class="col-md-8">
+    <h1 class="display-6 fw-bold">📦 Types de biens</h1>
+    <p class="lead text-muted">Gérer les catégories de biens (appartement, villa, terrain, etc.)</p>
+  </div>
+  <div class="col-md-4 text-end">
+    <a href="{% url 'typebien_create' %}" class="btn btn-success">
+      ➕ Ajouter un type de bien
+    </a>
+  </div>
+</div>
+
+{% if types %}
+  <div class="card shadow-sm border-0">
+    <div class="table-responsive">
+      <table class="table table-hover mb-0">
+        <thead class="table-light">
+          <tr>
+            <th>Code</th>
+            <th>Libellé</th>
+            <th>Nb. modèles</th>
+            <th>Date création</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for type in types %}
+            <tr>
+              <td><strong>{{ type.code }}</strong></td>
+              <td>{{ type.libelle }}</td>
+              <td><span class="badge bg-info">{{ type.modeles.count }} modèle(s)</span></td>
+              <td>{{ type.created_at|date:"d/m/Y" }}</td>
+              <td>
+                <div class="d-flex gap-1">
+                  <a href="{% url 'typebien_edit' type.pk %}" class="btn btn-sm btn-warning">✏️</a>
+                  <form method="post" action="{% url 'typebien_delete' type.pk %}" style="display: inline;"
+                        onsubmit="return confirm('Supprimer ce type de bien ?');">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-sm btn-danger">🗑️</button>
+                  </form>
+                </div>
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+{% else %}
+  <div class="alert alert-info">
+    <p class="mb-0">Aucun type de bien enregistré.</p>
+  </div>
+{% endif %}
+
+<div class="mt-4">
+  <a href="{% url 'admin_dashboard' %}" class="btn btn-secondary">← Retour au dashboard</a>
+</div>
+{% endblock %}

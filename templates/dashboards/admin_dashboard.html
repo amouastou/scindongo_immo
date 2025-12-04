@@ -122,13 +122,32 @@
   <div class="col-md-6">
     <div class="card shadow-sm border-0">
       <div class="card-body">
-        <h5 class="card-title mb-3">🔧 Actions d'administration</h5>
+        <h5 class="card-title mb-3">🔧 Gestion du catalogue</h5>
+        <div class="d-grid gap-2">
+          <a href="{% url 'programme_list' %}" class="btn btn-outline-primary btn-sm">
+            🏢 Gérer les programmes
+          </a>
+          <a href="{% url 'typebien_list' %}" class="btn btn-outline-secondary btn-sm">
+            📦 Gérer les types de biens
+          </a>
+          <a href="{% url 'modelebien_list' %}" class="btn btn-outline-secondary btn-sm">
+            🏗️ Gérer les modèles de biens
+          </a>
+          <a href="{% url 'unite_list' %}" class="btn btn-outline-secondary btn-sm">
+            🏘️ Gérer les unités / lots
+          </a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-md-6">
+    <div class="card shadow-sm border-0">
+      <div class="card-body">
+        <h5 class="card-title mb-3">👥 Administration système</h5>
         <div class="d-grid gap-2">
           <a href="/admin/" class="btn btn-primary btn-sm">
             → Accéder à l'interface Django Admin
-          </a>
-          <a href="{% url 'programme_list' %}" class="btn btn-outline-primary btn-sm">
-            → Gérer les programmes
           </a>
           <a href="{% url 'user_list' %}" class="btn btn-outline-primary btn-sm">
             → Gérer les utilisateurs
@@ -137,8 +156,10 @@
       </div>
     </div>
   </div>
+</div>
 
-  <div class="col-md-6">
+<div class="row g-3 mb-5">
+  <div class="col-md-12">
     <div class="card shadow-sm border-0">
       <div class="card-body">
         <h5 class="card-title mb-3">📊 Rapports et exports</h5>

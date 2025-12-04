@@ -1,0 +1,98 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-lg-10">
+    <div class="card shadow-sm border-0">
+      <div class="card-header bg-primary text-white">
+        <h2 class="h4 mb-0">
+          {% if object %}✏️ Modifier l'unité{% else %}➕ Créer une unité{% endif %}
+        </h2>
+      </div>
+      <div class="card-body p-4">
+        <form method="post" enctype="multipart/form-data">
+          {% csrf_token %}
+          
+          <div class="row">
+            <div class="col-md-6 mb-3">
+              <label for="id_programme" class="form-label">Programme <span class="text-danger">*</span></label>
+              {{ form.programme }}
+              {% if form.programme.errors %}
+                <div class="text-danger small">{{ form.programme.errors.0 }}</div>
+              {% endif %}
+            </div>
+            <div class="col-md-6 mb-3">
+              <label for="id_modele_bien" class="form-label">Modèle de bien <span class="text-danger">*</span></label>
+              {{ form.modele_bien }}
+              {% if form.modele_bien.errors %}
+                <div class="text-danger small">{{ form.modele_bien.errors.0 }}</div>
+              {% endif %}
+            </div>
+          </div>
+
+          <div class="row">
+            <div class="col-md-4 mb-3">
+              <label for="id_reference_lot" class="form-label">Référence lot <span class="text-danger">*</span></label>
+              {{ form.reference_lot }}
+              {% if form.reference_lot.errors %}
+                <div class="text-danger small">{{ form.reference_lot.errors.0 }}</div>
+              {% endif %}
+            </div>
+            <div class="col-md-4 mb-3">
+              <label for="id_prix_ttc" class="form-label">Prix TTC (FCFA) <span class="text-danger">*</span></label>
+              {{ form.prix_ttc }}
+              {% if form.prix_ttc.errors %}
+                <div class="text-danger small">{{ form.prix_ttc.errors.0 }}</div>
+              {% endif %}
+            </div>
+            <div class="col-md-4 mb-3">
+              <label for="id_statut_disponibilite" class="form-label">Statut <span class="text-danger">*</span></label>
+              {{ form.statut_disponibilite }}
+              {% if form.statut_disponibilite.errors %}
+                <div class="text-danger small">{{ form.statut_disponibilite.errors.0 }}</div>
+              {% endif %}
+            </div>
+          </div>
+
+          <div class="row">
+            <div class="col-md-6 mb-3">
+              <label for="id_gps_lat" class="form-label">Latitude GPS</label>
+              {{ form.gps_lat }}
+              {% if form.gps_lat.errors %}
+                <div class="text-danger small">{{ form.gps_lat.errors.0 }}</div>
+              {% endif %}
+              <small class="text-muted">Ex: 14.7674957</small>
+            </div>
+            <div class="col-md-6 mb-3">
+              <label for="id_gps_lng" class="form-label">Longitude GPS</label>
+              {{ form.gps_lng }}
+              {% if form.gps_lng.errors %}
+                <div class="text-danger small">{{ form.gps_lng.errors.0 }}</div>
+              {% endif %}
+              <small class="text-muted">Ex: -17.310068</small>
+            </div>
+          </div>
+
+          <div class="mb-3">
+            <label for="id_image" class="form-label">Image de l'unité</label>
+            {% if object.image %}
+              <div class="mb-2">
+                <img src="{{ object.image.url }}" alt="Image actuelle" class="img-thumbnail" style="max-width: 200px;">
+              </div>
+            {% endif %}
+            {{ form.image }}
+            {% if form.image.errors %}
+              <div class="text-danger small">{{ form.image.errors.0 }}</div>
+            {% endif %}
+          </div>
+
+          <div class="d-flex gap-2 justify-content-end mt-4">
+            <a href="{% url 'unite_list' %}" class="btn btn-secondary">Annuler</a>
+            <button type="submit" class="btn btn-primary">💾 Enregistrer</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

@@ -10,6 +10,7 @@ from catalog.models import Unite
 from .models import Client, Reservation, Paiement
 from .forms import ReservationForm, PaiementForm
 from .utils import set_pending_unite
+from .mixins import ReservationRequiredMixin, FinancementFormMixin, ContratFormMixin, PaiementFormMixin
 from core.utils import audit_log
 
 from django.views.generic import TemplateView
@@ -149,34 +150,37 @@ class StartReservationView(View):
             reservation = form.save(commit=False)
             reservation.client = client
             reservation.unite = unite
+            reservation.statut = "en_cours"  # Statut initial
             reservation.save()
+            # Mettre à jour le statut de l'unité à "réservé"
+            unite.statut_disponibilite = "reserve"
+            unite.save(update_fields=["statut_disponibilite"])
             audit_log(request.user, reservation, "reservation_create", {"acompte": str(reservation.acompte)}, request)
-            return redirect("pay_reservation", reservation_id=reservation.id)
+            # Rediriger vers une page de confirmation, pas directement au paiement
+            return redirect("reservation_success", reservation_id=reservation.id)
         return render(request, "sales/reservation_form.html", {"form": form, "unite": unite, "client": client})
 
 
 @method_decorator(login_required(login_url='login'), name='dispatch')
-class PayReservationView(RoleRequiredMixin, View):
+class PayReservationView(ReservationRequiredMixin, PaiementFormMixin, RoleRequiredMixin, View):
     required_roles = ["CLIENT"]
 
     def get(self, request, reservation_id):
-        reservation = get_object_or_404(Reservation, id=reservation_id, client__user=request.user)
-        form = PaiementForm(initial={"montant": reservation.acompte or reservation.unite.prix_ttc})
-        return render(request, "sales/paiement_form.html", {"form": form, "reservation": reservation})
+        form = PaiementForm(initial={"montant": self.reservation.acompte or self.reservation.unite.prix_ttc})
+        return render(request, "sales/paiement_form.html", {"form": form, "reservation": self.reservation})
 
     def post(self, request, reservation_id):
-        reservation = get_object_or_404(Reservation, id=reservation_id, client__user=request.user)
         form = PaiementForm(request.POST)
         if form.is_valid():
             paiement = form.save(commit=False)
-            paiement.reservation = reservation
+            paiement.reservation = self.reservation
             paiement.source = "client"
             paiement.save()
             audit_log(request.user, paiement, "paiement_create", {"montant": str(paiement.montant)}, request)
-            reservation.statut = "confirmee"
-            reservation.save(update_fields=["statut"])
-            return render(request, "sales/paiement_success.html", {"reservation": reservation, "paiement": paiement})
-        return render(request, "sales/paiement_form.html", {"form": form, "reservation": reservation})
+            self.reservation.statut = "confirmee"
+            self.reservation.save(update_fields=["statut"])
+            return render(request, "sales/paiement_success.html", {"reservation": self.reservation, "paiement": paiement})
+        return render(request, "sales/paiement_form.html", {"form": form, "reservation": self.reservation})
 
 
 def start_reservation_or_auth(request, unite_id):
@@ -185,6 +189,24 @@ def start_reservation_or_auth(request, unite_id):
         set_pending_unite(request, unite_id)
         return redirect("login")
     return redirect("start_reservation", unite_id=unite_id)
+
+
+@method_decorator(login_required(login_url='login'), name='dispatch')
+class ReservationSuccessView(RoleRequiredMixin, TemplateView):
+    """
+    Page de confirmation après réservation.
+    Affiche les prochaines étapes : financement, contrat, paiement
+    """
+    template_name = 'sales/reservation_success.html'
+    required_roles = ["CLIENT"]
+    
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        reservation_id = self.kwargs.get('reservation_id')
+        reservation = get_object_or_404(Reservation, id=reservation_id, client__user=self.request.user)
+        ctx['reservation'] = reservation
+        ctx['banques'] = BanquePartenaire.objects.all()
+        return ctx
 
 
 class DashboardAdminView(LoginRequiredMixin, UserPassesTestMixin, TemplateView):

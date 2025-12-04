@@ -1,0 +1,66 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-lg-8">
+    <div class="card shadow-sm border-0">
+      <div class="card-header bg-primary text-white">
+        <h2 class="h4 mb-0">
+          {% if object %}✏️ Modifier le modèle{% else %}➕ Créer un modèle de bien{% endif %}
+        </h2>
+      </div>
+      <div class="card-body p-4">
+        <form method="post">
+          {% csrf_token %}
+          
+          <div class="mb-3">
+            <label for="id_type_bien" class="form-label">Type de bien <span class="text-danger">*</span></label>
+            {{ form.type_bien }}
+            {% if form.type_bien.errors %}
+              <div class="text-danger small">{{ form.type_bien.errors.0 }}</div>
+            {% endif %}
+          </div>
+
+          <div class="mb-3">
+            <label for="id_nom_marketing" class="form-label">Nom marketing <span class="text-danger">*</span></label>
+            {{ form.nom_marketing }}
+            {% if form.nom_marketing.errors %}
+              <div class="text-danger small">{{ form.nom_marketing.errors.0 }}</div>
+            {% endif %}
+          </div>
+
+          <div class="row">
+            <div class="col-md-6 mb-3">
+              <label for="id_surface_hab_m2" class="form-label">Surface habitable (m²)</label>
+              {{ form.surface_hab_m2 }}
+              {% if form.surface_hab_m2.errors %}
+                <div class="text-danger small">{{ form.surface_hab_m2.errors.0 }}</div>
+              {% endif %}
+            </div>
+            <div class="col-md-6 mb-3">
+              <label for="id_prix_base_ttc" class="form-label">Prix base TTC (FCFA) <span class="text-danger">*</span></label>
+              {{ form.prix_base_ttc }}
+              {% if form.prix_base_ttc.errors %}
+                <div class="text-danger small">{{ form.prix_base_ttc.errors.0 }}</div>
+              {% endif %}
+            </div>
+          </div>
+
+          <div class="mb-3">
+            <label for="id_description" class="form-label">Description</label>
+            {{ form.description }}
+            {% if form.description.errors %}
+              <div class="text-danger small">{{ form.description.errors.0 }}</div>
+            {% endif %}
+          </div>
+
+          <div class="d-flex gap-2 justify-content-end mt-4">
+            <a href="{% url 'modelebien_list' %}" class="btn btn-secondary">Annuler</a>
+            <button type="submit" class="btn btn-primary">💾 Enregistrer</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

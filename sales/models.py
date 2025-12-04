@@ -46,6 +46,26 @@ class Reservation(TimeStampedModel):
 
     def __str__(self):
         return f"Réservation {self.id} - {self.client}"
+    
+    def can_add_financement(self):
+        """Vérifier qu'on peut ajouter un financement (réservation doit exister)"""
+        return self.id is not None
+    
+    def can_sign_contrat(self):
+        """Vérifier qu'on peut signer le contrat (réservation doit exister)"""
+        return self.id is not None
+    
+    def can_add_paiement(self):
+        """Vérifier qu'on peut ajouter un paiement (réservation doit exister)"""
+        return self.id is not None
+    
+    def can_confirm_reservation(self):
+        """
+        Avant de confirmer la réservation, le contrat doit être signé
+        """
+        if not hasattr(self, 'contrat'):
+            return False
+        return self.contrat.statut == ContratStatus.SIGNE
 
 
 class Contrat(TimeStampedModel):
