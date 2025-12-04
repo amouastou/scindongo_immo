@@ -9,9 +9,10 @@ from django.http import Http404
 from accounts.mixins import RoleRequiredMixin
 from accounts.models import User, Role
 from catalog.models import Unite
-from .models import Client, Reservation, Paiement, Contrat, Financement, BanquePartenaire
-from .forms import ReservationForm, PaiementForm, ClientForm, FinancementForm, ContratForm, PaymentModeForm, FinancingRequestForm
+from .models import Client, Reservation, ReservationDocument, Paiement, Contrat, Financement, BanquePartenaire
+from .forms import ReservationForm, ReservationDocumentForm, PaiementForm, ClientForm, FinancementForm, ContratForm, PaymentModeForm, FinancingRequestForm
 from .utils import set_pending_unite
+from .document_services import ReservationDocumentService
 from .mixins import ReservationRequiredMixin, FinancementFormMixin, ContratFormMixin, PaiementFormMixin
 from core.utils import audit_log
 
@@ -22,6 +23,77 @@ from django.db.models import Sum
 from catalog.models import Programme, Unite
 from sales.models import Reservation, Paiement, Financement, BanquePartenaire
 
+
+# ============================
+#   RESERVATION DOCUMENTS
+# ============================
+
+
+class ReservationDocumentsUploadView(RoleRequiredMixin, TemplateView):
+    """Vue pour uploader documents lors de réservation"""
+    template_name = 'sales/reservation_documents_upload.html'
+    required_roles = ["CLIENT"]
+
+    def get_reservation(self):
+        """Récupérer la réservation du client"""
+        reservation = get_object_or_404(
+            Reservation,
+            id=self.kwargs['reservation_id'],
+            client=self.request.user.client_profile
+        )
+        return reservation
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        reservation = self.get_reservation()
+        
+        ctx['reservation'] = reservation
+        ctx['documents'] = reservation.documents.all()
+        ctx['form'] = ReservationDocumentForm()
+        
+        # Vérifier si tous docs requis sont validés
+        can_reserve, _ = ReservationDocumentService.can_make_reservation(reservation)
+        ctx['can_reserve'] = can_reserve
+        ctx['missing_documents'] = ReservationDocumentService.get_missing_documents(reservation)
+        
+        return ctx
+
+    def post(self, request, *args, **kwargs):
+        """Uploader un nouveau document"""
+        reservation = self.get_reservation()
+        form = ReservationDocumentForm(request.POST, request.FILES)
+        
+        if form.is_valid():
+            # Vérifier qu'on n'a pas déjà ce type de doc
+            existing = ReservationDocument.objects.filter(
+                reservation=reservation,
+                document_type=form.cleaned_data['document_type']
+            ).first()
+            
+            if existing:
+                existing.fichier.delete()  # Supprimer ancien fichier
+                existing.fichier = form.cleaned_data['fichier']
+                existing.statut = 'en_attente'  # Réinitialiser statut
+                existing.raison_rejet = ''
+                existing.verifie_par = None
+                existing.verifie_le = None
+                existing.save()
+                messages.success(request, f"Document '{existing.get_document_type_display()}' mis à jour")
+            else:
+                doc = form.save(commit=False)
+                doc.reservation = reservation
+                doc.save()
+                messages.success(request, f"Document '{doc.get_document_type_display()}' uploadé avec succès")
+            
+            # Log audit
+            audit_log(request.user, reservation, 'reservation_document_uploaded',
+                     {'document_type': form.cleaned_data['document_type']}, request)
+        else:
+            for field, errors in form.errors.items():
+                for error in errors:
+                    messages.error(request, f"{field}: {error}")
+        
+        return redirect('reservation_documents_upload', reservation_id=reservation.id)
 
 
 class ClientDashboardView(RoleRequiredMixin, TemplateView):

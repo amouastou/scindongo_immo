@@ -1,5 +1,5 @@
 from django import forms
-from .models import Reservation, Paiement, Client, Financement, Contrat
+from .models import Reservation, Paiement, Client, Financement, Contrat, ReservationDocument
 
 
 class ReservationForm(forms.ModelForm):
@@ -100,3 +100,43 @@ class FinancingRequestForm(forms.ModelForm):
             'banque': 'Banque partenaire',
             'montant': 'Montant de financement (FCFA)'
         }
+
+
+class ReservationDocumentForm(forms.ModelForm):
+    """Formulaire pour uploader un document de réservation"""
+    class Meta:
+        model = ReservationDocument
+        fields = ['document_type', 'fichier']
+        widgets = {
+            'document_type': forms.Select(attrs={
+                'class': 'form-select',
+                'required': True
+            }),
+            'fichier': forms.FileInput(attrs={
+                'class': 'form-control',
+                'accept': '.pdf,.jpg,.jpeg,.png',
+                'required': True
+            }),
+        }
+        labels = {
+            'document_type': 'Type de document',
+            'fichier': 'Sélectionner fichier (PDF/JPG/PNG max 5MB)'
+        }
+
+    def clean_fichier(self):
+        """Valider fichier uploadé"""
+        fichier = self.cleaned_data.get('fichier')
+        
+        if not fichier:
+            raise forms.ValidationError('Fichier requis')
+        
+        # Vérifier taille (max 5MB)
+        if fichier.size > 5 * 1024 * 1024:
+            raise forms.ValidationError('Fichier trop volumineux (maximum 5MB)')
+        
+        # Vérifier format
+        allowed_formats = ['application/pdf', 'image/jpeg', 'image/png']
+        if fichier.content_type not in allowed_formats:
+            raise forms.ValidationError('Format non autorisé. Accepté: PDF, JPG, PNG')
+        
+        return fichier
