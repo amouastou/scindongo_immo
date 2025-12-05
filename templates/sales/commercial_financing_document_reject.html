@@ -1,0 +1,109 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="container py-4">
+  <div class="row justify-content-center">
+    <div class="col-md-8">
+      <div class="card">
+        <div class="card-header bg-danger text-white">
+          <h4 class="mb-0">❌ Rejeter Document de Financement</h4>
+        </div>
+        <div class="card-body">
+          <!-- Informations du document -->
+          <div class="row mb-4">
+            <div class="col-md-6">
+              <div class="alert alert-info">
+                <strong>📄 Document :</strong><br>
+                {{ document.get_document_label }}
+              </div>
+            </div>
+            <div class="col-md-6">
+              <div class="alert alert-warning">
+                <strong>⏳ Statut actuel :</strong><br>
+                <span class="badge bg-warning text-dark p-2">{{ document.get_statut_display }}</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Aperçu du document -->
+          <div class="mb-4">
+            <h5>📸 Aperçu du document :</h5>
+            {% if document.fichier %}
+              <div class="border p-3 bg-light">
+                {% if document.fichier|stringformat:'s'|slice:"-4:" == '.pdf' or document.fichier|stringformat:'s'|slice:"-4:" == '.PDF' %}
+                  <div class="text-center">
+                    <p><i class="fas fa-file-pdf fa-3x text-danger"></i></p>
+                    <p><strong>Document PDF</strong></p>
+                    <a href="{{ document.fichier.url }}" target="_blank" class="btn btn-primary btn-sm">
+                      <i class="fas fa-download"></i> Télécharger et vérifier
+                    </a>
+                  </div>
+                {% else %}
+                  <div class="text-center">
+                    {% if document.fichier|stringformat:'s'|slice:"-4:" == '.jpg' or document.fichier|stringformat:'s'|slice:"-4:" == '.jpeg' or document.fichier|stringformat:'s'|slice:"-5:" == '.jpeg' or document.fichier|stringformat:'s'|slice:"-4:" == '.png' %}
+                      <img src="{{ document.fichier.url }}" alt="{{ document.get_document_label }}" class="img-fluid" style="max-height: 400px;">
+                    {% else %}
+                      <p class="text-muted"><i class="fas fa-file"></i> Fichier : <strong>{{ document.fichier.name }}</strong></p>
+                      <a href="{{ document.fichier.url }}" target="_blank" class="btn btn-primary btn-sm">
+                        <i class="fas fa-eye"></i> Voir le document
+                      </a>
+                    {% endif %}
+                  </div>
+                {% endif %}
+              </div>
+            {% endif %}
+          </div>
+
+          <!-- Informations client -->
+          <div class="row mb-4">
+            <div class="col-md-6">
+              <div class="card bg-light">
+                <div class="card-body">
+                  <h6 class="card-title">👤 Client</h6>
+                  <p class="mb-1"><strong>{{ reservation.client.prenom }} {{ reservation.client.nom }}</strong></p>
+                  <p class="mb-0"><small class="text-muted">{{ reservation.client.email }}</small></p>
+                </div>
+              </div>
+            </div>
+            <div class="col-md-6">
+              <div class="card bg-light">
+                <div class="card-body">
+                  <h6 class="card-title">💰 Financement</h6>
+                  <p class="mb-1"><strong>{{ financement.banque.nom }}</strong></p>
+                  <p class="mb-0"><small class="text-muted">{{ financement.montant|floatformat:0 }} FCFA</small></p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Formulaire de rejet -->
+          <form method="post" class="mb-4">
+            {% csrf_token %}
+            <div class="mb-3">
+              <label for="raison_rejet" class="form-label"><strong>Raison du rejet :</strong></label>
+              <textarea name="raison_rejet" id="raison_rejet" class="form-control" rows="5" placeholder="Expliquez au client pourquoi ce document est rejeté et ce qu'il doit corriger/renvoyer..." required></textarea>
+              <small class="form-text text-muted d-block mt-2">
+                💡 Soyez clair et précis. Le client verra ce message et devra corriger le document.
+              </small>
+            </div>
+
+            <div class="alert alert-danger">
+              <i class="fas fa-exclamation-triangle"></i> <strong>Attention!</strong><br>
+              Ce document sera marqué comme <strong>Rejeté</strong> et le client sera notifié avec la raison que vous fournissez.
+            </div>
+            
+            <div class="d-flex gap-2">
+              <button type="submit" class="btn btn-danger">
+                <i class="fas fa-times"></i> Confirmer le rejet
+              </button>
+              <a href="{% url 'commercial_financing_detail' financement.id %}" class="btn btn-secondary">
+                <i class="fas fa-arrow-left"></i> Retour
+              </a>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

@@ -1564,6 +1564,25 @@ class CommercialFinancingDetailView(RoleRequiredMixin, TemplateView):
         ctx['unite'] = financement.reservation.unite
         ctx['banque'] = financement.banque
         
+        # Ajouter les documents de financement groupés par type
+        documents = financement.documents.all().order_by('document_type', 'numero_ordre')
+        ctx['documents'] = documents
+        
+        # Compter documents validés, rejetés, en attente
+        ctx['documents_counts'] = {
+            'valide': financement.documents.filter(statut='valide').count(),
+            'rejete': financement.documents.filter(statut='rejete').count(),
+            'en_attente': financement.documents.filter(statut='en_attente').count(),
+            'total': financement.documents.count(),
+        }
+        
+        # Vérifier si tous les documents sont validés
+        ctx['all_documents_validated'] = (
+            ctx['documents_counts']['total'] > 0 and 
+            ctx['documents_counts']['en_attente'] == 0 and 
+            ctx['documents_counts']['rejete'] == 0
+        )
+        
         return ctx
 
     def post(self, request, financement_id):
@@ -1575,6 +1594,30 @@ class CommercialFinancingDetailView(RoleRequiredMixin, TemplateView):
         if nouveau_statut not in ['soumis', 'en_etude', 'accepte', 'refuse', 'clos']:
             messages.error(request, "Statut invalide.")
             return redirect('commercial_financing_detail', financement_id=financement_id)
+        
+        # Vérifier que tous les documents sont validés avant de passer en "en_etude" ou "accepte"
+        if nouveau_statut in ['en_etude', 'accepte']:
+            docs_en_attente = financement.documents.filter(statut='en_attente').count()
+            docs_rejetes = financement.documents.filter(statut='rejete').count()
+            docs_total = financement.documents.count()
+            
+            if docs_total == 0:
+                messages.error(request, "❌ Aucun document uploadé. Le client doit d'abord télécharger les documents.")
+                return redirect('commercial_financing_detail', financement_id=financement_id)
+            
+            if docs_en_attente > 0:
+                messages.error(
+                    request, 
+                    f"❌ {docs_en_attente} document(s) en attente de validation. Veuillez d'abord valider ou rejeter tous les documents."
+                )
+                return redirect('commercial_financing_detail', financement_id=financement_id)
+            
+            if docs_rejetes > 0:
+                messages.error(
+                    request, 
+                    f"❌ {docs_rejetes} document(s) rejeté(s). Le client doit corriger et renvoyer les documents."
+                )
+                return redirect('commercial_financing_detail', financement_id=financement_id)
         
         financement.statut = nouveau_statut
         financement.save(update_fields=['statut'])
