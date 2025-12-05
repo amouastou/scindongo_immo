@@ -16,6 +16,7 @@ from .utils import set_pending_unite
 from .document_services import ReservationDocumentService
 from .financing_document_service import FinancementDocumentService
 from .mixins import ReservationRequiredMixin, FinancementFormMixin, ContratFormMixin, PaiementFormMixin
+from .services.signature_service import SignatureService
 from core.utils import audit_log
 
 from django.views.generic import TemplateView
@@ -277,6 +278,10 @@ class FinancementDocumentsUploadView(RoleRequiredMixin, TemplateView):
         ctx['financement'] = financement
         ctx['reservation'] = financement.reservation
         ctx['documents'] = financement.documents.all()
+        
+        # Ajouter formulaire vierge pour GET
+        if 'form' not in ctx:
+            ctx['form'] = FinancementDocumentForm()
 
         # Vérifier si tous docs requis sont validés
         service = FinancementDocumentService()
@@ -803,6 +808,13 @@ class ClientReservationDetailView(RoleRequiredMixin, TemplateView):
         ctx['documents_rejetes'] = documents_rejetes > 0
         ctx['missing_documents'] = ReservationDocumentService.get_missing_documents(reservation)
         
+        # OTP Data for contract signing
+        if ctx['has_contrat']:
+            contrat = reservation.contrat
+            if SignatureService.otp_exists(contrat):
+                ctx['contrat_otp'] = SignatureService.get_otp(contrat)
+                ctx['otp_remaining'] = SignatureService.get_otp_remaining_time(contrat)
+        
         return ctx
 
 
@@ -999,6 +1011,13 @@ class CommercialReservationDetailView(RoleRequiredMixin, TemplateView):
         all_valid = reservation.documents.filter(statut='valide').count() == 3
         ctx['documents_complete'] = all_valid
         
+        # OTP Data for contract signing
+        if hasattr(reservation, 'contrat'):
+            contrat = reservation.contrat
+            ctx['contrat_otp_exists'] = SignatureService.otp_exists(contrat)
+            ctx['contrat_is_blocked'] = SignatureService.is_contrat_blocked(contrat)
+            ctx['contrat_otp_remaining'] = SignatureService.get_otp_remaining_time(contrat) if ctx['contrat_otp_exists'] else None
+        
         return ctx
     
     def post(self, request, *args, **kwargs):
@@ -1144,7 +1163,7 @@ class CommercialContratCreateView(RoleRequiredMixin, CreateView):
 class CommercialContratUpdateView(RoleRequiredMixin, UpdateView):
     """Mettre à jour le statut d'un contrat"""
     model = Contrat
-    fields = ['statut']
+    fields = ['pdf', 'statut']
     template_name = 'sales/commercial_contrat_update.html'
     required_roles = ["COMMERCIAL"]
     
@@ -1443,13 +1462,31 @@ class CommercialPaymentValidationListView(RoleRequiredMixin, ListView):
     paginate_by = 20
     
     def get_queryset(self):
-        return Paiement.objects.filter(
+        queryset = Paiement.objects.filter(
             statut='enregistre'  # Only pending payments
         ).select_related('reservation', 'reservation__client', 'reservation__unite').order_by('-created_at')
+        
+        # Filtrer par réservation si spécifié dans l'URL
+        reservation_id = self.request.GET.get('reservation')
+        if reservation_id:
+            queryset = queryset.filter(reservation_id=reservation_id)
+        
+        return queryset
     
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
         ctx['pending_count'] = self.get_queryset().count()
+        
+        # Ajouter info si filtré par réservation
+        reservation_id = self.request.GET.get('reservation')
+        if reservation_id:
+            try:
+                from sales.models import Reservation
+                reservation = Reservation.objects.select_related('client', 'unite').get(id=reservation_id)
+                ctx['filtered_reservation'] = reservation
+            except Reservation.DoesNotExist:
+                pass
+        
         return ctx
 
 
@@ -1706,3 +1743,195 @@ class BanquePartenaireListView(RoleRequiredMixin, TemplateView):
         ctx = super().get_context_data(**kwargs)
         ctx["banques"] = BanquePartenaire.objects.all().order_by("nom")
         return ctx
+
+
+# ============================
+#   CONTRAT OTP VIEWS
+# ============================
+
+class CommercialGenerateOTPView(RoleRequiredMixin, View):
+    """Vue pour générer un OTP de signature de contrat (Commercial)"""
+    required_roles = ["COMMERCIAL"]
+    
+    def post(self, request, *args, **kwargs):
+        """Générer OTP et rediriger"""
+        from sales.services.signature_service import SignatureService
+        from core.utils import audit_log
+        from django.utils import timezone
+        
+        try:
+            contrat = get_object_or_404(Contrat, id=kwargs['contrat_id'])
+            reservation = contrat.reservation
+            
+            # Vérifications
+            if contrat.statut != 'brouillon':
+                messages.error(request, "❌ Contrat doit être en état brouillon")
+                return redirect('commercial_reservation_detail', reservation_id=reservation.id)
+            
+            if contrat.signe_le:
+                messages.error(request, "❌ Contrat déjà signé")
+                return redirect('commercial_reservation_detail', reservation_id=reservation.id)
+            
+            if SignatureService.is_contrat_blocked(contrat):
+                messages.error(request, "❌ Trop de tentatives de signature. Réessayez dans 15 minutes")
+                return redirect('commercial_reservation_detail', reservation_id=reservation.id)
+            
+            # Générer OTP
+            otp = SignatureService.generate_otp(contrat)
+            
+            # Mettre à jour otp_generated_at
+            contrat.otp_generated_at = timezone.now()
+            contrat.save()
+            
+            # Audit log
+            audit_log(request.user, contrat, 'otp_generated', {
+                'otp': otp,
+                'generated_at': str(timezone.now())
+            }, request)
+            
+            messages.success(request, f"✅ OTP généré: {otp} (valide 5 minutes)")
+            
+        except Contrat.DoesNotExist:
+            messages.error(request, "❌ Contrat non trouvé")
+        except Exception as e:
+            messages.error(request, f"❌ Erreur: {str(e)}")
+        
+        return redirect('commercial_reservation_detail', reservation_id=reservation.id)
+
+
+class ClientSignContratView(RoleRequiredMixin, View):
+    """Vue pour que le client signe le contrat avec OTP"""
+    required_roles = ["CLIENT"]
+    template_name = 'sales/client_sign_contrat.html'
+    
+    def get_contrat_and_reservation(self, contrat_id, reservation_id):
+        """Helper pour récupérer contrat et vérifier ownership"""
+        try:
+            client = Client.objects.get(user=self.request.user)
+        except Client.DoesNotExist:
+            raise Http404("Profil client non trouvé")
+        
+        contrat = get_object_or_404(Contrat, id=contrat_id)
+        reservation = get_object_or_404(Reservation, id=reservation_id, client=client)
+        
+        if contrat != reservation.contrat:
+            raise Http404("Contrat ne correspond pas à la réservation")
+        
+        return contrat, reservation, client
+    
+    def get(self, request, *args, **kwargs):
+        """Afficher le formulaire OTP"""
+        from sales.services.signature_service import SignatureService
+        from .forms import SignContratOTPForm
+        
+        try:
+            contrat, reservation, client = self.get_contrat_and_reservation(
+                kwargs['contrat_id'],
+                kwargs['reservation_id']
+            )
+            
+            # Vérifications
+            if contrat.statut != 'brouillon':
+                messages.error(request, "❌ Contrat déjà signé")
+                return redirect('client_reservation_detail', reservation_id=reservation.id)
+            
+            # Vérifier si OTP est disponible
+            if not SignatureService.otp_exists(contrat):
+                messages.warning(request, "⏳ En attente de génération de l'OTP par le commercial")
+            
+            ctx = {
+                'contrat': contrat,
+                'reservation': reservation,
+                'client': client,
+                'form': SignContratOTPForm(),
+                'otp_remaining_seconds': SignatureService.get_otp_remaining_time(contrat) or 0,
+                'is_blocked': SignatureService.is_contrat_blocked(contrat),
+            }
+            
+            return render(request, self.template_name, ctx)
+            
+        except Http404:
+            raise
+        except Exception as e:
+            messages.error(request, f"❌ Erreur: {str(e)}")
+            return redirect('client_reservation_detail', reservation_id=kwargs.get('reservation_id', ''))
+    
+    def post(self, request, *args, **kwargs):
+        """Traiter la signature OTP"""
+        from sales.services.signature_service import SignatureService
+        from .forms import SignContratOTPForm
+        from core.utils import get_client_ip
+        
+        try:
+            contrat, reservation, client = self.get_contrat_and_reservation(
+                kwargs['contrat_id'],
+                kwargs['reservation_id']
+            )
+            
+            form = SignContratOTPForm(request.POST)
+            
+            if not form.is_valid():
+                ctx = {
+                    'contrat': contrat,
+                    'reservation': reservation,
+                    'client': client,
+                    'form': form,
+                    'otp_remaining_seconds': SignatureService.get_otp_remaining_time(contrat) or 0,
+                    'is_blocked': SignatureService.is_contrat_blocked(contrat),
+                }
+                return render(request, self.template_name, ctx)
+            
+            otp_provided = form.cleaned_data['otp']
+            
+            # Vérifier si contrat est bloqué
+            if SignatureService.is_contrat_blocked(contrat):
+                messages.error(request, "❌ Trop de tentatives. Contactez le commercial pour réessayer")
+                return redirect('client_sign_contrat', reservation_id=reservation.id, contrat_id=contrat.id)
+            
+            # Vérifier l'OTP
+            is_valid, message = SignatureService.verify_otp(contrat, otp_provided)
+            
+            if is_valid:
+                # Signer le contrat
+                contrat.statut = 'signe'
+                contrat.signe_le = timezone.now()
+                
+                # Remplir otp_logs
+                if not contrat.otp_logs:
+                    contrat.otp_logs = {}
+                
+                contrat.otp_logs['signature'] = {
+                    'timestamp': str(timezone.now()),
+                    'ip': get_client_ip(request),
+                    'user_agent': request.META.get('HTTP_USER_AGENT', ''),
+                    'otp_generated_at': str(contrat.otp_generated_at) if contrat.otp_generated_at else None,
+                    'client_email': client.email,
+                }
+                
+                contrat.save()
+                
+                # Audit log
+                audit_log(request.user, contrat, 'contrat_signed', {
+                    'signed_at': str(timezone.now()),
+                    'client_email': client.email,
+                }, request)
+                
+                messages.success(request, f"✅ Contrat signé avec succès le {timezone.now().strftime('%d/%m/%Y %H:%M')}")
+                return redirect('client_reservation_detail', reservation_id=reservation.id)
+            else:
+                # OTP incorrect
+                messages.error(request, f"❌ {message}")
+                
+                # Audit log d'échec
+                audit_log(request.user, contrat, 'contrat_signature_failed', {
+                    'reason': message,
+                    'is_blocked': SignatureService.is_contrat_blocked(contrat),
+                }, request)
+                
+                return redirect('client_sign_contrat', reservation_id=reservation.id, contrat_id=contrat.id)
+        
+        except Http404:
+            raise
+        except Exception as e:
+            messages.error(request, f"❌ Erreur: {str(e)}")
+            return redirect('client_reservation_detail', reservation_id=kwargs.get('reservation_id', ''))

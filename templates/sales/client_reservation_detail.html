@@ -441,6 +441,76 @@
         </div>
     {% endif %}
 
+    <!-- OTP Signature Section -->
+    {% if has_contrat and contrat_otp %}
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="card border-success">
+                    <div class="card-header bg-success text-white">
+                        <h5 class="mb-0">🔐 Code OTP - Signature Sécurisée</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="alert alert-info" role="alert">
+                            <i class="fas fa-info-circle"></i> 
+                            Utilisez ce code OTP pour signer votre contrat de manière sécurisée.
+                        </div>
+                        <div class="row align-items-center">
+                            <div class="col-md-4">
+                                <div class="text-center p-3 bg-light border rounded">
+                                    <small class="text-muted d-block">Votre code OTP</small>
+                                    <div class="h3 font-monospace font-weight-bold" style="letter-spacing: 8px; font-size: 2rem; font-family: 'Courier New', monospace;">
+                                        {{ contrat_otp }}
+                                    </div>
+                                    <small class="text-danger d-block mt-2">
+                                        <i class="fas fa-clock"></i> 
+                                        Valide pendant <span id="otp-timer">5:00</span>
+                                    </small>
+                                </div>
+                            </div>
+                            <div class="col-md-8">
+                                <div class="alert alert-warning" role="alert">
+                                    <strong><i class="fas fa-exclamation-triangle"></i> Importante:</strong>
+                                    <ul class="mb-0 mt-2">
+                                        <li>Gardez ce code secret et ne le partagez avec personne</li>
+                                        <li>Vous disposez de <strong>3 tentatives</strong> pour entrer le code correctement</li>
+                                        <li>Une fois le code utilisé, il sera invalidé</li>
+                                        <li>Valide pendant 5 minutes à partir de sa génération</li>
+                                    </ul>
+                                </div>
+                                <a href="{% url 'client_sign_contrat' reservation.id reservation.contrat.id %}" class="btn btn-success">
+                                    <i class="fas fa-pen-fancy"></i> Signer le contrat avec OTP
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <script>
+            document.addEventListener('DOMContentLoaded', function() {
+                // OTP Timer
+                const otpRemaining = {% if otp_remaining %}{{ otp_remaining }}{% else %}300{% endif %};
+                let timeLeft = otpRemaining;
+                const timerElement = document.getElementById('otp-timer');
+                
+                function updateTimer() {
+                    const minutes = Math.floor(timeLeft / 60);
+                    const seconds = timeLeft % 60;
+                    timerElement.textContent = minutes + ':' + (seconds < 10 ? '0' : '') + seconds;
+                    
+                    if (timeLeft > 0) {
+                        timeLeft--;
+                        setTimeout(updateTimer, 1000);
+                    } else {
+                        timerElement.parentElement.innerHTML = '<strong class="text-danger">Code expiré - Demandez un nouveau code OTP</strong>';
+                    }
+                }
+                updateTimer();
+            });
+        </script>
+    {% endif %}
+
     <!-- Détails Contrat -->
     {% if has_contrat %}
         <div class="collapse" id="contratDetails">

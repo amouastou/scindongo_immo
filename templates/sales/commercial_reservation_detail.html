@@ -317,7 +317,7 @@
 
                         <!-- Valider Paiements -->
                         <div class="col-md-6 mb-3">
-                            <a href="{% url 'commercial_payment_validation_list' %}" class="btn btn-lg btn-info w-100">
+                            <a href="{% url 'commercial_payment_validation_list' %}?reservation={{ reservation.id }}" class="btn btn-lg btn-info w-100">
                                 <i class="fas fa-check-double"></i><br>
                                 Valider les Paiements
                             </a>
@@ -402,9 +402,25 @@
                                 </tr>
                             {% endif %}
                         </table>
-                        <a href="{% url 'commercial_contrat_update' reservation.id %}" class="btn btn-sm btn-outline-warning">
-                            <i class="fas fa-edit"></i> Mettre à jour
-                        </a>
+                        
+                        <!-- Boutons OTP -->
+                        {% if reservation.contrat.statut == 'brouillon' %}
+                            <div class="d-flex gap-2">
+                                <form method="post" action="{% url 'commercial_generate_otp' reservation.contrat.id %}" style="display:inline;">
+                                    {% csrf_token %}
+                                    <button type="submit" class="btn btn-sm btn-success">
+                                        <i class="fas fa-lock"></i> Générer OTP
+                                    </button>
+                                </form>
+                                <a href="{% url 'commercial_contrat_update' reservation.id %}" class="btn btn-sm btn-outline-warning">
+                                    <i class="fas fa-edit"></i> Mettre à jour
+                                </a>
+                            </div>
+                        {% else %}
+                            <a href="{% url 'commercial_contrat_update' reservation.id %}" class="btn btn-sm btn-outline-warning">
+                                <i class="fas fa-edit"></i> Mettre à jour
+                            </a>
+                        {% endif %}
                     </div>
                 </div>
             </div>

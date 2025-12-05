@@ -80,6 +80,7 @@ class Contrat(TimeStampedModel):
     signe_le = models.DateTimeField(null=True, blank=True)
     pdf_hash = models.CharField(max_length=128, blank=True)
     otp_logs = models.JSONField(default=dict, blank=True)
+    otp_generated_at = models.DateTimeField(null=True, blank=True, help_text="Date et heure de génération du dernier OTP")
 
     class Meta:
         verbose_name = "Contrat"

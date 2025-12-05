@@ -79,6 +79,29 @@ AUTH_PASSWORD_VALIDATORS = [
     {'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator'},
 ]
 
+# ==========================================
+# CACHE CONFIGURATION - Redis for OTP System
+# ==========================================
+CACHES = {
+    'default': {
+        'BACKEND': 'django_redis.cache.RedisCache',
+        'LOCATION': os.environ.get('REDIS_URL', 'redis://127.0.0.1:6379/0'),
+        'OPTIONS': {
+            'CLIENT_CLASS': 'django_redis.client.DefaultClient',
+        },
+        'KEY_PREFIX': 'scindongo',
+        'TIMEOUT': 300,  # Default timeout 5 minutes
+    }
+}
+
+# OTP Configuration Constants
+CONTRAT_OTP_EXPIRY = 300  # 5 minutes
+CONTRAT_OTP_MAX_ATTEMPTS = 3
+CONTRAT_OTP_BLOCK_DURATION = 900  # 15 minutes
+
+# ==========================================
+# LOCALIZATION
+# ==========================================
 LANGUAGE_CODE = 'fr-fr'
 TIME_ZONE = 'Africa/Dakar'
 USE_I18N = True

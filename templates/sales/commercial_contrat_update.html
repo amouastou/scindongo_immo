@@ -22,8 +22,26 @@
                         {% endif %}
                     </div>
 
-                    <form method="post" class="needs-validation">
+                    <form method="post" enctype="multipart/form-data" class="needs-validation">
                         {% csrf_token %}
+                        
+                        <div class="mb-3">
+                            <label for="{{ form.pdf.id_for_label }}" class="form-label">📄 Document PDF du Contrat</label>
+                            {{ form.pdf }}
+                            <small class="form-text text-muted d-block mt-1">
+                                Uploadez le fichier PDF du contrat signé (max 60 MB)
+                            </small>
+                            {% if form.pdf.errors %}
+                                <div class="text-danger small">{{ form.pdf.errors.0 }}</div>
+                            {% endif %}
+                            {% if object.pdf %}
+                                <div class="alert alert-info mt-2">
+                                    <i class="fas fa-file-pdf"></i> 
+                                    <strong>Fichier actuel:</strong> 
+                                    <a href="{{ object.pdf.url }}" target="_blank">{{ object.pdf.name }}</a>
+                                </div>
+                            {% endif %}
+                        </div>
                         
                         <div class="mb-3">
                             <label for="{{ form.statut.id_for_label }}" class="form-label">Statut du Contrat</label>

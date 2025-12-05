@@ -41,6 +41,9 @@ from .views import (
     # Financing Management views
     CommercialFinancingListView,
     CommercialFinancingDetailView,
+    # OTP Contract Signature views
+    CommercialGenerateOTPView,
+    ClientSignContratView,
 )
 
 urlpatterns = [
@@ -92,6 +95,10 @@ urlpatterns = [
     path('commercial/reservations/<uuid:reservation_id>/paiement/creer/', CommercialPaiementCreateView.as_view(), name='commercial_paiement_create'),
     path('commercial/paiements/validation/', CommercialPaymentValidationListView.as_view(), name='commercial_payment_validation_list'),
     path('commercial/paiements/<uuid:paiement_id>/valider/', CommercialPaymentValidateView.as_view(), name='commercial_payment_validate'),
+    
+    # OTP Contract Signature
+    path('contrats/<uuid:contrat_id>/generate-otp/', CommercialGenerateOTPView.as_view(), name='commercial_generate_otp'),
+    path('reservations/<uuid:reservation_id>/contrats/<uuid:contrat_id>/sign/', ClientSignContratView.as_view(), name='client_sign_contrat'),
     
     # Banques partenaires
     path('banques/', BanquePartenaireListView.as_view(), name='banque_partenaire_list'),
