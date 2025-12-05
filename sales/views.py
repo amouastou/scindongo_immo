@@ -392,27 +392,27 @@ class FinancementDocumentModifyView(RoleRequiredMixin, TemplateView):
         form = FinancementDocumentUpdateForm(request.POST, request.FILES, instance=doc)
         
         if form.is_valid():
-            # Supprimer l'ancien fichier avant de sauvegarder le nouveau
-            old_file = doc.fichier
-            if old_file:
-                old_file.delete(save=False)
-            
-            # Sauvegarder le formulaire (qui va uploader le nouveau fichier)
-            updated_doc = form.save(commit=False)
-            updated_doc.statut = 'en_attente'  # Réinitialiser statut
-            updated_doc.raison_rejet = ''
-            updated_doc.verifie_par = None
-            updated_doc.verifie_le = None
-            updated_doc.save()
-            
-            messages.success(request, f"✅ Document '{updated_doc.get_document_type_display()}' mis à jour avec succès!")
-            
-            # Log audit
-            audit_log(request.user, updated_doc, 'financing_document_updated',
-                     {'document_type': updated_doc.document_type}, request)
-            
-            # Rediriger vers page financements du client
-            return redirect('financing_documents_upload', financement_id=updated_doc.financement.id)
+            # Django va automatiquement remplacer l'ancien fichier
+            # Il faut juste s'assurer que le nouveau fichier est bien présent
+            if 'fichier' in request.FILES:
+                # Sauvegarder le formulaire qui va uploader le nouveau fichier
+                updated_doc = form.save(commit=False)
+                updated_doc.statut = 'en_attente'  # Réinitialiser statut
+                updated_doc.raison_rejet = ''
+                updated_doc.verifie_par = None
+                updated_doc.verifie_le = None
+                updated_doc.save()
+                
+                messages.success(request, f"✅ Document '{updated_doc.get_document_label()}' mis à jour avec succès!")
+                
+                # Log audit
+                audit_log(request.user, updated_doc, 'financing_document_updated',
+                         {'document_type': updated_doc.document_type}, request)
+                
+                # Rediriger vers page financements du client
+                return redirect('financing_documents_upload', financement_id=updated_doc.financement.id)
+            else:
+                messages.error(request, "Veuillez sélectionner un fichier à uploader")
         else:
             for field, errors in form.errors.items():
                 for error in errors:

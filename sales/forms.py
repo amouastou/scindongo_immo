@@ -163,9 +163,9 @@ class FinancementDocumentForm(forms.ModelForm):
         if not fichier:
             raise forms.ValidationError('Fichier requis')
         
-        # Vérifier taille (max 5MB)
-        if fichier.size > 5 * 1024 * 1024:
-            raise forms.ValidationError('Fichier trop volumineux (maximum 5MB)')
+        # Vérifier taille (max 60MB pour permettre les brochures volumineuses)
+        if fichier.size > 60 * 1024 * 1024:
+            raise forms.ValidationError('Fichier trop volumineux (maximum 60MB)')
         
         # Vérifier format
         allowed_formats = ['application/pdf', 'image/jpeg', 'image/png']
@@ -188,15 +188,15 @@ class FinancementDocumentUpdateForm(forms.ModelForm):
             }),
         }
         labels = {
-            'fichier': 'Nouveau fichier (PDF/JPG/PNG max 5MB)'
+            'fichier': 'Nouveau fichier (PDF/JPG/PNG max 60MB)'
         }
 
     def clean_fichier(self):
         fichier = self.cleaned_data.get('fichier')
         if not fichier:
             raise forms.ValidationError('Fichier requis')
-        if fichier.size > 5 * 1024 * 1024:
-            raise forms.ValidationError('Fichier trop volumineux (maximum 5MB)')
+        if fichier.size > 60 * 1024 * 1024:
+            raise forms.ValidationError('Fichier trop volumineux (maximum 60MB)')
         allowed_formats = ['application/pdf', 'image/jpeg', 'image/png']
         if fichier.content_type not in allowed_formats:
             raise forms.ValidationError('Format non autorisé. Accepté: PDF, JPG, PNG')

@@ -112,6 +112,11 @@ SIMPLE_JWT = {
 SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 SESSION_COOKIE_SECURE = False  # à passer à True en prod
 CSRF_COOKIE_SECURE = False     # à passer à True en prod
+
+# File Upload Settings - Allow up to 60MB for large documents like brochures
+DATA_UPLOAD_MAX_MEMORY_SIZE = 62914560  # 60MB in bytes
+FILE_UPLOAD_MAX_MEMORY_SIZE = 62914560  # 60MB in bytes
+
 # ----- PATCH ÉTAPE 6 -----
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:3000",
