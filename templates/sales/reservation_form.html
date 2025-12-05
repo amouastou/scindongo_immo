@@ -1,17 +1,175 @@
 {% extends 'base.html' %}
 {% load form_tags %}
-{% block content %}
 
-<h1 class="mb-3">Réserver le lot {{ unite.reference_lot }}</h1>
-<p><strong>Programme :</strong> {{ unite.programme.nom }}</p>
-<p><strong>Prix TTC :</strong> {{ unite.prix_ttc }} FCFA</p>
-<hr>
-<form method="post">
-  {% csrf_token %}
-  <div class="mb-3">
-    <label class="form-label">Acompte (FCFA)</label>
-    <input type="number" name="acompte" class="form-control" required min="0">
-  </div>
-  <button type="submit" class="btn btn-success">Valider la réservation</button>
-</form>
+{% block title %}Réserver - {{ unite.reference_lot }}{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="row">
+        <div class="col-lg-10 mx-auto">
+
+            <!-- En-tête -->
+            <div class="card mb-4 border-primary">
+                <div class="card-header bg-primary text-white">
+                    <h4 class="mb-0">📋 Réserver le lot {{ unite.reference_lot }}</h4>
+                </div>
+                <div class="card-body">
+                    <dl class="row">
+                        <dt class="col-sm-3">Programme:</dt>
+                        <dd class="col-sm-9"><strong>{{ unite.programme.nom }}</strong></dd>
+
+                        <dt class="col-sm-3">Bien:</dt>
+                        <dd class="col-sm-9">{{ unite.modele_bien.nom }} - {{ unite.surface_habitable }}m²</dd>
+
+                        <dt class="col-sm-3">Prix TTC:</dt>
+                        <dd class="col-sm-9"><strong class="text-success">{{ unite.prix_ttc|floatformat:0|add:"0" }} FCFA</strong></dd>
+                    </dl>
+                </div>
+            </div>
+
+            <!-- Messages -->
+            {% if messages %}
+                {% for message in messages %}
+                    <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                        {{ message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                    </div>
+                {% endfor %}
+            {% endif %}
+
+            <!-- Formulaire Réservation + Documents -->
+            <form method="post" enctype="multipart/form-data" class="needs-validation" novalidate>
+                {% csrf_token %}
+
+                <!-- Section 1: Acompte -->
+                <div class="card mb-4">
+                    <div class="card-header bg-info text-white">
+                        <h5 class="mb-0">💰 Montant</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="mb-3">
+                            <label for="id_acompte" class="form-label">Acompte à verser (FCFA)</label>
+                            <input 
+                                type="number" 
+                                id="id_acompte"
+                                name="acompte" 
+                                class="form-control form-control-lg" 
+                                placeholder="Exemple: 5000000"
+                                required 
+                                min="0"
+                                step="1"
+                            >
+                            <small class="form-text text-muted">Le montant doit être supérieur à 0</small>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Section 2: Documents -->
+                <div class="card mb-4">
+                    <div class="card-header bg-warning text-dark">
+                        <h5 class="mb-0">📄 Documents requis</h5>
+                    </div>
+                    <div class="card-body">
+                        <p class="alert alert-info">
+                            <strong>⚠️ Important:</strong> Vous devez uploader <strong>3 documents obligatoires</strong> pour valider votre réservation.
+                        </p>
+
+                        <!-- CNI -->
+                        <div class="mb-4">
+                            <h6 class="d-flex align-items-center gap-2">
+                                <span class="badge bg-primary">1</span>
+                                CNI (Carte d'Identité Nationale)
+                            </h6>
+                            <p class="text-muted small">Scan ou photo de votre CNI</p>
+                            <input 
+                                type="file" 
+                                name="document_cni" 
+                                class="form-control"
+                                accept=".pdf,.jpg,.jpeg,.png"
+                                required
+                                data-doc-type="cni"
+                            >
+                            <small class="form-text text-muted">Format: PDF, JPG, PNG | Max 5MB</small>
+                        </div>
+
+                        <!-- Photo -->
+                        <div class="mb-4">
+                            <h6 class="d-flex align-items-center gap-2">
+                                <span class="badge bg-primary">2</span>
+                                Photo (Selfie ou portrait)
+                            </h6>
+                            <p class="text-muted small">Votre photo d'identité ou selfie</p>
+                            <input 
+                                type="file" 
+                                name="document_photo" 
+                                class="form-control"
+                                accept=".pdf,.jpg,.jpeg,.png"
+                                required
+                                data-doc-type="photo"
+                            >
+                            <small class="form-text text-muted">Format: PDF, JPG, PNG | Max 5MB</small>
+                        </div>
+
+                        <!-- Résidence -->
+                        <div class="mb-4">
+                            <h6 class="d-flex align-items-center gap-2">
+                                <span class="badge bg-primary">3</span>
+                                Preuve de résidence
+                            </h6>
+                            <p class="text-muted small">Facture d'eau, électricité, internet, loyer, etc.</p>
+                            <input 
+                                type="file" 
+                                name="document_residence" 
+                                class="form-control"
+                                accept=".pdf,.jpg,.jpeg,.png"
+                                required
+                                data-doc-type="residence"
+                            >
+                            <small class="form-text text-muted">Format: PDF, JPG, PNG | Max 5MB</small>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Boutons action -->
+                <div class="d-flex gap-2 mb-4">
+                    <button type="submit" class="btn btn-success btn-lg">
+                        <i class="bi bi-check-circle"></i> Valider la réservation
+                    </button>
+                    <a href="{% url 'home' %}" class="btn btn-secondary btn-lg">
+                        <i class="bi bi-x-circle"></i> Annuler
+                    </a>
+                </div>
+
+                <!-- Info disclaimer -->
+                <div class="alert alert-secondary small">
+                    <strong>ℹ️ À retenir:</strong>
+                    <ul class="mb-0 mt-2">
+                        <li>Tous les documents doivent être <strong>clairs et lisibles</strong></li>
+                        <li>Vos documents seront <strong>vérifiés par nos équipes</strong></li>
+                        <li>Une fois validés, vous pourrez <strong>procéder au paiement</strong></li>
+                        <li>En cas de rejet, vous pouvez <strong>re-soumettre</strong> les documents</li>
+                        <li>Vos documents sont <strong>sécurisés et confidentiels</strong></li>
+                    </ul>
+                </div>
+            </form>
+
+        </div>
+    </div>
+</div>
+
+<style>
+    .card-header h5, .card-header h6 {
+        margin-bottom: 0;
+    }
+    input[type="file"] {
+        padding: 8px 12px;
+    }
+    .badge {
+        font-size: 0.9rem;
+        min-width: 24px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+    }
+</style>
 {% endblock %}

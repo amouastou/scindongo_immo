@@ -1,0 +1,279 @@
+{% extends 'base.html' %}
+
+{% block title %}Documents de Financement{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="row">
+        <div class="col-lg-8 mx-auto">
+            
+            <!-- En-tête avec infos bien -->
+            <div class="card mb-4 border-info">
+                <div class="card-header bg-info text-white">
+                    <h5 class="mb-0">🏦 Financement - {{ financement.reservation.unite.reference }}</h5>
+                </div>
+                <div class="card-body">
+                    <dl class="row">
+                        <dt class="col-sm-4">Réservation:</dt>
+                        <dd class="col-sm-8">{{ financement.reservation.unite.programme.nom }}</dd>
+                        
+                        <dt class="col-sm-4">Unité:</dt>
+                        <dd class="col-sm-8">{{ financement.reservation.unite.reference }}</dd>
+                        
+                        <dt class="col-sm-4">Montant à financer:</dt>
+                        <dd class="col-sm-8">{{ financement.montant|floatformat:0|add:"0" }} FCFA</dd>
+                        
+                        <dt class="col-sm-4">Banque:</dt>
+                        <dd class="col-sm-8">{{ financement.banque.nom }}</dd>
+                    </dl>
+                </div>
+            </div>
+
+            <!-- Status documents -->
+            <div class="card mb-4">
+                <div class="card-header {% if docs_complete %}bg-success{% else %}bg-warning{% endif %} text-white">
+                    <h5 class="mb-0">
+                        {% if docs_complete %}
+                            ✅ Tous les documents uploadés et validés
+                        {% else %}
+                            ⚠️ Documents incomplets
+                        {% endif %}
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-sm">
+                            <thead>
+                                <tr>
+                                    <th>Type de document</th>
+                                    <th>Statut</th>
+                                    <th>Date upload</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for doc in documents %}
+                                    <tr>
+                                        <td>
+                                            <strong>{{ doc.get_document_label }}</strong>
+                                        </td>
+                                        <td>
+                                            {% if doc.statut == 'valide' %}
+                                                <span class="badge bg-success">✅ Validé</span>
+                                            {% elif doc.statut == 'rejete' %}
+                                                <span class="badge bg-danger">❌ Rejeté</span>
+                                                {% if doc.raison_rejet %}
+                                                    <small class="d-block text-danger mt-1">{{ doc.raison_rejet }}</small>
+                                                {% endif %}
+                                            {% else %}
+                                                <span class="badge bg-warning text-dark">⏳ En attente</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            {% if doc.created_at %}
+                                                {{ doc.created_at|date:"d/m/Y H:i" }}
+                                            {% else %}
+                                                -
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            {% if doc.statut != 'valide' %}
+                                                <a href="{% url 'financing_document_modify' doc.id %}" class="btn btn-sm btn-warning" title="Modifier le document">
+                                                    <i class="fas fa-edit"></i>
+                                                </a>
+                                            {% endif %}
+                                        </td>
+                                    </tr>
+                                {% empty %}
+                                    <tr>
+                                        <td colspan="4" class="text-center text-muted">Aucun document uploadé</td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- Documents manquants -->
+                    {% if not docs_complete %}
+                        <div class="alert alert-info mt-3">
+                            <strong>📝 Documents à uploader:</strong>
+                            <ul class="mb-0 mt-2">
+                                {% for missing in missing_documents %}
+                                    <li>
+                                        <i class="fas fa-circle-notch text-info"></i>
+                                        {{ missing }}
+                                    </li>
+                                {% endfor %}
+                            </ul>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Formulaire upload -->
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0">📤 Télécharger un document</h5>
+                </div>
+                <div class="card-body">
+                    {% if messages %}
+                        {% for message in messages %}
+                            <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                                {{ message }}
+                                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                            </div>
+                        {% endfor %}
+                    {% endif %}
+
+                    <form method="post" enctype="multipart/form-data" class="needs-validation" novalidate>
+                        {% csrf_token %}
+                        
+                        <div class="mb-3">
+                            <label for="id_document_type" class="form-label">
+                                <strong>{{ form.document_type.label_tag }}</strong>
+                            </label>
+                            {{ form.document_type }}
+                            {% if form.document_type.errors %}
+                                <div class="invalid-feedback d-block">{{ form.document_type.errors }}</div>
+                            {% endif %}
+                            <small class="form-text text-muted d-block mt-1">
+                                Sélectionnez le type de document à télécharger
+                            </small>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="id_fichier" class="form-label">
+                                <strong>{{ form.fichier.label_tag }}</strong>
+                            </label>
+                            {{ form.fichier }}
+                            {% if form.fichier.errors %}
+                                <div class="invalid-feedback d-block">{{ form.fichier.errors }}</div>
+                            {% endif %}
+                            <small class="form-text text-muted d-block mt-1">
+                                Formats acceptés: PDF, JPG, PNG | Taille max: 5MB
+                            </small>
+                        </div>
+
+                        {% if form.non_field_errors %}
+                            <div class="alert alert-danger">
+                                {% for error in form.non_field_errors %}
+                                    <div>{{ error }}</div>
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+
+                        <div class="d-flex gap-2">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-cloud-upload"></i> Télécharger le document
+                            </button>
+                            <a href="{% url 'client_reservation_detail' financement.reservation.id %}" class="btn btn-secondary">
+                                Retour à la réservation
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Info complément -->
+            <div class="alert alert-secondary mt-4">
+                <strong>ℹ️ À savoir:</strong>
+                <ul class="mb-0 mt-2">
+                    <li>Vous devez télécharger <strong>5 documents</strong>: Brochure, CNI, Bulletin de salaire, RIB/IBAN, Attestation d'employeur</li>
+                    <li>Chaque document doit être <strong>validé par le commercial</strong> avant d'être envoyé à la banque</li>
+                    <li>Une fois tous les documents validés, votre dossier sera <strong>transmis à la banque</strong></li>
+                    <li>En cas de rejet, vous pouvez <strong>re-télécharger</strong> le document corrigé</li>
+                    <li>Le délai d'étude bancaire est généralement de <strong>5 à 10 jours</strong></li>
+                </ul>
+            </div>
+
+            <!-- Document Type Info -->
+            <div class="card border-light mt-4">
+                <div class="card-header bg-light">
+                    <h6 class="mb-0">📋 Détails des documents requis</h6>
+                </div>
+                <div class="card-body">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <div class="card border-left border-danger h-100">
+                                <div class="card-body">
+                                    <h6 class="card-title">
+                                        <i class="fas fa-file-pdf text-danger"></i> Brochure du Programme
+                                    </h6>
+                                    <small class="text-muted">Plaquette commerciale ou brochure du projet immobilier</small>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="card border-left border-info h-100">
+                                <div class="card-body">
+                                    <h6 class="card-title">
+                                        <i class="fas fa-id-card text-info"></i> Carte d'Identité
+                                    </h6>
+                                    <small class="text-muted">Copie recto-verso de votre CNI valide</small>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="card border-left border-success h-100">
+                                <div class="card-body">
+                                    <h6 class="card-title">
+                                        <i class="fas fa-file-excel text-success"></i> Bulletin de Salaire
+                                    </h6>
+                                    <small class="text-muted">3 derniers bulletins de salaire ou relevés de revenus</small>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="card border-left border-warning h-100">
+                                <div class="card-body">
+                                    <h6 class="card-title">
+                                        <i class="fas fa-university text-warning"></i> RIB ou IBAN
+                                    </h6>
+                                    <small class="text-muted">Relevé d'identité bancaire actualisé</small>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-12">
+                            <div class="card border-left border-success h-100">
+                                <div class="card-body">
+                                    <h6 class="card-title">
+                                        <i class="fas fa-certificate text-success"></i> Attestation d'Employeur
+                                    </h6>
+                                    <small class="text-muted">Certificat de travail, lettre d'attestation d'emploi ou fiche de paie</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+<style>
+    .border-left {
+        border-left: 4px solid;
+    }
+    .border-danger {
+        border-left-color: #dc3545 !important;
+    }
+    .border-info {
+        border-left-color: #0dcaf0 !important;
+    }
+    .border-success {
+        border-left-color: #198754 !important;
+    }
+    .border-warning {
+        border-left-color: #ffc107 !important;
+    }
+    .table-responsive {
+        border-radius: 0.25rem;
+    }
+    code {
+        background-color: #f5f5f5;
+        padding: 0.2rem 0.4rem;
+        border-radius: 0.25rem;
+    }
+</style>
+{% endblock %}

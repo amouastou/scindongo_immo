@@ -1,5 +1,5 @@
 from django import forms
-from .models import Reservation, Paiement, Client, Financement, Contrat, ReservationDocument
+from .models import Reservation, Paiement, Client, Financement, Contrat, ReservationDocument, FinancementDocument
 
 
 class ReservationForm(forms.ModelForm):
@@ -139,4 +139,65 @@ class ReservationDocumentForm(forms.ModelForm):
         if fichier.content_type not in allowed_formats:
             raise forms.ValidationError('Format non autorisé. Accepté: PDF, JPG, PNG')
         
+        return fichier
+
+
+class FinancementDocumentForm(forms.ModelForm):
+    """Formulaire pour uploader un document de financement"""
+    class Meta:
+        model = FinancementDocument
+        fields = ['document_type', 'fichier']
+        widgets = {
+            'document_type': forms.Select(attrs={
+                'class': 'form-select',
+            }),
+            'fichier': forms.FileInput(attrs={
+                'class': 'form-control',
+                'accept': '.pdf,.jpg,.jpeg,.png',
+            }),
+        }
+    
+    def clean_fichier(self):
+        fichier = self.cleaned_data.get('fichier')
+        
+        if not fichier:
+            raise forms.ValidationError('Fichier requis')
+        
+        # Vérifier taille (max 5MB)
+        if fichier.size > 5 * 1024 * 1024:
+            raise forms.ValidationError('Fichier trop volumineux (maximum 5MB)')
+        
+        # Vérifier format
+        allowed_formats = ['application/pdf', 'image/jpeg', 'image/png']
+        if fichier.content_type not in allowed_formats:
+            raise forms.ValidationError('Format non autorisé. Accepté: PDF, JPG, PNG')
+        
+        return fichier
+
+
+class FinancementDocumentUpdateForm(forms.ModelForm):
+    """Formulaire pour modifier uniquement le fichier d'un document de financement existant"""
+    class Meta:
+        model = FinancementDocument
+        fields = ['fichier']
+        widgets = {
+            'fichier': forms.FileInput(attrs={
+                'class': 'form-control',
+                'accept': '.pdf,.jpg,.jpeg,.png',
+                'required': True,
+            }),
+        }
+        labels = {
+            'fichier': 'Nouveau fichier (PDF/JPG/PNG max 5MB)'
+        }
+
+    def clean_fichier(self):
+        fichier = self.cleaned_data.get('fichier')
+        if not fichier:
+            raise forms.ValidationError('Fichier requis')
+        if fichier.size > 5 * 1024 * 1024:
+            raise forms.ValidationError('Fichier trop volumineux (maximum 5MB)')
+        allowed_formats = ['application/pdf', 'image/jpeg', 'image/png']
+        if fichier.content_type not in allowed_formats:
+            raise forms.ValidationError('Format non autorisé. Accepté: PDF, JPG, PNG')
         return fichier

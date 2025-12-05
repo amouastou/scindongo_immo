@@ -3,16 +3,18 @@ from django.urls import reverse_lazy
 from django.views.generic import TemplateView, View, ListView, CreateView, UpdateView, DeleteView
 from django.contrib.auth.decorators import login_required
 from django.utils.decorators import method_decorator
+from django.utils import timezone
 from django.contrib import messages
 from django.http import Http404
 
 from accounts.mixins import RoleRequiredMixin
 from accounts.models import User, Role
 from catalog.models import Unite
-from .models import Client, Reservation, ReservationDocument, Paiement, Contrat, Financement, BanquePartenaire
-from .forms import ReservationForm, ReservationDocumentForm, PaiementForm, ClientForm, FinancementForm, ContratForm, PaymentModeForm, FinancingRequestForm
+from .models import Client, Reservation, ReservationDocument, FinancementDocument, Paiement, Contrat, Financement, BanquePartenaire
+from .forms import ReservationForm, ReservationDocumentForm, FinancementDocumentForm, PaiementForm, ClientForm, FinancementForm, ContratForm, PaymentModeForm, FinancingRequestForm
 from .utils import set_pending_unite
 from .document_services import ReservationDocumentService
+from .financing_document_service import FinancementDocumentService
 from .mixins import ReservationRequiredMixin, FinancementFormMixin, ContratFormMixin, PaiementFormMixin
 from core.utils import audit_log
 
@@ -94,6 +96,418 @@ class ReservationDocumentsUploadView(RoleRequiredMixin, TemplateView):
                     messages.error(request, f"{field}: {error}")
         
         return redirect('reservation_documents_upload', reservation_id=reservation.id)
+
+
+class ReservationDocumentModifyView(RoleRequiredMixin, TemplateView):
+    """Vue pour modifier UN document spécifique - évite problème modal clignotant"""
+    template_name = 'sales/reservation_document_modify.html'
+    required_roles = ["CLIENT"]
+
+    def get_document(self):
+        """Récupérer le document et vérifier que c'est du client"""
+        doc = get_object_or_404(ReservationDocument, id=self.kwargs['document_id'])
+        client = get_object_or_404(Client, user=self.request.user)
+        
+        # Vérifier que le document appartient à une réservation du client
+        if doc.reservation.client != client:
+            raise Http404("Document non trouvé")
+        
+        return doc
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        doc = self.get_document()
+        
+        ctx['document'] = doc
+        ctx['reservation'] = doc.reservation
+        ctx['form'] = ReservationDocumentForm()
+        ctx['document_type_label'] = doc.get_document_type_display()
+        
+        return ctx
+
+    def post(self, request, *args, **kwargs):
+        """Modifier le document"""
+        doc = self.get_document()
+        form = ReservationDocumentForm(request.POST, request.FILES)
+        
+        if form.is_valid():
+            # Supprimer ancien fichier
+            if doc.fichier:
+                doc.fichier.delete()
+            
+            # Sauvegarder nouveau fichier
+            doc.fichier = form.cleaned_data['fichier']
+            doc.statut = 'en_attente'  # Réinitialiser statut
+            doc.raison_rejet = ''
+            doc.verifie_par = None
+            doc.verifie_le = None
+            doc.save()
+            
+            messages.success(request, f"✅ Document '{doc.get_document_type_display()}' mis à jour avec succès!")
+            
+            # Log audit
+            audit_log(request.user, doc, 'reservation_document_updated',
+                     {'document_type': doc.document_type}, request)
+            
+            # Rediriger vers détail réservation
+            return redirect('client_reservation_detail', reservation_id=doc.reservation.id)
+        else:
+            for field, errors in form.errors.items():
+                for error in errors:
+                    messages.error(request, f"{field}: {error}")
+        
+        return render(request, self.template_name, self.get_context_data())
+
+
+class CommercialDocumentRejectView(RoleRequiredMixin, TemplateView):
+    """Vue pour que le Commercial rejette un document - évite problème modal clignotant"""
+    template_name = 'sales/commercial_document_reject.html'
+    required_roles = ["COMMERCIAL"]
+
+    def get_document(self):
+        """Récupérer le document"""
+        doc = get_object_or_404(ReservationDocument, id=self.kwargs['document_id'])
+        return doc
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        doc = self.get_document()
+        
+        ctx['document'] = doc
+        ctx['reservation'] = doc.reservation
+        ctx['document_type_label'] = doc.get_document_type_display()
+        
+        return ctx
+
+    def post(self, request, *args, **kwargs):
+        """Rejeter le document"""
+        doc = self.get_document()
+        raison = request.POST.get('raison_rejet', '').strip()
+        
+        if not raison:
+            messages.error(request, "Veuillez fournir une raison de rejet")
+            return render(request, self.template_name, self.get_context_data())
+        
+        # Mettre à jour le document
+        doc.statut = 'rejete'
+        doc.raison_rejet = raison
+        doc.verifie_par = request.user
+        doc.verifie_le = timezone.now()
+        doc.save()
+        
+        messages.warning(request, f"❌ Document '{doc.get_document_type_display()}' rejeté - client averti")
+        
+        # Log audit
+        audit_log(request.user, doc, 'document_rejected', 
+                 {'reason': raison[:100]}, request)
+        
+        # Rediriger vers détail réservation du commercial
+        return redirect('commercial_reservation_detail', reservation_id=doc.reservation.id)
+
+
+class CommercialDocumentValidateView(RoleRequiredMixin, TemplateView):
+    """Vue pour que le Commercial valide un document (direct, pas de modal)"""
+    template_name = 'sales/commercial_document_validate.html'
+    required_roles = ["COMMERCIAL"]
+
+    def get_document(self):
+        """Récupérer le document"""
+        doc = get_object_or_404(ReservationDocument, id=self.kwargs['document_id'])
+        return doc
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        doc = self.get_document()
+        
+        ctx['document'] = doc
+        ctx['reservation'] = doc.reservation
+        ctx['document_type_label'] = doc.get_document_type_display()
+        
+        return ctx
+
+    def post(self, request, *args, **kwargs):
+        """Valider le document"""
+        doc = self.get_document()
+        reservation_id = doc.reservation.id
+        
+        # Valider
+        doc.statut = 'valide'
+        doc.verifie_par = request.user
+        doc.verifie_le = timezone.now()
+        doc.save()
+        
+        messages.success(request, f"✅ Document '{doc.get_document_type_display()}' validé")
+        
+        # Log audit
+        audit_log(request.user, doc, 'document_validated', 
+                 {'document_type': doc.document_type}, request)
+        
+        # Rediriger vers détail réservation du commercial
+        return redirect('commercial_reservation_detail', reservation_id=reservation_id)
+
+
+# ============================
+#   FINANCEMENT DOCUMENTS VIEWS
+# ============================
+
+
+class FinancementDocumentsUploadView(RoleRequiredMixin, TemplateView):
+    """Vue pour uploader documents de financement"""
+    template_name = 'sales/financing_documents_upload.html'
+    required_roles = ["CLIENT"]
+
+    def get_financement(self):
+        """Récupérer le financement du client"""
+        try:
+            client = Client.objects.get(user=self.request.user)
+        except Client.DoesNotExist:
+            raise Http404("Profil client non trouvé")
+        
+        financement = get_object_or_404(
+            Financement,
+            id=self.kwargs['financement_id'],
+            reservation__client=client
+        )
+        return financement
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        financement = self.get_financement()
+        
+        ctx['financement'] = financement
+        ctx['reservation'] = financement.reservation
+        ctx['documents'] = financement.documents.all()
+
+        # Vérifier si tous docs requis sont validés
+        service = FinancementDocumentService()
+        can_proceed, _ = service.can_proceed_financing(financement)
+        ctx['can_proceed'] = can_proceed
+        ctx['docs_complete'] = can_proceed
+        ctx['missing_documents'] = service.get_missing_documents(financement)
+        
+        return ctx
+
+    def post(self, request, *args, **kwargs):
+        """Uploader un nouveau document"""
+        financement = self.get_financement()
+        form = FinancementDocumentForm(request.POST, request.FILES)
+        
+        if form.is_valid():
+            doc_type = form.cleaned_data['document_type']
+            
+            # Types de documents qui peuvent être multiples
+            multiple_types = ['bulletin_salaire']  # Peut avoir 3 bulletins de salaire
+            
+            if doc_type in multiple_types:
+                # Pour les bulletins de salaire: ajouter un nouveau document
+                # Calculer le prochain numéro d'ordre
+                existing_count = FinancementDocument.objects.filter(
+                    financement=financement,
+                    document_type=doc_type
+                ).count()
+                
+                next_numero = existing_count + 1
+                
+                # Limiter à 3 bulletins
+                if next_numero > 3:
+                    messages.error(request, "Vous pouvez uploader maximum 3 bulletins de salaire")
+                else:
+                    doc = form.save(commit=False)
+                    doc.financement = financement
+                    doc.numero_ordre = next_numero
+                    doc.save()
+                    messages.success(request, f"Document '{doc.get_document_label()}' uploadé avec succès")
+                    
+                    # Log audit
+                    audit_log(request.user, financement, 'financing_document_uploaded',
+                             {'document_type': doc_type, 'numero_ordre': next_numero}, request)
+            else:
+                # Pour les autres documents: remplacer s'il existe
+                existing = FinancementDocument.objects.filter(
+                    financement=financement,
+                    document_type=doc_type,
+                    numero_ordre=1
+                ).first()
+                
+                if existing:
+                    existing.fichier.delete()  # Supprimer ancien fichier
+                    existing.fichier = form.cleaned_data['fichier']
+                    existing.statut = 'en_attente'  # Réinitialiser statut
+                    existing.raison_rejet = ''
+                    existing.verifie_par = None
+                    existing.verifie_le = None
+                    existing.save()
+                    messages.success(request, f"Document '{existing.get_document_type_display()}' mis à jour")
+                else:
+                    doc = form.save(commit=False)
+                    doc.financement = financement
+                    doc.numero_ordre = 1
+                    doc.save()
+                    messages.success(request, f"Document '{doc.get_document_type_display()}' uploadé avec succès")
+                
+                # Log audit
+                audit_log(request.user, financement, 'financing_document_uploaded',
+                         {'document_type': doc_type}, request)
+        else:
+            for field, errors in form.errors.items():
+                for error in errors:
+                    messages.error(request, f"{field}: {error}")
+        
+        return redirect('financing_documents_upload', financement_id=financement.id)
+
+
+class FinancementDocumentModifyView(RoleRequiredMixin, TemplateView):
+    """Vue pour modifier UN document de financement spécifique"""
+    template_name = 'sales/financing_document_modify.html'
+    required_roles = ["CLIENT"]
+
+    def get_document(self):
+        """Récupérer le document et vérifier que c'est du client"""
+        doc = get_object_or_404(FinancementDocument, id=self.kwargs['document_id'])
+        client = get_object_or_404(Client, user=self.request.user)
+        
+        # Vérifier que le document appartient à un financement du client
+        if doc.financement.reservation.client != client:
+            raise Http404("Document non trouvé")
+        
+        return doc
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        doc = self.get_document()
+        
+        ctx['document'] = doc
+        ctx['financement'] = doc.financement
+        ctx['reservation'] = doc.financement.reservation
+        from .forms import FinancementDocumentUpdateForm
+        ctx['form'] = FinancementDocumentUpdateForm(instance=doc)
+        ctx['document_type_label'] = doc.get_document_label()
+        
+        return ctx
+
+    def post(self, request, *args, **kwargs):
+        """Modifier le document"""
+        doc = self.get_document()
+        from .forms import FinancementDocumentUpdateForm
+        form = FinancementDocumentUpdateForm(request.POST, request.FILES, instance=doc)
+        
+        if form.is_valid():
+            # Supprimer l'ancien fichier avant de sauvegarder le nouveau
+            old_file = doc.fichier
+            if old_file:
+                old_file.delete(save=False)
+            
+            # Sauvegarder le formulaire (qui va uploader le nouveau fichier)
+            updated_doc = form.save(commit=False)
+            updated_doc.statut = 'en_attente'  # Réinitialiser statut
+            updated_doc.raison_rejet = ''
+            updated_doc.verifie_par = None
+            updated_doc.verifie_le = None
+            updated_doc.save()
+            
+            messages.success(request, f"✅ Document '{updated_doc.get_document_type_display()}' mis à jour avec succès!")
+            
+            # Log audit
+            audit_log(request.user, updated_doc, 'financing_document_updated',
+                     {'document_type': updated_doc.document_type}, request)
+            
+            # Rediriger vers page financements du client
+            return redirect('financing_documents_upload', financement_id=updated_doc.financement.id)
+        else:
+            for field, errors in form.errors.items():
+                for error in errors:
+                    messages.error(request, f"{field}: {error}")
+        
+        return render(request, self.template_name, self.get_context_data())
+
+
+class CommercialFinancingDocumentRejectView(RoleRequiredMixin, TemplateView):
+    """Vue pour que le Commercial rejette un document de financement"""
+    template_name = 'sales/commercial_financing_document_reject.html'
+    required_roles = ["COMMERCIAL"]
+
+    def get_document(self):
+        """Récupérer le document"""
+        doc = get_object_or_404(FinancementDocument, id=self.kwargs['document_id'])
+        return doc
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        doc = self.get_document()
+        
+        ctx['document'] = doc
+        ctx['financement'] = doc.financement
+        ctx['reservation'] = doc.financement.reservation
+        ctx['document_type_label'] = doc.get_document_label()
+        
+        return ctx
+
+    def post(self, request, *args, **kwargs):
+        """Rejeter le document"""
+        doc = self.get_document()
+        raison = request.POST.get('raison_rejet', '').strip()
+        
+        if not raison:
+            messages.error(request, "Veuillez fournir une raison de rejet")
+            return render(request, self.template_name, self.get_context_data())
+        
+        # Mettre à jour le document
+        doc.statut = 'rejete'
+        doc.raison_rejet = raison
+        doc.verifie_par = request.user
+        doc.verifie_le = timezone.now()
+        doc.save()
+        
+        messages.warning(request, f"❌ Document '{doc.get_document_label()}' rejeté - client averti")
+        
+        # Log audit
+        audit_log(request.user, doc, 'financing_document_rejected', 
+                 {'reason': raison[:100]}, request)
+        
+        # Rediriger vers détail financement du commercial
+        return redirect('commercial_financing_detail', financement_id=doc.financement.id)
+
+
+class CommercialFinancingDocumentValidateView(RoleRequiredMixin, TemplateView):
+    """Vue pour que le Commercial valide un document de financement"""
+    template_name = 'sales/commercial_financing_document_validate.html'
+    required_roles = ["COMMERCIAL"]
+
+    def get_document(self):
+        """Récupérer le document"""
+        doc = get_object_or_404(FinancementDocument, id=self.kwargs['document_id'])
+        return doc
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        doc = self.get_document()
+        
+        ctx['document'] = doc
+        ctx['financement'] = doc.financement
+        ctx['reservation'] = doc.financement.reservation
+        ctx['document_type_label'] = doc.get_document_label()
+        
+        return ctx
+
+    def post(self, request, *args, **kwargs):
+        """Valider le document"""
+        doc = self.get_document()
+        financement_id = doc.financement.id
+        
+        # Valider
+        doc.statut = 'valide'
+        doc.verifie_par = request.user
+        doc.verifie_le = timezone.now()
+        doc.save()
+        
+        messages.success(request, f"✅ Document '{doc.get_document_label()}' validé")
+        
+        # Log audit
+        audit_log(request.user, doc, 'financing_document_validated', 
+                 {'document_type': doc.document_type}, request)
+        
+        # Rediriger vers détail financement du commercial
+        return redirect('commercial_financing_detail', financement_id=financement_id)
 
 
 class ClientDashboardView(RoleRequiredMixin, TemplateView):
@@ -206,7 +620,7 @@ class AdminDashboardView(RoleRequiredMixin, TemplateView):
 
 @method_decorator(login_required(login_url='login'), name='dispatch')
 class StartReservationView(View):
-    """Démarre le processus de réservation pour une unité."""
+    """Démarre le processus de réservation pour une unité avec upload documents."""
 
     def get(self, request, unite_id):
         unite = get_object_or_404(Unite, id=unite_id)
@@ -232,18 +646,62 @@ class StartReservationView(View):
         unite = get_object_or_404(Unite, id=unite_id)
         client = request.user.client_profile
         form = ReservationForm(request.POST)
+        
         if form.is_valid():
+            # Créer la réservation
             reservation = form.save(commit=False)
             reservation.client = client
             reservation.unite = unite
             reservation.statut = "en_cours"  # Statut initial
             reservation.save()
+            
+            # Traiter les uploads de documents
+            doc_types = {
+                'document_cni': 'cni',
+                'document_photo': 'photo',
+                'document_residence': 'residence'
+            }
+            
+            for field_name, doc_type in doc_types.items():
+                if field_name in request.FILES:
+                    fichier = request.FILES[field_name]
+                    
+                    # Valider fichier
+                    if fichier.size > 5 * 1024 * 1024:  # 5MB
+                        messages.error(request, f"Fichier {doc_type} trop volumineux (max 5MB)")
+                        reservation.delete()
+                        return render(request, "sales/reservation_form.html", {
+                            "form": form, "unite": unite, "client": client
+                        })
+                    
+                    if fichier.content_type not in ['application/pdf', 'image/jpeg', 'image/png']:
+                        messages.error(request, f"Format non autorisé pour {doc_type}")
+                        reservation.delete()
+                        return render(request, "sales/reservation_form.html", {
+                            "form": form, "unite": unite, "client": client
+                        })
+                    
+                    # Créer le document
+                    ReservationDocument.objects.create(
+                        reservation=reservation,
+                        document_type=doc_type,
+                        fichier=fichier,
+                        statut='en_attente'  # Commercial va valider
+                    )
+            
             # Mettre à jour le statut de l'unité à "réservé"
             unite.statut_disponibilite = "reserve"
             unite.save(update_fields=["statut_disponibilite"])
-            audit_log(request.user, reservation, "reservation_create", {"acompte": str(reservation.acompte)}, request)
-            # Rediriger vers une page de confirmation, pas directement au paiement
+            
+            # Log audit
+            audit_log(request.user, reservation, "reservation_create", 
+                     {"acompte": str(reservation.acompte), "documents": "3"}, request)
+            
+            messages.success(request, "✅ Réservation créée avec succès! Vos documents sont en attente de validation.")
+            
+            # Rediriger vers une page de confirmation
             return redirect("reservation_success", reservation_id=reservation.id)
+        
         return render(request, "sales/reservation_form.html", {"form": form, "unite": unite, "client": client})
 
 
@@ -289,7 +747,9 @@ class ReservationSuccessView(RoleRequiredMixin, TemplateView):
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
         reservation_id = self.kwargs.get('reservation_id')
-        reservation = get_object_or_404(Reservation, id=reservation_id, client__user=self.request.user)
+        client = get_object_or_404(Client, user=self.request.user)
+        
+        reservation = get_object_or_404(Reservation, id=reservation_id, client=client)
         ctx['reservation'] = reservation
         ctx['banques'] = BanquePartenaire.objects.all()
         
@@ -334,6 +794,14 @@ class ClientReservationDetailView(RoleRequiredMixin, TemplateView):
         ctx['paiements'] = reservation.paiements.all()
         ctx['total_payes'] = sum(p.montant for p in ctx['paiements'] if p.statut == 'valide')
         ctx['montant_restant'] = reservation.unite.prix_ttc - ctx['total_payes']
+        
+        # Documents
+        ctx['documents'] = reservation.documents.all()
+        documents_valides = reservation.documents.filter(statut='valide').count()
+        documents_rejetes = reservation.documents.filter(statut='rejete').count()
+        ctx['documents_valides'] = documents_valides == 3  # Tous 3 docs valides
+        ctx['documents_rejetes'] = documents_rejetes > 0
+        ctx['missing_documents'] = ReservationDocumentService.get_missing_documents(reservation)
         
         return ctx
 
@@ -506,7 +974,7 @@ class CommercialReservationListView(RoleRequiredMixin, ListView):
 
 
 class CommercialReservationDetailView(RoleRequiredMixin, TemplateView):
-    """Détail d'une réservation avec actions possibles"""
+    """Détail d'une réservation avec actions possibles + documents + messages"""
     template_name = 'sales/commercial_reservation_detail.html'
     required_roles = ["COMMERCIAL"]
     
@@ -514,6 +982,7 @@ class CommercialReservationDetailView(RoleRequiredMixin, TemplateView):
         ctx = super().get_context_data(**kwargs)
         reservation = get_object_or_404(Reservation, id=self.kwargs.get('reservation_id'))
         ctx['reservation'] = reservation
+        ctx['documents'] = reservation.documents.all()
         ctx['banques'] = BanquePartenaire.objects.all()
         
         # Statuts possibles suivants
@@ -521,7 +990,59 @@ class CommercialReservationDetailView(RoleRequiredMixin, TemplateView):
         ctx['can_sign_contrat'] = not hasattr(reservation, 'contrat')
         ctx['can_add_paiement'] = True
         
+        # Documents status
+        can_reserve, msg = ReservationDocumentService.can_make_reservation(reservation)
+        ctx['all_documents_valid'] = can_reserve
+        ctx['missing_documents'] = ReservationDocumentService.get_missing_documents(reservation)
+        
+        # Vérifier si tous les docs sont validés
+        all_valid = reservation.documents.filter(statut='valide').count() == 3
+        ctx['documents_complete'] = all_valid
+        
         return ctx
+    
+    def post(self, request, *args, **kwargs):
+        """Traiter les actions (validation doc, message, etc)"""
+        action = request.POST.get('action')
+        reservation = get_object_or_404(Reservation, id=self.kwargs.get('reservation_id'))
+        
+        if action == 'validate_document':
+            document_id = request.POST.get('document_id')
+            doc = get_object_or_404(ReservationDocument, id=document_id)
+            
+            doc.statut = 'valide'
+            doc.verifie_par = request.user
+            doc.verifie_le = timezone.now()
+            doc.save()
+            
+            messages.success(request, f"✅ Document '{doc.get_document_type_display()}' validé")
+            audit_log(request.user, doc, 'document_validated', {'document_type': doc.document_type}, request)
+        
+        elif action == 'reject_document':
+            document_id = request.POST.get('document_id')
+            raison = request.POST.get('raison_rejet', '')
+            doc = get_object_or_404(ReservationDocument, id=document_id)
+            
+            doc.statut = 'rejete'
+            doc.raison_rejet = raison
+            doc.verifie_par = request.user
+            doc.verifie_le = timezone.now()
+            doc.save()
+            
+            messages.warning(request, f"❌ Document '{doc.get_document_type_display()}' rejeté")
+            audit_log(request.user, doc, 'document_rejected', {'reason': raison}, request)
+        
+        elif action == 'send_message':
+            message_text = request.POST.get('message', '').strip()
+            if message_text:
+                # TODO: Créer un modèle Message si besoin
+                # Pour maintenant, on peut envoyer un email
+                messages.success(request, f"✉️ Message envoyé au client")
+                audit_log(request.user, reservation, 'message_sent_to_client', {'message': message_text[:50]}, request)
+            else:
+                messages.error(request, "Le message ne peut pas être vide")
+        
+        return redirect('commercial_reservation_detail', reservation_id=reservation.id)
 
 
 class CommercialFinancementCreateView(RoleRequiredMixin, CreateView):
@@ -678,12 +1199,20 @@ class ClientPaymentModeChoiceView(RoleRequiredMixin, TemplateView):
     
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
-        reservation = get_object_or_404(
-            Reservation, 
-            id=kwargs['reservation_id'],
-            client__user=self.request.user,
-            statut='confirmee'  # Only confirmed reservations
-        )
+        reservation_id = self.kwargs.get('reservation_id')
+        
+        # Chercher le Client de l'utilisateur actuel
+        try:
+            client = Client.objects.get(user=self.request.user)
+        except Client.DoesNotExist:
+            raise Http404(f"Pas de profil Client trouvé pour l'utilisateur {self.request.user.email}")
+        
+        # Chercher la réservation (sans imposer le statut 'confirmee')
+        try:
+            reservation = Reservation.objects.get(id=reservation_id, client=client)
+        except Reservation.DoesNotExist:
+            raise Http404(f"Réservation {reservation_id} introuvable pour le client {client.id}")
+        
         ctx['reservation'] = reservation
         ctx['unite'] = reservation.unite
         ctx['remaining_amount'] = reservation.unite.prix_ttc - reservation.acompte
@@ -691,12 +1220,16 @@ class ClientPaymentModeChoiceView(RoleRequiredMixin, TemplateView):
         return ctx
     
     def post(self, request, reservation_id):
-        reservation = get_object_or_404(
-            Reservation,
-            id=reservation_id,
-            client__user=request.user,
-            statut='confirmee'
-        )
+        try:
+            client = Client.objects.get(user=request.user)
+        except Client.DoesNotExist:
+            raise Http404("Pas de profil Client trouvé")
+        
+        try:
+            reservation = Reservation.objects.get(id=reservation_id, client=client)
+        except Reservation.DoesNotExist:
+            raise Http404("Réservation introuvable")
+        
         
         form = PaymentModeForm(request.POST)
         if not form.is_valid():
@@ -720,12 +1253,18 @@ class ClientDirectPaymentView(RoleRequiredMixin, TemplateView):
     
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
-        reservation = get_object_or_404(
-            Reservation,
-            id=kwargs['reservation_id'],
-            client__user=self.request.user,
-            statut='confirmee'
-        )
+        reservation_id = self.kwargs.get('reservation_id')
+        
+        try:
+            client = Client.objects.get(user=self.request.user)
+        except Client.DoesNotExist:
+            raise Http404("Pas de profil Client trouvé")
+        
+        try:
+            reservation = Reservation.objects.get(id=reservation_id, client=client)
+        except Reservation.DoesNotExist:
+            raise Http404("Réservation introuvable")
+        
         ctx['reservation'] = reservation
         ctx['unite'] = reservation.unite
         ctx['remaining_amount'] = reservation.unite.prix_ttc - reservation.acompte
@@ -733,12 +1272,15 @@ class ClientDirectPaymentView(RoleRequiredMixin, TemplateView):
         return ctx
     
     def post(self, request, reservation_id):
-        reservation = get_object_or_404(
-            Reservation,
-            id=reservation_id,
-            client__user=request.user,
-            statut='confirmee'
-        )
+        try:
+            client = Client.objects.get(user=request.user)
+        except Client.DoesNotExist:
+            raise Http404("Pas de profil Client trouvé")
+        
+        try:
+            reservation = Reservation.objects.get(id=reservation_id, client=client)
+        except Reservation.DoesNotExist:
+            raise Http404("Réservation introuvable")
         
         form = PaiementForm(request.POST)
         if not form.is_valid():
@@ -791,12 +1333,18 @@ class ClientFinancingRequestView(RoleRequiredMixin, TemplateView):
     
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
-        reservation = get_object_or_404(
-            Reservation,
-            id=kwargs['reservation_id'],
-            client__user=self.request.user,
-            statut='confirmee'
-        )
+        reservation_id = self.kwargs.get('reservation_id')
+        
+        try:
+            client = Client.objects.get(user=self.request.user)
+        except Client.DoesNotExist:
+            raise Http404("Pas de profil Client trouvé")
+        
+        try:
+            reservation = Reservation.objects.get(id=reservation_id, client=client)
+        except Reservation.DoesNotExist:
+            raise Http404("Réservation introuvable")
+        
         ctx['reservation'] = reservation
         ctx['unite'] = reservation.unite
         
@@ -822,12 +1370,15 @@ class ClientFinancingRequestView(RoleRequiredMixin, TemplateView):
     def post(self, request, reservation_id):
         from .forms import FinancingRequestForm
         
-        reservation = get_object_or_404(
-            Reservation,
-            id=reservation_id,
-            client__user=request.user,
-            statut='confirmee'
-        )
+        try:
+            client = Client.objects.get(user=request.user)
+        except Client.DoesNotExist:
+            raise Http404("Pas de profil Client trouvé")
+        
+        try:
+            reservation = Reservation.objects.get(id=reservation_id, client=client)
+        except Reservation.DoesNotExist:
+            raise Http404("Réservation introuvable")
         
         form = FinancingRequestForm(request.POST)
         if not form.is_valid():
@@ -875,10 +1426,11 @@ class ClientFinancingRequestView(RoleRequiredMixin, TemplateView):
         messages.success(
             request,
             f"✅ Demande de financement de {financement.montant} FCFA soumise ! "
-            "La banque étudiera votre dossier dans 5-10 jours."
+            "Veuillez maintenant uploader vos documents requis."
         )
         
-        return redirect('client_reservation_detail', reservation_id=reservation_id)
+        # Rediriger vers l'upload des documents de financement
+        return redirect('financing_documents_upload', financement_id=financement.id)
 
 
 # ÉTAPE 8: Commercial Payment Validation View
@@ -1052,6 +1604,55 @@ class CommercialFinancingDetailView(RoleRequiredMixin, TemplateView):
         )
         
         return redirect('commercial_financing_detail', financement_id=financement_id)
+
+
+# CLIENT FINANCING DETAIL VIEW
+class ClientFinancingDetailView(RoleRequiredMixin, TemplateView):
+    """Vue détail d'un financement côté client avec documents et statut"""
+    template_name = 'sales/client_financing_detail.html'
+    required_roles = ["CLIENT"]
+    
+    def get_financement(self):
+        """Récupérer le financement du client"""
+        try:
+            client = Client.objects.get(user=self.request.user)
+        except Client.DoesNotExist:
+            raise Http404("Profil client non trouvé")
+        
+        financement = get_object_or_404(
+            Financement,
+            id=self.kwargs['financement_id'],
+            reservation__client=client
+        )
+        return financement
+    
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        financement = self.get_financement()
+        
+        ctx['financement'] = financement
+        ctx['reservation'] = financement.reservation
+        ctx['unite'] = financement.reservation.unite
+        ctx['documents'] = financement.documents.all().order_by('document_type', 'numero_ordre')
+        
+        # Vérifier le statut des documents
+        service = FinancementDocumentService()
+        can_proceed, message = service.can_proceed_financing(financement)
+        ctx['docs_complete'] = can_proceed
+        ctx['missing_documents'] = service.get_missing_documents(financement)
+        
+        # Statistiques
+        total_docs = 5  # brochure, cni, bulletin_salaire (1), rib, attestation
+        docs_by_type = financement.documents.values('document_type').distinct().count()
+        validated_docs = financement.documents.filter(statut='valide').count()
+        rejected_docs = financement.documents.filter(statut='rejete').count()
+        
+        ctx['total_docs_uploaded'] = financement.documents.count()
+        ctx['validated_docs'] = validated_docs
+        ctx['rejected_docs'] = rejected_docs
+        ctx['pending_docs'] = financement.documents.filter(statut='en_attente').count()
+        
+        return ctx
 
 
 class BanquePartenaireListView(RoleRequiredMixin, TemplateView):

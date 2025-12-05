@@ -4,6 +4,13 @@ from .views import (
     CommercialDashboardView,
     AdminDashboardView,
     ReservationDocumentsUploadView,
+    ReservationDocumentModifyView,
+    CommercialDocumentRejectView,
+    CommercialDocumentValidateView,
+    FinancementDocumentsUploadView,
+    FinancementDocumentModifyView,
+    CommercialFinancingDocumentRejectView,
+    CommercialFinancingDocumentValidateView,
     StartReservationView,
     ReservationSuccessView,
     ClientReservationDetailView,
@@ -11,6 +18,7 @@ from .views import (
     ClientPaymentModeChoiceView,
     ClientDirectPaymentView,
     ClientFinancingRequestView,
+    ClientFinancingDetailView,
     CommercialPaymentValidationListView,
     CommercialPaymentValidateView,
     start_reservation_or_auth,
@@ -42,6 +50,15 @@ urlpatterns = [
     
     # Documents réservation
     path('reservation/<uuid:reservation_id>/documents/', ReservationDocumentsUploadView.as_view(), name='reservation_documents_upload'),
+    path('reservation/document/<uuid:document_id>/modify/', ReservationDocumentModifyView.as_view(), name='reservation_document_modify'),
+    path('commercial/document/<uuid:document_id>/reject/', CommercialDocumentRejectView.as_view(), name='commercial_document_reject'),
+    path('commercial/document/<uuid:document_id>/validate/', CommercialDocumentValidateView.as_view(), name='commercial_document_validate'),
+    
+    # Documents financement
+    path('financement/<uuid:financement_id>/documents/', FinancementDocumentsUploadView.as_view(), name='financing_documents_upload'),
+    path('financement/document/<uuid:document_id>/modify/', FinancementDocumentModifyView.as_view(), name='financing_document_modify'),
+    path('commercial/financement/document/<uuid:document_id>/reject/', CommercialFinancingDocumentRejectView.as_view(), name='commercial_financing_document_reject'),
+    path('commercial/financement/document/<uuid:document_id>/validate/', CommercialFinancingDocumentValidateView.as_view(), name='commercial_financing_document_validate'),
     
     path('reserver/<uuid:unite_id>/', start_reservation_or_auth, name='reserve_unite'),
     path('reservation/<uuid:unite_id>/demarrer/', StartReservationView.as_view(), name='start_reservation'),
@@ -51,6 +68,7 @@ urlpatterns = [
     path('reservation/<uuid:reservation_id>/choix-paiement/', ClientPaymentModeChoiceView.as_view(), name='client_payment_mode_choice'),
     path('reservation/<uuid:reservation_id>/paiement-direct/', ClientDirectPaymentView.as_view(), name='client_direct_payment'),
     path('reservation/<uuid:reservation_id>/financement-bancaire/', ClientFinancingRequestView.as_view(), name='client_financing_request'),
+    path('financement/<uuid:financement_id>/detail/', ClientFinancingDetailView.as_view(), name='client_financing_detail'),
     
     # Commercial actions - Clients
     path('commercial/clients/', CommercialClientListView.as_view(), name='commercial_client_list'),
