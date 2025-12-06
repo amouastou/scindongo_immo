@@ -1,0 +1,167 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Rapport Financement - Admin{% endblock %}
+
+{% block extra_css %}
+<style>
+    .filter-card {
+        background: #f8f9fa;
+        border-left: 4px solid #fd7e14;
+    }
+    .stat-card {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border-radius: 8px;
+    }
+    .stat-value {
+        font-size: 2rem;
+        font-weight: bold;
+    }
+    .table-responsive {
+        border-radius: 8px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid my-4">
+    <div class="row mb-4">
+        <div class="col-12">
+            <h1>🏦 Rapport Financement</h1>
+            <small class="text-muted">Suivre les demandes de financement bancaire</small>
+        </div>
+    </div>
+
+    <!-- Statistiques -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="stat-card p-3 text-center">
+                <div class="stat-value">{{ total_financements }}</div>
+                <small>Total demandes</small>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="stat-card p-3 text-center" style="background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);">
+                <div class="stat-value">{{ acceptes_count }}</div>
+                <small>Acceptées</small>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="stat-card p-3 text-center" style="background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);">
+                <div class="stat-value">{{ en_etude_count }}</div>
+                <small>En étude</small>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="stat-card p-3 text-center" style="background: linear-gradient(135deg, #ff6e7f 0%, #bfe9ff 100%);">
+                <div class="stat-value">{{ taux_acceptation }}%</div>
+                <small>Taux acceptation</small>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filtres -->
+    <div class="card filter-card mb-4">
+        <div class="card-body">
+            <form method="get" class="row g-3">
+                <div class="col-md-3">
+                    <label class="form-label">Programme</label>
+                    <select name="programme" class="form-select">
+                        <option value="">-- Tous --</option>
+                        {% for prog in programmes %}
+                        <option value="{{ prog.id }}" {% if prog.id|stringformat:"s" == selected_programme %}selected{% endif %}>
+                            {{ prog.nom }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Banque</label>
+                    <select name="banque" class="form-select">
+                        <option value="">-- Toutes --</option>
+                        {% for banque in banques %}
+                        <option value="{{ banque.id }}" {% if banque.id|stringformat:"s" == selected_banque %}selected{% endif %}>
+                            {{ banque.nom }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Statut</label>
+                    <select name="statut" class="form-select">
+                        <option value="">-- Tous --</option>
+                        {% for code, label in statuts %}
+                        <option value="{{ code }}" {% if code == selected_statut %}selected{% endif %}>
+                            {{ label }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-3 d-flex align-items-end gap-2">
+                    <button type="submit" class="btn btn-warning flex-grow-1">
+                        <i class="fas fa-search"></i> Filtrer
+                    </button>
+                    <a href="{% url 'admin_financing_export' %}?programme={{ selected_programme }}&banque={{ selected_banque }}&statut={{ selected_statut }}" class="btn btn-outline-warning">
+                        <i class="fas fa-download"></i> CSV
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Tableau -->
+    <div class="card">
+        <div class="card-header bg-warning text-white">
+            <h6 class="mb-0">Financements ({{ total_financements }})</h6>
+        </div>
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>Client</th>
+                        <th>Programme</th>
+                        <th>Montant</th>
+                        <th>Banque</th>
+                        <th>Statut</th>
+                        <th>Date</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for fin in financements %}
+                    <tr>
+                        <td>
+                            <strong>{{ fin.reservation.client.prenom }} {{ fin.reservation.client.nom }}</strong>
+                        </td>
+                        <td>{{ fin.reservation.unite.programme.nom }}</td>
+                        <td><strong>{{ fin.montant|floatformat:0 }} FCFA</strong></td>
+                        <td>{{ fin.banque_partenaire.nom|default:"-" }}</td>
+                        <td>
+                            {% if fin.statut == "accepte" %}
+                                <span class="badge bg-success">Accepté</span>
+                            {% elif fin.statut == "en_etude" %}
+                                <span class="badge bg-info">En étude</span>
+                            {% elif fin.statut == "refuse" %}
+                                <span class="badge bg-danger">Refusé</span>
+                            {% elif fin.statut == "soumis" %}
+                                <span class="badge bg-primary">Soumis</span>
+                            {% elif fin.statut == "clos" %}
+                                <span class="badge bg-secondary">Clos</span>
+                            {% endif %}
+                        </td>
+                        <td><small>{{ fin.created_at|date:"d/m/Y H:i" }}</small></td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="6" class="text-center text-muted py-4">
+                            Aucun financement trouvé
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

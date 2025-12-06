@@ -1,0 +1,166 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Rapport Réservations - Admin{% endblock %}
+
+{% block extra_css %}
+<style>
+    .filter-card {
+        background: #f8f9fa;
+        border-left: 4px solid #007bff;
+    }
+    .stat-card {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border-radius: 8px;
+    }
+    .stat-value {
+        font-size: 2rem;
+        font-weight: bold;
+    }
+    .table-responsive {
+        border-radius: 8px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid my-4">
+    <div class="row mb-4">
+        <div class="col-12">
+            <h1>📋 Rapport Réservations</h1>
+            <small class="text-muted">Voir et exporter toutes les réservations</small>
+        </div>
+    </div>
+
+    <!-- Statistiques -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="stat-card p-3 text-center">
+                <div class="stat-value">{{ total_reservations }}</div>
+                <small>Total Réservations</small>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="stat-card p-3 text-center" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);">
+                <div class="stat-value">{{ reservations_confirmees }}</div>
+                <small>Confirmées</small>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="stat-card p-3 text-center" style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);">
+                <div class="stat-value">{{ reservations_en_cours }}</div>
+                <small>En cours</small>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="stat-card p-3 text-center" style="background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);">
+                <div class="stat-value">{{ total_acomptes|floatformat:0 }}</div>
+                <small>Total acomptes (FCFA)</small>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filtres -->
+    <div class="card filter-card mb-4">
+        <div class="card-body">
+            <form method="get" class="row g-3">
+                <div class="col-md-4">
+                    <label class="form-label">Programme</label>
+                    <select name="programme" class="form-select">
+                        <option value="">-- Tous les programmes --</option>
+                        {% for prog in programmes %}
+                        <option value="{{ prog.id }}" {% if prog.id|stringformat:"s" == selected_programme %}selected{% endif %}>
+                            {{ prog.nom }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">Statut</label>
+                    <select name="statut" class="form-select">
+                        <option value="">-- Tous les statuts --</option>
+                        {% for code, label in statuts %}
+                        <option value="{{ code }}" {% if code == selected_statut %}selected{% endif %}>
+                            {{ label }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-4 d-flex align-items-end gap-2">
+                    <button type="submit" class="btn btn-primary flex-grow-1">
+                        <i class="fas fa-search"></i> Filtrer
+                    </button>
+                    <a href="{% url 'admin_reservations_report' %}" class="btn btn-outline-secondary">
+                        <i class="fas fa-redo"></i> Réinitialiser
+                    </a>
+                    <a href="{% url 'admin_reservations_export' %}?programme={{ selected_programme }}&statut={{ selected_statut }}" class="btn btn-success">
+                        <i class="fas fa-download"></i> CSV
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Tableau -->
+    <div class="card">
+        <div class="card-header bg-primary text-white">
+            <h6 class="mb-0">Réservations ({{ total_reservations }})</h6>
+        </div>
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>Client</th>
+                        <th>Programme</th>
+                        <th>Unité</th>
+                        <th>Prix</th>
+                        <th>Acompte</th>
+                        <th>Statut</th>
+                        <th>Date</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for res in reservations %}
+                    <tr>
+                        <td>
+                            <strong>{{ res.client.prenom }} {{ res.client.nom }}</strong><br>
+                            <small class="text-muted">{{ res.client.email }}</small>
+                        </td>
+                        <td>{{ res.unite.programme.nom }}</td>
+                        <td><strong>{{ res.unite.reference_lot }}</strong></td>
+                        <td>{{ res.unite.prix_ttc|floatformat:0 }} FCFA</td>
+                        <td>{{ res.acompte|floatformat:0 }} FCFA</td>
+                        <td>
+                            {% if res.statut == "confirmee" %}
+                                <span class="badge bg-success">Confirmée</span>
+                            {% elif res.statut == "en_cours" %}
+                                <span class="badge bg-warning">En cours</span>
+                            {% elif res.statut == "annulee" %}
+                                <span class="badge bg-danger">Annulée</span>
+                            {% else %}
+                                <span class="badge bg-secondary">{{ res.get_statut_display }}</span>
+                            {% endif %}
+                        </td>
+                        <td><small>{{ res.created_at|date:"d/m/Y H:i" }}</small></td>
+                        <td>
+                            <a href="{% url 'commercial_reservation_detail' res.id %}" class="btn btn-sm btn-outline-primary">
+                                <i class="fas fa-eye"></i>
+                            </a>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="8" class="text-center text-muted py-4">
+                            Aucune réservation trouvée
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

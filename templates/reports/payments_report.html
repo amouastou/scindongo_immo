@@ -1,0 +1,163 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Rapport Paiements - Admin{% endblock %}
+
+{% block extra_css %}
+<style>
+    .filter-card {
+        background: #f8f9fa;
+        border-left: 4px solid #28a745;
+    }
+    .stat-card {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border-radius: 8px;
+    }
+    .stat-value {
+        font-size: 2rem;
+        font-weight: bold;
+    }
+    .table-responsive {
+        border-radius: 8px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid my-4">
+    <div class="row mb-4">
+        <div class="col-12">
+            <h1>💳 Rapport Paiements</h1>
+            <small class="text-muted">Visualiser et exporter tous les paiements</small>
+        </div>
+    </div>
+
+    <!-- Statistiques -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="stat-card p-3 text-center">
+                <div class="stat-value">{{ total_montant|floatformat:0 }}</div>
+                <small>Total paiements (FCFA)</small>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="stat-card p-3 text-center" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);">
+                <div class="stat-value">{{ total_valides|floatformat:0 }}</div>
+                <small>Total validé</small>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="stat-card p-3 text-center" style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);">
+                <div class="stat-value">{{ paiements_en_attente_count }}</div>
+                <small>En attente</small>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="stat-card p-3 text-center" style="background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);">
+                <div class="stat-value">{{ paiements_valides_count }}</div>
+                <small>Validés</small>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filtres -->
+    <div class="card filter-card mb-4">
+        <div class="card-body">
+            <form method="get" class="row g-3">
+                <div class="col-md-3">
+                    <label class="form-label">Programme</label>
+                    <select name="programme" class="form-select">
+                        <option value="">-- Tous --</option>
+                        {% for prog in programmes %}
+                        <option value="{{ prog.id }}" {% if prog.id|stringformat:"s" == selected_programme %}selected{% endif %}>
+                            {{ prog.nom }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Mode</label>
+                    <select name="moyen" class="form-select">
+                        <option value="">-- Tous --</option>
+                        {% for code, label in moyens %}
+                        <option value="{{ code }}" {% if code == selected_moyen %}selected{% endif %}>
+                            {{ label }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Statut</label>
+                    <select name="statut" class="form-select">
+                        <option value="">-- Tous --</option>
+                        {% for code, label in statuts %}
+                        <option value="{{ code }}" {% if code == selected_statut %}selected{% endif %}>
+                            {{ label }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-3 d-flex align-items-end gap-2">
+                    <button type="submit" class="btn btn-success flex-grow-1">
+                        <i class="fas fa-search"></i> Filtrer
+                    </button>
+                    <a href="{% url 'admin_payments_export' %}?programme={{ selected_programme }}&moyen={{ selected_moyen }}&statut={{ selected_statut }}" class="btn btn-outline-success">
+                        <i class="fas fa-download"></i> CSV
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Tableau -->
+    <div class="card">
+        <div class="card-header bg-success text-white">
+            <h6 class="mb-0">Paiements ({{ total_paiements }})</h6>
+        </div>
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>Client</th>
+                        <th>Programme</th>
+                        <th>Montant</th>
+                        <th>Mode</th>
+                        <th>Statut</th>
+                        <th>Date</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for paiement in paiements %}
+                    <tr>
+                        <td>
+                            <strong>{{ paiement.reservation.client.prenom }} {{ paiement.reservation.client.nom }}</strong>
+                        </td>
+                        <td>{{ paiement.reservation.unite.programme.nom }}</td>
+                        <td><strong>{{ paiement.montant|floatformat:0 }} FCFA</strong></td>
+                        <td><small>{{ paiement.get_moyen_display }}</small></td>
+                        <td>
+                            {% if paiement.statut == "valide" %}
+                                <span class="badge bg-success">Validé</span>
+                            {% elif paiement.statut == "enregistre" %}
+                                <span class="badge bg-warning">Enregistré</span>
+                            {% elif paiement.statut == "rejete" %}
+                                <span class="badge bg-danger">Rejeté</span>
+                            {% endif %}
+                        </td>
+                        <td><small>{{ paiement.date_paiement|date:"d/m/Y" }}</small></td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="6" class="text-center text-muted py-4">
+                            Aucun paiement trouvé
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

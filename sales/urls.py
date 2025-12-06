@@ -55,6 +55,17 @@ from .views import (
     ClearChatChantierView,
 )
 
+from .reports_views import (
+    ReservationsReportView,
+    ReservationsExportCSVView,
+    PaymentsReportView,
+    PaymentsExportCSVView,
+    FinancingReportView,
+    FinancingExportCSVView,
+    ContractsReportView,
+    ContractsExportCSVView,
+)
+
 urlpatterns = [
     path('client/dashboard/', ClientDashboardView.as_view(), name='client_dashboard'),
     path('commercial/dashboard/', CommercialDashboardView.as_view(), name='commercial_dashboard'),
@@ -128,4 +139,14 @@ urlpatterns = [
     # Gestion des demandes de financement
     path('commercial/financements/', CommercialFinancingListView.as_view(), name='commercial_financing_list'),
     path('commercial/financements/<uuid:financement_id>/', CommercialFinancingDetailView.as_view(), name='commercial_financing_detail'),
+    
+    # Rapports Admin
+    path('admin/rapports/reservations/', ReservationsReportView.as_view(), name='admin_reservations_report'),
+    path('admin/rapports/reservations/export/', ReservationsExportCSVView.as_view(), name='admin_reservations_export'),
+    path('admin/rapports/paiements/', PaymentsReportView.as_view(), name='admin_payments_report'),
+    path('admin/rapports/paiements/export/', PaymentsExportCSVView.as_view(), name='admin_payments_export'),
+    path('admin/rapports/financement/', FinancingReportView.as_view(), name='admin_financing_report'),
+    path('admin/rapports/financement/export/', FinancingExportCSVView.as_view(), name='admin_financing_export'),
+    path('admin/rapports/contrats/', ContractsReportView.as_view(), name='admin_contracts_report'),
+    path('admin/rapports/contrats/export/', ContractsExportCSVView.as_view(), name='admin_contracts_export'),
 ]

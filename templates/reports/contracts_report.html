@@ -1,0 +1,158 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Rapport Contrats - Admin{% endblock %}
+
+{% block extra_css %}
+<style>
+    .filter-card {
+        background: #f8f9fa;
+        border-left: 4px solid #17a2b8;
+    }
+    .stat-card {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border-radius: 8px;
+    }
+    .stat-value {
+        font-size: 2rem;
+        font-weight: bold;
+    }
+    .table-responsive {
+        border-radius: 8px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid my-4">
+    <div class="row mb-4">
+        <div class="col-12">
+            <h1>📄 Rapport Contrats</h1>
+            <small class="text-muted">Gérer et exporter les contrats clients</small>
+        </div>
+    </div>
+
+    <!-- Statistiques -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="stat-card p-3 text-center">
+                <div class="stat-value">{{ total_contrats }}</div>
+                <small>Total contrats</small>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="stat-card p-3 text-center" style="background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);">
+                <div class="stat-value">{{ contrats_signes }}</div>
+                <small>Signés</small>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="stat-card p-3 text-center" style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);">
+                <div class="stat-value">{{ contrats_brouillon }}</div>
+                <small>Brouillon</small>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="stat-card p-3 text-center" style="background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);">
+                <div class="stat-value">{{ contrats_annules }}</div>
+                <small>Annulés</small>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filtres -->
+    <div class="card filter-card mb-4">
+        <div class="card-body">
+            <form method="get" class="row g-3">
+                <div class="col-md-5">
+                    <label class="form-label">Programme</label>
+                    <select name="programme" class="form-select">
+                        <option value="">-- Tous --</option>
+                        {% for prog in programmes %}
+                        <option value="{{ prog.id }}" {% if prog.id|stringformat:"s" == selected_programme %}selected{% endif %}>
+                            {{ prog.nom }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-5">
+                    <label class="form-label">Statut</label>
+                    <select name="statut" class="form-select">
+                        <option value="">-- Tous --</option>
+                        {% for code, label in statuts %}
+                        <option value="{{ code }}" {% if code == selected_statut %}selected{% endif %}>
+                            {{ label }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-2 d-flex align-items-end gap-2">
+                    <button type="submit" class="btn btn-info flex-grow-1">
+                        <i class="fas fa-search"></i> Filtrer
+                    </button>
+                    <a href="{% url 'admin_contracts_export' %}?programme={{ selected_programme }}&statut={{ selected_statut }}" class="btn btn-outline-info">
+                        <i class="fas fa-download"></i> CSV
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Tableau -->
+    <div class="card">
+        <div class="card-header bg-info text-white">
+            <h6 class="mb-0">Contrats ({{ total_contrats }})</h6>
+        </div>
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>Client</th>
+                        <th>Programme</th>
+                        <th>Unité</th>
+                        <th>Statut</th>
+                        <th>Créé le</th>
+                        <th>Signé le</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for contrat in contrats %}
+                    <tr>
+                        <td>
+                            <strong>{{ contrat.reservation.client.prenom }} {{ contrat.reservation.client.nom }}</strong>
+                        </td>
+                        <td>{{ contrat.reservation.unite.programme.nom }}</td>
+                        <td><strong>{{ contrat.reservation.unite.reference_lot }}</strong></td>
+                        <td>
+                            {% if contrat.statut == "signe" %}
+                                <span class="badge bg-success">Signé</span>
+                            {% elif contrat.statut == "brouillon" %}
+                                <span class="badge bg-secondary">Brouillon</span>
+                            {% elif contrat.statut == "annule" %}
+                                <span class="badge bg-danger">Annulé</span>
+                            {% endif %}
+                        </td>
+                        <td><small>{{ contrat.created_at|date:"d/m/Y H:i" }}</small></td>
+                        <td>
+                            {% if contrat.statut == "signe" %}
+                                <small>{{ contrat.updated_at|date:"d/m/Y H:i" }}</small>
+                            {% else %}
+                                <small class="text-muted">-</small>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="6" class="text-center text-muted py-4">
+                            Aucun contrat trouvé
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}
