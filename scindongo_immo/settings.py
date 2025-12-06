@@ -79,6 +79,29 @@ AUTH_PASSWORD_VALIDATORS = [
     {'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator'},
 ]
 
+# ==========================================
+# CACHE CONFIGURATION - Redis for OTP System
+# ==========================================
+CACHES = {
+    'default': {
+        'BACKEND': 'django_redis.cache.RedisCache',
+        'LOCATION': os.environ.get('REDIS_URL', 'redis://127.0.0.1:6379/0'),
+        'OPTIONS': {
+            'CLIENT_CLASS': 'django_redis.client.DefaultClient',
+        },
+        'KEY_PREFIX': 'scindongo',
+        'TIMEOUT': 300,  # Default timeout 5 minutes
+    }
+}
+
+# OTP Configuration Constants
+CONTRAT_OTP_EXPIRY = 300  # 5 minutes
+CONTRAT_OTP_MAX_ATTEMPTS = 3
+CONTRAT_OTP_BLOCK_DURATION = 900  # 15 minutes
+
+# ==========================================
+# LOCALIZATION
+# ==========================================
 LANGUAGE_CODE = 'fr-fr'
 TIME_ZONE = 'Africa/Dakar'
 USE_I18N = True
@@ -112,6 +135,11 @@ SIMPLE_JWT = {
 SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 SESSION_COOKIE_SECURE = False  # à passer à True en prod
 CSRF_COOKIE_SECURE = False     # à passer à True en prod
+
+# File Upload Settings - Allow up to 60MB for large documents like brochures
+DATA_UPLOAD_MAX_MEMORY_SIZE = 62914560  # 60MB in bytes
+FILE_UPLOAD_MAX_MEMORY_SIZE = 62914560  # 60MB in bytes
+
 # ----- PATCH ÉTAPE 6 -----
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:3000",

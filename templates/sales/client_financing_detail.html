@@ -1,0 +1,376 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Détail du Financement{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="row">
+        <div class="col-lg-10 mx-auto">
+            
+            <!-- Breadcrumb -->
+            <nav aria-label="breadcrumb" class="mb-4">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="{% url 'client_dashboard' %}">Tableau de bord</a></li>
+                    <li class="breadcrumb-item"><a href="{% url 'client_reservation_detail' reservation.id %}">Réservation</a></li>
+                    <li class="breadcrumb-item active">Financement</li>
+                </ol>
+            </nav>
+
+            <!-- Header -->
+            <div class="mb-4 d-flex justify-content-between align-items-center">
+                <div>
+                    <h1 class="display-6 fw-bold">
+                        💰 Détails du Financement
+                    </h1>
+                    <p class="text-muted">Suivi de votre demande de financement bancaire</p>
+                </div>
+                <a href="{% url 'client_reservation_detail' reservation.id %}" class="btn btn-outline-secondary">
+                    <i class="fas fa-arrow-left"></i> Retour
+                </a>
+            </div>
+
+            <!-- Status Card -->
+            <div class="card mb-4 border-{% if financement.statut == 'accepte' %}success{% elif financement.statut == 'refuse' %}danger{% elif financement.statut == 'en_etude' %}warning{% else %}info{% endif %}">
+                <div class="card-body">
+                    <div class="row align-items-center">
+                        <div class="col-md-6">
+                            <h5 class="card-title mb-3">📝 Informations Financiales</h5>
+                            <table class="table table-sm table-borderless">
+                                <tr>
+                                    <td class="fw-bold">Banque:</td>
+                                    <td>{{ financement.banque.nom }}</td>
+                                </tr>
+                                <tr>
+                                    <td class="fw-bold">Montant:</td>
+                                    <td><strong>{{ financement.montant|floatformat:0 }} FCFA</strong></td>
+                                </tr>
+                                <tr>
+                                    <td class="fw-bold">Taux:</td>
+                                    <td>{{ financement.banque.taux_interet }}%</td>
+                                </tr>
+                                <tr>
+                                    <td class="fw-bold">Statut:</td>
+                                    <td>
+                                        <span class="badge bg-{% if financement.statut == 'accepte' %}success{% elif financement.statut == 'refuse' %}danger{% elif financement.statut == 'en_etude' %}warning{% elif financement.statut == 'soumis' %}info{% else %}secondary{% endif %} fs-6">
+                                            {{ financement.get_statut_display }}
+                                        </span>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td class="fw-bold">Demandé le:</td>
+                                    <td>{{ financement.created_at|date:"d/m/Y H:i" }}</td>
+                                </tr>
+                            </table>
+                        </div>
+                        <div class="col-md-6">
+                            <h5 class="card-title mb-3">📊 Progression des Documents</h5>
+                            <div class="mb-3">
+                                <div class="d-flex justify-content-between mb-2">
+                                    <small>Documents uploadés</small>
+                                    <small class="fw-bold">{{ total_docs_uploaded }}/5</small>
+                                </div>
+                                <div class="progress" role="progressbar" style="height: 20px;">
+                                    {% with width=total_docs_uploaded|mul:20 %}
+                                    <div class="progress-bar bg-{% if total_docs_uploaded == 5 %}success{% elif total_docs_uploaded >= 3 %}warning{% else %}info{% endif %}" data-width="{{ width }}"></div>
+                                    {% endwith %}
+                                </div>
+                            </div>
+                            <div class="mb-3">
+                                <div class="d-flex justify-content-between mb-2">
+                                    <small>Documents validés</small>
+                                    <small class="fw-bold">{{ validated_docs }}/5</small>
+                                </div>
+                                <div class="progress" role="progressbar" style="height: 20px;">
+                                    {% with width=validated_docs|mul:20 %}
+                                    <div class="progress-bar bg-success" data-width="{{ width }}"></div>
+                                    {% endwith %}
+                                </div>
+                            </div>
+                            <div>
+                                <p class="small text-muted mb-0">
+                                    ✅ Validés: <strong>{{ validated_docs }}</strong> | 
+                                    ⏳ En attente: <strong>{{ pending_docs }}</strong> | 
+                                    ❌ Rejetés: <strong>{{ rejected_docs }}</strong>
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Réservation Info -->
+            <div class="card mb-4">
+                <div class="card-header bg-light">
+                    <h6 class="mb-0">🏠 Informations de la Réservation</h6>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <p class="mb-2">
+                                <strong>Programme:</strong><br>
+                                {{ unite.programme.nom }}
+                            </p>
+                            <p class="mb-0">
+                                <strong>Unité:</strong><br>
+                                {{ unite.reference }}
+                            </p>
+                        </div>
+                        <div class="col-md-6">
+                            <p class="mb-2">
+                                <strong>Prix Total:</strong><br>
+                                <strong class="text-primary">{{ unite.prix_ttc|floatformat:0 }} FCFA</strong>
+                            </p>
+                            <p class="mb-0">
+                                <strong>Acompte:</strong><br>
+                                {{ reservation.acompte|floatformat:0 }} FCFA
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Documents Status -->
+            <div class="card mb-4">
+                <div class="card-header bg-primary text-white">
+                    <h6 class="mb-0">📄 Documents Requis</h6>
+                </div>
+                <div class="card-body">
+                    {% if documents %}
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>Document</th>
+                                        <th>Statut</th>
+                                        <th>Uploadé le</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for doc in documents %}
+                                        <tr>
+                                            <td>
+                                                <strong>{{ doc.get_document_label }}</strong>
+                                            </td>
+                                            <td>
+                                                {% if doc.statut == 'valide' %}
+                                                    <span class="badge bg-success">✅ Validé</span>
+                                                {% elif doc.statut == 'rejete' %}
+                                                    <span class="badge bg-danger">❌ Rejeté</span>
+                                                    {% if doc.raison_rejet %}
+                                                        <br>
+                                                        <small class="text-danger d-block mt-1">
+                                                            <i class="fas fa-exclamation-triangle"></i> {{ doc.raison_rejet }}
+                                                        </small>
+                                                    {% endif %}
+                                                {% else %}
+                                                    <span class="badge bg-warning text-dark">⏳ En attente</span>
+                                                {% endif %}
+                                            </td>
+                                            <td>
+                                                {% if doc.created_at %}
+                                                    <small>{{ doc.created_at|date:"d/m/Y H:i" }}</small>
+                                                {% else %}
+                                                    <small class="text-muted">-</small>
+                                                {% endif %}
+                                            </td>
+                                            <td>
+                                                {% if doc.statut != 'valide' %}
+                                                    <a href="{% url 'financing_document_modify' doc.id %}" class="btn btn-sm btn-warning" title="Modifier le document">
+                                                        <i class="fas fa-edit"></i> Modifier
+                                                    </a>
+                                                {% else %}
+                                                    <span class="text-success">
+                                                        <i class="fas fa-check-circle"></i> Approuvé
+                                                    </span>
+                                                {% endif %}
+                                            </td>
+                                        </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <!-- Documents manquants -->
+                        {% if missing_documents %}
+                            <div class="alert alert-warning mt-3">
+                                <strong><i class="fas fa-exclamation-triangle"></i> Documents manquants:</strong>
+                                <ul class="mb-0 mt-2">
+                                    {% for missing in missing_documents %}
+                                        <li>{{ missing }}</li>
+                                    {% endfor %}
+                                </ul>
+                            </div>
+                        {% endif %}
+
+                        <!-- Validation Status -->
+                        <div class="mt-4 p-3 {% if docs_complete %}bg-success bg-opacity-10 border border-success{% else %}bg-warning bg-opacity-10 border border-warning{% endif %} rounded">
+                            {% if docs_complete %}
+                                <p class="mb-0">
+                                    <i class="fas fa-check-circle text-success"></i>
+                                    <strong>✅ Tous les documents sont validés!</strong> Votre dossier est complet et sera envoyé à la banque.
+                                </p>
+                            {% else %}
+                                <p class="mb-0">
+                                    <i class="fas fa-info-circle"></i>
+                                    <strong>⏳ En attente de documents</strong> - Veuillez uploader les documents manquants ou modifier ceux rejetés.
+                                </p>
+                            {% endif %}
+                        </div>
+
+                        <!-- Upload Button -->
+                        <div class="mt-4">
+                            <a href="{% url 'financing_documents_upload' financement.id %}" class="btn btn-primary">
+                                <i class="fas fa-cloud-upload"></i> Gérer mes documents
+                            </a>
+                        </div>
+                    {% else %}
+                        <div class="alert alert-info">
+                            <i class="fas fa-info-circle"></i>
+                            Aucun document uploadé pour le moment.
+                            <a href="{% url 'financing_documents_upload' financement.id %}" class="btn btn-sm btn-primary">
+                                Commencer l'upload
+                            </a>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Timeline -->
+            <div class="card">
+                <div class="card-header bg-light">
+                    <h6 class="mb-0">📅 Chronologie</h6>
+                </div>
+                <div class="card-body">
+                    <div class="timeline">
+                        <!-- Soumission -->
+                        <div class="timeline-item mb-4">
+                            <div class="timeline-marker bg-info"></div>
+                            <div>
+                                <h6 class="mb-1">Demande Soumise</h6>
+                                <p class="text-muted small mb-1">{{ financement.created_at|date:"d/m/Y à H:i" }}</p>
+                                <p class="small">Votre demande de financement a été enregistrée</p>
+                            </div>
+                        </div>
+
+                        <!-- Documents -->
+                        <div class="timeline-item mb-4">
+                            <div class="timeline-marker {% if docs_complete %}bg-success{% else %}bg-warning{% endif %}"></div>
+                            <div>
+                                <h6 class="mb-1">Documents
+                                    {% if docs_complete %}
+                                        <span class="badge bg-success">Complét</span>
+                                    {% else %}
+                                        <span class="badge bg-warning">En cours</span>
+                                    {% endif %}
+                                </h6>
+                                <p class="text-muted small mb-1">{{ total_docs_uploaded }}/5 documents uploadés</p>
+                                <p class="small">{{ validated_docs }} validés, {{ pending_docs }} en attente, {{ rejected_docs }} rejetés</p>
+                            </div>
+                        </div>
+
+                        <!-- Étude Banque -->
+                        <div class="timeline-item mb-4">
+                            <div class="timeline-marker {% if financement.statut in 'en_etude,accepte' %}bg-success{% else %}bg-secondary{% endif %}"></div>
+                            <div>
+                                <h6 class="mb-1">Étude Bancaire
+                                    {% if financement.statut == 'en_etude' %}
+                                        <span class="badge bg-warning">En cours</span>
+                                    {% elif financement.statut == 'accepte' %}
+                                        <span class="badge bg-success">Acceptée</span>
+                                    {% elif financement.statut == 'refuse' %}
+                                        <span class="badge bg-danger">Refusée</span>
+                                    {% else %}
+                                        <span class="badge bg-secondary">À venir</span>
+                                    {% endif %}
+                                </h6>
+                                <p class="text-muted small">Délai moyen: 5-10 jours</p>
+                            </div>
+                        </div>
+
+                        <!-- Finalisation -->
+                        <div class="timeline-item">
+                            <div class="timeline-marker {% if financement.statut == 'accepte' %}bg-success{% else %}bg-secondary{% endif %}"></div>
+                            <div>
+                                <h6 class="mb-1">Financement Accepté
+                                    {% if financement.statut == 'accepte' %}
+                                        <span class="badge bg-success">Confirmé</span>
+                                    {% else %}
+                                        <span class="badge bg-secondary">À venir</span>
+                                    {% endif %}
+                                </h6>
+                                <p class="text-muted small">Signature du contrat et versement des fonds</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Info Box -->
+            <div class="alert alert-info mt-4">
+                <strong>ℹ️ Besoin d'aide?</strong><br>
+                Si vous avez des questions sur votre demande de financement, contactez-nous à 
+                <a href="mailto:contact@scindongo-immo.sn">contact@scindongo-immo.sn</a> ou 
+                appelez <a href="tel:+221XXXXXXXX">+221 XX XXX XX XX</a>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+<style>
+.timeline {
+    position: relative;
+    padding-left: 0;
+}
+
+.timeline-item {
+    display: flex;
+    margin-bottom: 2rem;
+}
+
+.timeline-marker {
+    flex-shrink: 0;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-right: 20px;
+    margin-top: 5px;
+    position: relative;
+}
+
+.timeline-marker::after {
+    content: '';
+    position: absolute;
+    left: 50%;
+    top: 100%;
+    width: 2px;
+    height: 40px;
+    background-color: #dee2e6;
+    transform: translateX(-50%);
+}
+
+.timeline-item:last-child .timeline-marker::after {
+    display: none;
+}
+
+.progress {
+    background-color: #e9ecef;
+}
+
+.progress-bar[data-width] {
+    width: var(--width) !important;
+}
+
+.progress-bar[data-width="0"] { width: 0% !important; }
+.progress-bar[data-width="20"] { width: 20% !important; }
+.progress-bar[data-width="40"] { width: 40% !important; }
+.progress-bar[data-width="60"] { width: 60% !important; }
+.progress-bar[data-width="80"] { width: 80% !important; }
+.progress-bar[data-width="100"] { width: 100% !important; }
+</style>
+{% endblock %}

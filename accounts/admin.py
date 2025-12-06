@@ -16,7 +16,7 @@ class RoleAdmin(admin.ModelAdmin):
 class UserAdmin(DjangoUserAdmin):
     fieldsets = (
         (None, {"fields": ("email", "password")}),
-        (_("Informations personnelles"), {"fields": ("first_name", "last_name")}),
+        (_("Informations personnelles"), {"fields": ("first_name", "last_name", "telephone")}),
         (
             _("Rôles et permissions"),
             {"fields": ("roles", "is_active", "is_staff", "is_superuser", "groups", "user_permissions")},
@@ -31,6 +31,7 @@ class UserAdmin(DjangoUserAdmin):
                 "email",
                 "first_name",
                 "last_name",
+                "telephone",
                 "password1",
                 "password2",
                 "roles",
@@ -40,6 +41,6 @@ class UserAdmin(DjangoUserAdmin):
         }),
     )
 
-    list_display = ("email", "first_name", "last_name", "is_staff", "is_active")
-    search_fields = ("email", "first_name", "last_name")
+    list_display = ("email", "first_name", "last_name", "telephone", "is_staff", "is_active")
+    search_fields = ("email", "first_name", "last_name", "telephone")
     ordering = ("email",)

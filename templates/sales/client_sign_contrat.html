@@ -1,0 +1,160 @@
+{% extends 'base.html' %}
+
+{% block title %}Signer le Contrat - OTP{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="row">
+        <div class="col-lg-8 mx-auto">
+            
+            <!-- En-tête -->
+            <div class="card mb-4 border-primary">
+                <div class="card-header bg-primary text-white">
+                    <h4 class="mb-0">📝 Signer le Contrat</h4>
+                </div>
+                <div class="card-body">
+                    <dl class="row mb-0">
+                        <dt class="col-sm-4">Numéro contrat:</dt>
+                        <dd class="col-sm-8"><strong>{{ contrat.numero }}</strong></dd>
+                        
+                        <dt class="col-sm-4">Unité:</dt>
+                        <dd class="col-sm-8">{{ reservation.unite.reference }} - {{ reservation.unite.programme.nom }}</dd>
+                        
+                        <dt class="col-sm-4">Prix:</dt>
+                        <dd class="col-sm-8">{{ reservation.unite.prix_ttc|floatformat:0 }} FCFA</dd>
+                    </dl>
+                </div>
+            </div>
+
+            <!-- Alertes Status -->
+            {% if is_blocked %}
+                <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                    <h5><i class="fas fa-exclamation-triangle"></i> Trop de tentatives</h5>
+                    <p class="mb-0">Vous avez dépassé le nombre maximum de tentatives (3). Contactez le commercial pour réessayer.</p>
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+            {% elif otp_remaining_seconds > 0 %}
+                <div class="alert alert-info alert-dismissible fade show" role="alert">
+                    <h5><i class="fas fa-lock"></i> OTP Valide</h5>
+                    <p class="mb-0">Le code OTP est valide pendant <strong id="otp-timer">{{ otp_remaining_seconds }}</strong> secondes</p>
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+            {% else %}
+                <div class="alert alert-warning alert-dismissible fade show" role="alert">
+                    <h5><i class="fas fa-clock"></i> En attente</h5>
+                    <p class="mb-0">En attente de génération de l'OTP par le commercial...</p>
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+            {% endif %}
+
+            <!-- Messages -->
+            {% if messages %}
+                {% for message in messages %}
+                    <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                        {{ message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                    </div>
+                {% endfor %}
+            {% endif %}
+
+            <!-- Formulaire OTP -->
+            {% if not is_blocked and otp_remaining_seconds > 0 %}
+                <div class="card">
+                    <div class="card-header bg-success text-white">
+                        <h5 class="mb-0">🔐 Saisissez votre code OTP</h5>
+                    </div>
+                    <div class="card-body">
+                        <form method="post" id="otp-form">
+                            {% csrf_token %}
+                            
+                            <div class="mb-4">
+                                <label for="{{ form.otp.id_for_label }}" class="form-label">
+                                    <strong>{{ form.otp.label }}</strong>
+                                </label>
+                                {{ form.otp }}
+                                {% if form.otp.errors %}
+                                    <div class="invalid-feedback d-block">
+                                        {% for error in form.otp.errors %}
+                                            <i class="fas fa-times-circle"></i> {{ error }}<br>
+                                        {% endfor %}
+                                    </div>
+                                {% endif %}
+                                {% if form.otp.help_text %}
+                                    <small class="form-text text-muted d-block mt-2">
+                                        {{ form.otp.help_text }}
+                                    </small>
+                                {% endif %}
+                            </div>
+
+                            <div class="alert alert-light border">
+                                <small>
+                                    ✓ Entrez les 6 chiffres du code OTP<br>
+                                    ✓ Le code expire après 5 minutes<br>
+                                    ✓ Vous avez 3 tentatives maximum
+                                </small>
+                            </div>
+
+                            <div class="d-flex gap-2">
+                                <button type="submit" class="btn btn-success btn-lg" id="sign-btn">
+                                    <i class="fas fa-pen-fancy"></i> Signer le Contrat
+                                </button>
+                                <a href="{% url 'client_reservation_detail' reservation.id %}" class="btn btn-secondary btn-lg">
+                                    <i class="fas fa-arrow-left"></i> Retour
+                                </a>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+
+                <script>
+                    // Timer pour l'OTP
+                    let otpSecondsLeft = {{ otp_remaining_seconds }};
+                    const timerElement = document.getElementById('otp-timer');
+                    
+                    setInterval(() => {
+                        otpSecondsLeft--;
+                        if (otpSecondsLeft <= 0) {
+                            document.getElementById('otp-form').style.display = 'none';
+                            document.getElementById('sign-btn').disabled = true;
+                            location.reload();
+                        } else {
+                            timerElement.textContent = otpSecondsLeft;
+                            if (otpSecondsLeft < 60) {
+                                timerElement.parentElement.className = 'alert alert-warning';
+                            }
+                        }
+                    }, 1000);
+                </script>
+            {% else %}
+                <div class="card border-warning">
+                    <div class="card-body text-center py-5">
+                        <h5 class="mb-3">⏳ En attente...</h5>
+                        <p class="text-muted">Le commercial doit d'abord générer le code OTP.</p>
+                        <a href="{% url 'client_reservation_detail' reservation.id %}" class="btn btn-secondary">
+                            <i class="fas fa-arrow-left"></i> Retour à la réservation
+                        </a>
+                    </div>
+                </div>
+            {% endif %}
+
+            <!-- Infos Contrat -->
+            <div class="card mt-4 border-info">
+                <div class="card-header bg-info text-white">
+                    <h5 class="mb-0">📄 Document PDF</h5>
+                </div>
+                <div class="card-body">
+                    {% if contrat.pdf %}
+                        <p class="mb-3">Téléchargez le PDF du contrat à signer:</p>
+                        <a href="{{ contrat.pdf.url }}" target="_blank" class="btn btn-outline-info">
+                            <i class="fas fa-download"></i> Télécharger le PDF
+                        </a>
+                    {% else %}
+                        <p class="text-muted mb-0">Aucun fichier PDF disponible</p>
+                    {% endif %}
+                </div>
+            </div>
+
+        </div>
+    </div>
+</div>
+{% endblock %}

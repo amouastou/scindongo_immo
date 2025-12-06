@@ -8,3 +8,5 @@ djangorestframework-simplejwt
 django-cors-headers
 django-filter
 django-widget-tweaks==1.5.0
+django-redis>=5.4.0
+redis>=5.0.0

@@ -80,6 +80,7 @@ class Contrat(TimeStampedModel):
     signe_le = models.DateTimeField(null=True, blank=True)
     pdf_hash = models.CharField(max_length=128, blank=True)
     otp_logs = models.JSONField(default=dict, blank=True)
+    otp_generated_at = models.DateTimeField(null=True, blank=True, help_text="Date et heure de génération du dernier OTP")
 
     class Meta:
         verbose_name = "Contrat"
@@ -153,3 +154,124 @@ class Echeance(TimeStampedModel):
 
     def __str__(self):
         return f"{self.date_echeance} - {self.montant_total}"
+
+
+class ReservationDocument(TimeStampedModel):
+    """Documents requis pour la réservation (CNI, photo, résidence)"""
+    
+    DOCUMENT_TYPES = [
+        ('cni', 'CNI'),
+        ('photo', 'Photo/Selfie'),
+        ('residence', 'Preuve de résidence'),
+    ]
+    
+    STATUS_CHOICES = [
+        ('en_attente', 'En attente de validation'),
+        ('valide', 'Validé'),
+        ('rejete', 'Rejeté'),
+    ]
+    
+    reservation = models.ForeignKey(
+        Reservation,
+        on_delete=models.CASCADE,
+        related_name='documents'
+    )
+    document_type = models.CharField(
+        max_length=50,
+        choices=DOCUMENT_TYPES
+    )
+    fichier = models.FileField(upload_to='documents/reservations/%Y/%m/')
+    statut = models.CharField(
+        max_length=20,
+        choices=STATUS_CHOICES,
+        default='en_attente'
+    )
+    raison_rejet = models.TextField(blank=True)
+    verifie_par = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='reservation_documents_verifies'
+    )
+    verifie_le = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        unique_together = ('reservation', 'document_type')
+        ordering = ['-created_at']
+        verbose_name = "Document de réservation"
+        verbose_name_plural = "Documents de réservation"
+
+    def __str__(self):
+        return f"{self.reservation} - {self.get_document_type_display()}"
+
+
+class FinancementDocument(TimeStampedModel):
+    """Documents requis pour le financement (brochure, CNI, bulletin salaire, RIB, attestation employeur)"""
+    
+    DOCUMENT_TYPES = [
+        ('brochure', 'Brochure du programme'),
+        ('cni', 'CNI'),
+        ('bulletin_salaire', 'Bulletin de salaire'),
+        ('rib_ou_iban', 'RIB ou IBAN'),
+        ('attestation_employeur', "Attestation d'employeur"),
+    ]
+    
+    STATUS_CHOICES = [
+        ('en_attente', 'En attente de validation'),
+        ('valide', 'Validé'),
+        ('rejete', 'Rejeté'),
+    ]
+    
+    financement = models.ForeignKey(
+        'Financement',
+        on_delete=models.CASCADE,
+        related_name='documents'
+    )
+    document_type = models.CharField(
+        max_length=50,
+        choices=DOCUMENT_TYPES
+    )
+    numero_ordre = models.IntegerField(
+        default=1,
+        help_text="Numéro d'ordre pour les documents multiples (ex: 1er, 2e, 3e bulletin)"
+    )
+    fichier = models.FileField(upload_to='documents/financements/%Y/%m/')
+    statut = models.CharField(
+        max_length=20,
+        choices=STATUS_CHOICES,
+        default='en_attente'
+    )
+    raison_rejet = models.TextField(blank=True)
+    verifie_par = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='financing_documents_verifies'
+    )
+    verifie_le = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        unique_together = ('financement', 'document_type', 'numero_ordre')
+        ordering = ['-created_at']
+        verbose_name = "Document de financement"
+        verbose_name_plural = "Documents de financement"
+
+    def __str__(self):
+        label = self.get_document_type_display()
+        if self.numero_ordre > 1:
+            suffixes = {1: "er", 2: "e", 3: "e"}
+            suffix = suffixes.get(self.numero_ordre, "e")
+            label = f"{label} ({self.numero_ordre}{suffix})"
+        return f"{self.financement} - {label}"
+    
+    def get_document_label(self):
+        """Retourne le libellé du document avec numéro d'ordre si applicable"""
+        label = self.get_document_type_display()
+        if self.numero_ordre > 1:
+            suffixes = {1: "er", 2: "e", 3: "e"}
+            suffix = suffixes.get(self.numero_ordre, "e")
+            label = f"{label} ({self.numero_ordre}{suffix})"
+        return label
+

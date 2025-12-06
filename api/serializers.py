@@ -9,6 +9,7 @@ from accounts.models import User
 from sales.models import (
     Client,
     Reservation,
+    ReservationDocument,
     Contrat,
     Paiement,
     BanquePartenaire,
@@ -153,6 +154,30 @@ class PhotoChantierListSerializer(serializers.ModelSerializer):
 # ============================
 
 
+
+
+# ============================
+#   RESERVATION DOCUMENTS
+# ============================
+
+
+class ReservationDocumentSerializer(serializers.ModelSerializer):
+    """Serializer pour les documents de réservation"""
+    class Meta:
+        model = ReservationDocument
+        fields = [
+            "id",
+            "document_type",
+            "fichier",
+            "statut",
+            "raison_rejet",
+            "verifie_par",
+            "verifie_le",
+            "created_at",
+        ]
+        read_only_fields = ["id", "statut", "raison_rejet", "verifie_par", "verifie_le", "created_at"]
+
+
 class ClientSerializer(serializers.ModelSerializer):
     class Meta:
         model = Client
@@ -171,6 +196,8 @@ class ClientSerializer(serializers.ModelSerializer):
 
 
 class ReservationSerializer(serializers.ModelSerializer):
+    documents = ReservationDocumentSerializer(many=True, read_only=True)
+    
     class Meta:
         model = Reservation
         fields = [
@@ -180,6 +207,7 @@ class ReservationSerializer(serializers.ModelSerializer):
             "date_reservation",
             "acompte",
             "statut",
+            "documents",
             "created_at",
             "updated_at",
         ]

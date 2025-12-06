@@ -1,48 +1,265 @@
 {% extends 'base.html' %}
+{% load static %}
 {% block content %}
-<h1 class="mb-4">Contact</h1>
 
-<div class="row g-4">
-  <div class="col-md-6">
-    <div class="card shadow-sm h-100">
-      <div class="card-body">
-        <h5 class="card-title mb-3">Coordonnées SCINDONGO Immo</h5>
-        <p class="mb-1"><strong>Adresse :</strong> Dakar, Sénégal</p>
-        <p class="mb-1"><strong>Téléphone :</strong> +221 XX XXX XX XX</p>
-        <p class="mb-3"><strong>Email :</strong> contact@scindongo-immo.sn</p>
+<!-- Breadcrumbs -->
+<nav aria-label="breadcrumb" class="mb-4">
+  <ol class="breadcrumb">
+    <li class="breadcrumb-item"><a href="{% url 'home' %}" class="text-decoration-none">Accueil</a></li>
+    <li class="breadcrumb-item active">Contact</li>
+  </ol>
+</nav>
 
-        <p class="text-muted small">
-          Pour toute question sur un programme, une réservation ou un suivi de chantier, vous pouvez
-          nous contacter via ces coordonnées ou créer un compte et utiliser votre espace client.
-        </p>
+<!-- Header Banner -->
+<div class="bg-primary text-white py-5 mb-5 rounded-3 shadow">
+  <div class="container">
+    <h1 class="display-4 fw-bold mb-3">📞 Nous Contacter</h1>
+    <p class="lead mb-0">Besoin d'assistance ? Notre équipe est disponible pour répondre à toutes vos questions</p>
+  </div>
+</div>
+
+<!-- Contact Info Cards -->
+<section class="mb-5">
+  <div class="row g-4 mb-5">
+    <!-- Adresse -->
+    <div class="col-md-6 col-lg-3">
+      <div class="card h-100 shadow-sm border-0 text-center">
+        <div class="card-body">
+          <div class="display-5 mb-3 text-primary">📍</div>
+          <h5 class="card-title fw-bold">Adresse</h5>
+          <p class="card-text text-muted small mb-0">
+            Sacré Cœur 1, Immeuble D TRANSVEES 5 et 6, Dakar, Sénégal<br>
+            République du Sénégal
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Téléphone -->
+    <div class="col-md-6 col-lg-3">
+      <div class="card h-100 shadow-sm border-0 text-center">
+        <div class="card-body">
+          <div class="display-5 mb-3 text-success">📱</div>
+          <h5 class="card-title fw-bold">Téléphone</h5>
+          <p class="card-text text-muted small mb-0">
+            <a href="tel:+221XXXXXXXXX" class="text-decoration-none text-muted">
+              +221 77 658 42 65
+            </a><br>
+            <small>Lun-Ven: 8h-18h</small>
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Email -->
+    <div class="col-md-6 col-lg-3">
+      <div class="card h-100 shadow-sm border-0 text-center">
+        <div class="card-body">
+          <div class="display-5 mb-3 text-warning">📧</div>
+          <h5 class="card-title fw-bold">Email</h5>
+          <p class="card-text text-muted small mb-0">
+            <a href="mailto:contact@scindongo-immo.sn" class="text-decoration-none text-muted">
+              contact@scindongo-immo.sn
+            </a><br>
+            <small>Réponse en 24h</small>
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Horaires -->
+    <div class="col-md-6 col-lg-3">
+      <div class="card h-100 shadow-sm border-0 text-center">
+        <div class="card-body">
+          <div class="display-5 mb-3 text-info">🕐</div>
+          <h5 class="card-title fw-bold">Horaires</h5>
+          <p class="card-text text-muted small mb-0">
+            Lun-Ven: 8h-18h<br>
+            Samedi: 9h-14h<br>
+            <small>Dimanche: Fermé</small>
+          </p>
+        </div>
       </div>
     </div>
   </div>
+</section>
 
-  <div class="col-md-6">
-    <div class="card shadow-sm h-100">
-      <div class="card-body">
-        <h5 class="card-title mb-3">Formulaire de contact</h5>
-        <p class="text-muted small">
-          (Exemple statique — on pourra plus tard brancher l'envoi d'email ou l'enregistrement en base.)
-        </p>
-        <form>
+<!-- Contact Content Row -->
+<div class="row g-4 mb-5">
+  <!-- Contact Form -->
+  <div class="col-lg-6">
+    <div class="card shadow-lg border-0">
+      <div class="card-body p-4">
+        <h3 class="card-title fw-bold mb-4">✍️ Envoyez-nous un message</h3>
+        <form method="POST" action="#" class="needs-validation">
+          {% csrf_token %}
           <div class="mb-3">
-            <label class="form-label">Nom complet</label>
-            <input type="text" class="form-control" placeholder="Votre nom et prénom">
+            <label for="nom" class="form-label fw-semibold">Nom complet</label>
+            <input type="text" class="form-control form-control-lg" id="nom" name="nom" 
+                   placeholder="Votre nom et prénom" required>
+            <small class="text-muted">Au minimum 3 caractères</small>
           </div>
+
           <div class="mb-3">
-            <label class="form-label">Adresse email</label>
-            <input type="email" class="form-control" placeholder="vous@example.com">
+            <label for="email" class="form-label fw-semibold">Adresse email</label>
+            <input type="email" class="form-control form-control-lg" id="email" name="email" 
+                   placeholder="vous@example.com" required>
+            <small class="text-muted">Nous vous répondrons à cette adresse</small>
           </div>
+
           <div class="mb-3">
-            <label class="form-label">Message</label>
-            <textarea class="form-control" rows="4" placeholder="Votre question, votre projet..."></textarea>
+            <label for="telephone" class="form-label fw-semibold">Téléphone (optionnel)</label>
+            <input type="tel" class="form-control form-control-lg" id="telephone" name="telephone" 
+                   placeholder="+221 77 658 42 65">
+            <small class="text-muted">Pour un contact plus rapide</small>
           </div>
-          <button type="button" class="btn btn-primary" disabled>Envoyer (démo)</button>
+
+          <div class="mb-3">
+            <label for="sujet" class="form-label fw-semibold">Sujet</label>
+            <select class="form-select form-select-lg" id="sujet" name="sujet" required>
+              <option value="">-- Sélectionnez un sujet --</option>
+              <option value="info">Information générale</option>
+              <option value="programme">Question sur un programme</option>
+              <option value="reservation">Aide à la réservation</option>
+              <option value="paiement">Question de paiement</option>
+              <option value="financement">Demande de financement</option>
+              <option value="technique">Problème technique</option>
+              <option value="autre">Autre</option>
+            </select>
+          </div>
+
+          <div class="mb-3">
+            <label for="message" class="form-label fw-semibold">Message</label>
+            <textarea class="form-control" id="message" name="message" rows="5" 
+                      placeholder="Décrivez votre question ou votre besoin en détail..." required></textarea>
+            <small class="text-muted">Minimum 10 caractères</small>
+          </div>
+
+          <div class="form-check mb-3">
+            <input class="form-check-input" type="checkbox" id="consentement" name="consentement" required>
+            <label class="form-check-label" for="consentement">
+              J'accepte que mes données soient traitées pour répondre à ma demande
+            </label>
+          </div>
+
+          <button type="submit" class="btn btn-primary btn-lg w-100 fw-semibold">
+            📤 Envoyer mon message
+          </button>
+          <small class="d-block mt-2 text-muted text-center">Nous répondons généralement dans les 24 heures</small>
         </form>
       </div>
     </div>
   </div>
+
+  <!-- Info Section -->
+  <div class="col-lg-6">
+    <!-- Quick Help -->
+    <div class="card shadow-lg border-0 mb-4">
+      <div class="card-body p-4">
+        <h3 class="card-title fw-bold mb-4">💡 Besoin d'aide rapide ?</h3>
+        
+        <div class="mb-4">
+          <h6 class="fw-bold mb-2">📚 Je cherche des informations sur un programme</h6>
+          <p class="text-muted small mb-3">Consultez notre <a href="{% url 'programme_list' %}" class="text-primary fw-semibold">catalogue de programmes</a> pour voir tous les détails et photos.</p>
+        </div>
+
+        <div class="mb-4">
+          <h6 class="fw-bold mb-2">🔐 Je veux réserver un bien</h6>
+          <p class="text-muted small mb-3">
+            {% if user.is_authenticated %}
+              Rendez-vous dans votre <a href="{% url 'client_dashboard' %}" class="text-primary fw-semibold">espace client</a> pour débuter une réservation.
+            {% else %}
+              <a href="{% url 'register' %}" class="text-primary fw-semibold">Créez un compte</a> puis explorez nos programmes.
+            {% endif %}
+          </p>
+        </div>
+
+        <div class="mb-4">
+          <h6 class="fw-bold mb-2">💳 Question sur un paiement</h6>
+          <p class="text-muted small mb-3">Accédez à votre espace client pour consulter vos paiements et télécharger vos reçus.</p>
+        </div>
+
+        <div class="mb-0">
+          <h6 class="fw-bold mb-2">📞 Support technique</h6>
+          <p class="text-muted small mb-0">Appelez-nous au <a href="tel:+221XXXXXXXXX" class="text-primary fw-semibold">+221 77 658 42 65</a> pendant nos horaires d'ouverture.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Map placeholder or additional info -->
+    <div class="card shadow-lg border-0">
+      <div class="card-body p-4 text-center">
+        <div class="display-5 mb-3">🌍</div>
+        <h5 class="card-title fw-bold">Localisation</h5>
+        <p class="text-muted small mb-3">Nous sommes basés à Dakar, au cœur de la dynamique immobilière du Sénégal.</p>
+        <p class="text-muted small mb-0">
+          <strong>République du Sénégal<br>
+          Un Peuple, Un But, Une Foi</strong>
+        </p>
+      </div>
+    </div>
+  </div>
 </div>
+
+<!-- Team Section -->
+<section class="bg-light py-5 rounded-3 mb-5">
+  <div class="container">
+    <h2 class="display-6 fw-bold mb-4 text-center">👥 Notre Équipe</h2>
+    <p class="lead text-center text-muted mb-5">Rencontrez les personnes qui rendent SCINDONGO Immo possible</p>
+    
+    <div class="row g-4 text-center">
+      <div class="col-md-4">
+        <div class="card h-100 shadow-sm border-0">
+          <div class="card-body">
+            <div class="display-5 mb-3">👤</div>
+            <h5 class="card-title fw-bold">Mame Fatou NDAO</h5>
+            <p class="text-primary fw-semibold mb-2">📱 +221 77 658 42 65</p>
+            <p class="text-muted small">Directrice de Programme</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="col-md-4">
+        <div class="card h-100 shadow-sm border-0">
+          <div class="card-body">
+            <div class="display-5 mb-3">👤</div>
+            <h5 class="card-title fw-bold">Fatima NDONGO</h5>
+            <p class="text-primary fw-semibold mb-2">📱 +221 77 126 28 40</p>
+            <p class="text-muted small">Gestionnaire de Projets</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="col-md-4">
+        <div class="card h-100 shadow-sm border-0">
+          <div class="card-body">
+            <div class="display-5 mb-3">👤</div>
+            <h5 class="card-title fw-bold">Salimata CISSE</h5>
+            <p class="text-primary fw-semibold mb-2">📱 +221 77 787 09 05</p>
+            <p class="text-muted small">Responsable Service Client</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Final CTA -->
+<section class="bg-primary text-white py-5 rounded-3 shadow">
+  <div class="container text-center">
+    <h2 class="display-5 fw-bold mb-3">Prêt à nous rejoindre ?</h2>
+    <p class="lead mb-4">Explorez nos programmes et commencez votre parcours immobilier dès aujourd'hui</p>
+    <div class="d-flex gap-3 justify-content-center flex-wrap">
+      <a href="{% url 'programme_list' %}" class="btn btn-light btn-lg fw-semibold">
+        📋 Voir les programmes
+      </a>
+      {% if not user.is_authenticated %}
+        <a href="{% url 'register' %}" class="btn btn-outline-light btn-lg fw-semibold">
+          ✍️ S'inscrire
+        </a>
+      {% endif %}
+    </div>
+  </div>
+</section>
+
 {% endblock %}

@@ -113,6 +113,177 @@
         </div>
     </div>
 
+    <!-- 📄 DOCUMENTS SECTION -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header bg-warning text-dark">
+                    <h5 class="mb-0">📄 Documents du Client</h5>
+                </div>
+                <div class="card-body">
+                    
+                    <!-- Status Global -->
+                    <div class="alert {% if documents_complete %}alert-success{% elif missing_documents %}alert-danger{% else %}alert-info{% endif %} mb-4">
+                        {% if documents_complete %}
+                            ✅ <strong>Tous les documents sont validés!</strong>
+                        {% elif missing_documents %}
+                            ❌ <strong>Documents manquants ou en attente:</strong>
+                            <ul class="mb-0 mt-2">
+                                {% for doc_type in missing_documents %}
+                                    <li>{{ doc_type.label }}</li>
+                                {% endfor %}
+                            </ul>
+                        {% else %}
+                            ⏳ <strong>Documents en cours de validation</strong>
+                        {% endif %}
+                    </div>
+
+                    <!-- Tableau Documents -->
+                    <div class="table-responsive mb-4">
+                        <table class="table table-hover">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Type</th>
+                                    <th>Statut</th>
+                                    <th>Uploadé le</th>
+                                    <th>Vérifié par</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for doc in documents %}
+                                    <tr>
+                                        <td class="fw-bold">
+                                            {% if doc.document_type == 'cni' %}🪪{% elif doc.document_type == 'photo' %}📸{% else %}🏠{% endif %}
+                                            {{ doc.get_document_type_display }}
+                                        </td>
+                                        <td>
+                                            {% if doc.statut == 'valide' %}
+                                                <span class="badge bg-success">✅ Validé</span>
+                                            {% elif doc.statut == 'rejete' %}
+                                                <span class="badge bg-danger">❌ Rejeté</span>
+                                            {% else %}
+                                                <span class="badge bg-warning text-dark">⏳ En attente</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>{{ doc.created_at|date:"d/m/Y à H:i" }}</td>
+                                        <td>
+                                            {% if doc.verifie_par %}
+                                                <small>{{ doc.verifie_par.get_short_name }}</small><br>
+                                                <small class="text-muted">{{ doc.verifie_le|date:"d/m/Y" }}</small>
+                                            {% else %}
+                                                <span class="text-muted">-</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            <div class="btn-group btn-group-sm" role="group">
+                                                <!-- Télécharger -->
+                                                <a href="{{ doc.fichier.url }}" target="_blank" class="btn btn-outline-primary btn-sm" title="Télécharger">
+                                                    <i class="fas fa-download"></i>
+                                                </a>
+                                                
+                                                <!-- Valider -->
+                                                {% if doc.statut != 'valide' %}
+                                                    <a href="{% url 'commercial_document_validate' doc.id %}" class="btn btn-outline-success btn-sm" title="Valider ce document" onclick="return confirm('Valider ce document?')">
+                                                        <i class="fas fa-check"></i> Valider
+                                                    </a>
+                                                {% endif %}
+                                                
+                                                <!-- Rejeter -->
+                                                {% if doc.statut != 'rejete' %}
+                                                    <a href="{% url 'commercial_document_reject' doc.id %}" class="btn btn-outline-danger btn-sm" title="Rejeter ce document">
+                                                        <i class="fas fa-times"></i> Rejeter
+                                                    </a>
+                                                {% endif %}
+                                            </div>
+                                        </td>
+                                    </tr>
+                                {% empty %}
+                                    <tr>
+                                        <td colspan="5" class="text-center text-muted py-4">
+                                            <i class="fas fa-inbox fs-4 mb-2 d-block"></i>
+                                            Aucun document uploadé par le client
+                                        </td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 💬 MESSAGE AU CLIENT SECTION -->
+    <div class="row mb-4">
+        <div class="col-lg-8">
+            <div class="card">
+                <div class="card-header bg-info text-white">
+                    <h5 class="mb-0">💬 Envoyer un Message au Client</h5>
+                </div>
+                <div class="card-body">
+                    <p class="text-muted mb-3">
+                        Utilisez ce formulaire pour communiquer directement avec le client concernant sa réservation, ses documents ou toute autre information importante.
+                    </p>
+                    
+                    <form method="post">
+                        {% csrf_token %}
+                        <input type="hidden" name="action" value="send_message">
+                        
+                        <div class="mb-3">
+                            <label for="messageText" class="form-label">Votre Message</label>
+                            <textarea class="form-control" id="messageText" name="message" rows="5" 
+                                      placeholder="Saisissez votre message au client..." 
+                                      required></textarea>
+                            <small class="text-muted d-block mt-2">
+                                💡 Exemples: Document rejeté, infos manquantes, prochaines étapes, etc.
+                            </small>
+                        </div>
+
+                        <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                            <button type="reset" class="btn btn-outline-secondary">
+                                <i class="fas fa-redo"></i> Réinitialiser
+                            </button>
+                            <button type="submit" class="btn btn-info text-white">
+                                <i class="fas fa-paper-plane"></i> Envoyer le Message
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Info Box -->
+        <div class="col-lg-4">
+            <div class="card bg-light">
+                <div class="card-header">
+                    <h6 class="mb-0">📋 Résumé</h6>
+                </div>
+                <div class="card-body">
+                    <p class="mb-2">
+                        <strong>Client:</strong> {{ reservation.client.prenom }} {{ reservation.client.nom }}
+                    </p>
+                    <p class="mb-2">
+                        <strong>Email:</strong> <a href="mailto:{{ reservation.client.email }}">{{ reservation.client.email }}</a>
+                    </p>
+                    <p class="mb-2">
+                        <strong>Statut Documents:</strong> 
+                        {% if documents_complete %}
+                            <span class="badge bg-success">✅ Complet</span>
+                        {% else %}
+                            <span class="badge bg-warning">⏳ Incomplet</span>
+                        {% endif %}
+                    </p>
+                    <hr>
+                    <p class="text-muted small mb-0">
+                        💡 Les messages seront archivés à titre de preuve de communication avec le client.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Actions -->
     <div class="row">
         <div class="col-12 mb-4">
@@ -122,29 +293,7 @@
                 </div>
                 <div class="card-body">
                     <div class="row">
-                        <!-- Financement -->
-                        <div class="col-md-6 mb-3">
-                            {% if can_add_financement %}
-                                <a href="{% url 'commercial_financement_create' reservation.id %}" class="btn btn-lg btn-primary w-100">
-                                    <i class="fas fa-bank"></i><br>
-                                    Ajouter Financement
-                                </a>
-                            {% else %}
-                                {% if reservation.financement %}
-                                    <a href="{% url 'commercial_financing_detail' reservation.financement.id %}" class="btn btn-lg btn-success w-100">
-                                        <i class="fas fa-check-circle"></i><br>
-                                        Gérer le Financement
-                                    </a>
-                                {% else %}
-                                    <button class="btn btn-lg btn-secondary w-100" disabled>
-                                        <i class="fas fa-check-circle"></i><br>
-                                        Financement Existant
-                                    </button>
-                                {% endif %}
-                            {% endif %}
-                        </div>
-
-                        <!-- Contrat -->
+                        <!-- Créer Contrat -->
                         <div class="col-md-6 mb-3">
                             {% if can_sign_contrat %}
                                 <a href="{% url 'commercial_contrat_create' reservation.id %}" class="btn btn-lg btn-warning w-100">
@@ -166,17 +315,9 @@
                             {% endif %}
                         </div>
 
-                        <!-- Paiement -->
+                        <!-- Valider Paiements -->
                         <div class="col-md-6 mb-3">
-                            <a href="{% url 'commercial_paiement_create' reservation.id %}" class="btn btn-lg btn-success w-100">
-                                <i class="fas fa-money-bill-wave"></i><br>
-                                Enregistrer Paiement
-                            </a>
-                        </div>
-
-                        <!-- Validation Paiements -->
-                        <div class="col-md-6 mb-3">
-                            <a href="{% url 'commercial_payment_validation_list' %}" class="btn btn-lg btn-info w-100">
+                            <a href="{% url 'commercial_payment_validation_list' %}?reservation={{ reservation.id }}" class="btn btn-lg btn-info w-100">
                                 <i class="fas fa-check-double"></i><br>
                                 Valider les Paiements
                             </a>
@@ -218,8 +359,8 @@
                                 </td>
                             </tr>
                         </table>
-                        <a href="{% url 'commercial_financement_update' reservation.id %}" class="btn btn-sm btn-outline-success">
-                            <i class="fas fa-edit"></i> Mettre à jour
+                        <a href="{% url 'commercial_financing_detail' reservation.financement.id %}" class="btn btn-sm btn-primary">
+                            <i class="fas fa-file-alt"></i> Voir les documents et statut
                         </a>
                     </div>
                 </div>
@@ -261,9 +402,25 @@
                                 </tr>
                             {% endif %}
                         </table>
-                        <a href="{% url 'commercial_contrat_update' reservation.id %}" class="btn btn-sm btn-outline-warning">
-                            <i class="fas fa-edit"></i> Mettre à jour
-                        </a>
+                        
+                        <!-- Boutons OTP -->
+                        {% if reservation.contrat.statut == 'brouillon' %}
+                            <div class="d-flex gap-2">
+                                <form method="post" action="{% url 'commercial_generate_otp' reservation.contrat.id %}" style="display:inline;">
+                                    {% csrf_token %}
+                                    <button type="submit" class="btn btn-sm btn-success">
+                                        <i class="fas fa-lock"></i> Générer OTP
+                                    </button>
+                                </form>
+                                <a href="{% url 'commercial_contrat_update' reservation.id %}" class="btn btn-sm btn-outline-warning">
+                                    <i class="fas fa-edit"></i> Mettre à jour
+                                </a>
+                            </div>
+                        {% else %}
+                            <a href="{% url 'commercial_contrat_update' reservation.id %}" class="btn btn-sm btn-outline-warning">
+                                <i class="fas fa-edit"></i> Mettre à jour
+                            </a>
+                        {% endif %}
                     </div>
                 </div>
             </div>

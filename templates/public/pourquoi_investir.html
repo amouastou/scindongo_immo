@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% load static %}
 {% block content %}
 
 <!-- Breadcrumbs -->
@@ -9,179 +10,271 @@
   </ol>
 </nav>
 
-<!-- Header -->
-<div class="mb-5">
-  <h1 class="display-5 fw-bold">🎯 Pourquoi investir avec SCINDONGO Immo ?</h1>
-  <p class="lead text-muted">Une plateforme moderne, sécurisée et transparente pour vos projets immobiliers</p>
+<!-- Header avec bannière -->
+<div class="bg-primary text-white py-5 mb-5 rounded-3 shadow">
+  <div class="container">
+    <h1 class="display-4 fw-bold mb-3">🎯 Pourquoi investir avec SCINDONGO Immo ?</h1>
+    <p class="lead mb-0">Une plateforme moderne, sécurisée et transparente pour vos projets immobiliers au Sénégal</p>
+  </div>
 </div>
 
 <!-- Avantages principaux -->
-<div class="row g-4 mb-5">
-  <div class="col-md-4">
-    <div class="card h-100 shadow-sm border-0">
-      <div class="card-body">
-        <h5 class="card-title">🔐 Sécurité juridique</h5>
-        <p class="card-text">
-          Les programmes sont encadrés par des notaires partenaires, conformément à la
-          réglementation immobilière en vigueur au Sénégal. Les contrats sont tracés et archivés
-          numériquement dans la plateforme avec audit trail complet.
-        </p>
+<section class="mb-5">
+  <h2 class="display-6 fw-bold mb-4 text-center">✨ Nos Avantages Clés</h2>
+  <div class="row g-4">
+    <div class="col-md-4 col-lg-4">
+      <div class="card h-100 shadow-sm border-0 border-top border-primary border-4">
+        <div class="card-body">
+          <div class="display-5 mb-3">🔐</div>
+          <h5 class="card-title fw-bold">Sécurité juridique</h5>
+          <p class="card-text text-muted">
+            Les programmes sont encadrés par des notaires partenaires, conformément à la réglementation immobilière en vigueur au Sénégal. Les contrats sont tracés et archivés numériquement.
+          </p>
+          <small class="text-primary fw-semibold">✓ Encadrement légal complet</small>
+        </div>
       </div>
     </div>
-  </div>
 
-  <div class="col-md-4">
-    <div class="card h-100 shadow-sm border-0">
-      <div class="card-body">
-        <h5 class="card-title">📊 Suivi digital du projet</h5>
-        <p class="card-text">
-          Depuis votre espace client, suivez vos réservations, vos paiements, l'avancement
-          du chantier (étapes, pourcentage, photos géolocalisées) et vos documents contractuels
-          en temps réel.
-        </p>
+    <div class="col-md-4 col-lg-4">
+      <div class="card h-100 shadow-sm border-0 border-top border-primary border-4">
+        <div class="card-body">
+          <div class="display-5 mb-3">📊</div>
+          <h5 class="card-title fw-bold">Suivi digital du projet</h5>
+          <p class="card-text text-muted">
+            Depuis votre espace client, suivez vos réservations, paiements, l'avancement du chantier en temps réel avec photos géolocalisées et audit complet.
+          </p>
+          <small class="text-primary fw-semibold">✓ Transparence 24/7</small>
+        </div>
       </div>
     </div>
-  </div>
 
-  <div class="col-md-4">
-    <div class="card h-100 shadow-sm border-0">
-      <div class="card-body">
-        <h5 class="card-title">🏦 Partenariats financiers</h5>
-        <p class="card-text">
-          SCINDONGO Immo travaille avec des banques partenaires pour faciliter le financement
-          de votre projet (simulation, suivi des financements, échéancier, gestion des paiements).
-        </p>
+    <div class="col-md-4 col-lg-4">
+      <div class="card h-100 shadow-sm border-0 border-top border-primary border-4">
+        <div class="card-body">
+          <div class="display-5 mb-3">🏦</div>
+          <h5 class="card-title fw-bold">Partenariats bancaires</h5>
+          <p class="card-text text-muted">
+            SCINDONGO Immo travaille avec les meilleures banques pour faciliter votre financement avec simulation, suivi des échéanciers et gestion des paiements.
+          </p>
+          <small class="text-primary fw-semibold">✓ Solutions de financement</small>
+        </div>
       </div>
     </div>
-  </div>
 
-  <div class="col-md-4">
-    <div class="card h-100 shadow-sm border-0">
-      <div class="card-body">
-        <h5 class="card-title">💰 Flexibilité de paiement</h5>
-        <p class="card-text">
-          Enregistrez vos paiements selon vos capacités (virements, chèques, espèces, cartes).
-          Tracez chaque transaction et recevez automatiquement vos reçus.
-        </p>
+    <div class="col-md-4 col-lg-4">
+      <div class="card h-100 shadow-sm border-0 border-top border-success border-4">
+        <div class="card-body">
+          <div class="display-5 mb-3">💰</div>
+          <h5 class="card-title fw-bold">Flexibilité de paiement</h5>
+          <p class="card-text text-muted">
+            Enregistrez vos paiements selon vos capacités (virements, chèques, espèces, cartes). Tracez chaque transaction et recevez vos reçus automatiquement.
+          </p>
+          <small class="text-success fw-semibold">✓ Multiples moyens de paiement</small>
+        </div>
       </div>
     </div>
-  </div>
 
-  <div class="col-md-4">
-    <div class="card h-100 shadow-sm border-0">
-      <div class="card-body">
-        <h5 class="card-title">📱 Accès 24/7</h5>
-        <p class="card-text">
-          Connectez-vous à votre espace client depuis n'importe quel appareil pour consulter
-          vos documents, paiements et avancement de chantier quand vous le souhaitez.
-        </p>
+    <div class="col-md-4 col-lg-4">
+      <div class="card h-100 shadow-sm border-0 border-top border-success border-4">
+        <div class="card-body">
+          <div class="display-5 mb-3">📱</div>
+          <h5 class="card-title fw-bold">Accès 24/7</h5>
+          <p class="card-text text-muted">
+            Connectez-vous à votre espace client depuis n'importe quel appareil pour consulter vos documents, paiements et avancement de chantier quand vous le souhaitez.
+          </p>
+          <small class="text-success fw-semibold">✓ Multi-appareils</small>
+        </div>
       </div>
     </div>
-  </div>
 
-  <div class="col-md-4">
-    <div class="card h-100 shadow-sm border-0">
-      <div class="card-body">
-        <h5 class="card-title">✅ Transparence totale</h5>
-        <p class="card-text">
-          Toutes les étapes sont documentées et traçables. Pas de surprise, pas de caché.
-          Chaque action est enregistrée et consultable dans votre espace.
-        </p>
+    <div class="col-md-4 col-lg-4">
+      <div class="card h-100 shadow-sm border-0 border-top border-info border-4">
+        <div class="card-body">
+          <div class="display-5 mb-3">✅</div>
+          <h5 class="card-title fw-bold">Transparence totale</h5>
+          <p class="card-text text-muted">
+            Toutes les étapes sont documentées et traçables. Pas de surprise, pas de caché. Chaque action est enregistrée et consultable dans votre espace.
+          </p>
+          <small class="text-info fw-semibold">✓ Audit trail complet</small>
+        </div>
       </div>
     </div>
   </div>
-</div>
+</section>
 
 <!-- Parcours client -->
-<div class="card shadow-sm border-0 mb-5">
-  <div class="card-body">
-    <h2 class="card-title mb-4">📈 Votre parcours client</h2>
-    <div class="timeline">
-      <div class="row g-0">
-        <div class="col-md-6 mb-4">
-          <div class="d-flex">
-            <div class="badge bg-primary rounded-pill" style="height: 40px; width: 40px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
-              1
+<section class="mb-5">
+  <div class="card shadow-lg border-0 mb-5">
+    <div class="card-body p-5">
+      <h2 class="display-6 fw-bold mb-5 text-center">📈 Votre Parcours d'Investissement</h2>
+      <p class="lead text-center text-muted mb-5">6 étapes simples pour réussir votre projet immobilier</p>
+      
+      <div class="row g-3">
+        <!-- Step 1 -->
+        <div class="col-md-6">
+          <div class="d-flex align-items-start">
+            <div class="badge bg-primary rounded-circle p-3 me-3 flex-shrink-0" style="width: 50px; height: 50px; display: flex; align-items: center; justify-content: center;">
+              <span class="fw-bold text-white">1</span>
             </div>
-            <div class="ms-3">
-              <h5 class="mb-1">Explorez nos programmes</h5>
-              <p class="text-muted small mb-0">Parcourez le catalogue des programmes et unités disponibles avec tous les détails.</p>
-            </div>
-          </div>
-        </div>
-        <div class="col-md-6 mb-4">
-          <div class="d-flex">
-            <div class="badge bg-primary rounded-pill" style="height: 40px; width: 40px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
-              2
-            </div>
-            <div class="ms-3">
-              <h5 class="mb-1">Créez votre compte</h5>
-              <p class="text-muted small mb-0">Inscrivez-vous en 2 minutes pour accéder à votre espace client personnel.</p>
+            <div class="flex-grow-1">
+              <h5 class="fw-bold mb-2">Explorez nos programmes</h5>
+              <p class="text-muted small mb-0">Parcourez notre catalogue de programmes immobiliers avec tous les détails : prix, localisation, type de bien, calendrier livraison.</p>
             </div>
           </div>
+          <hr class="my-3">
         </div>
-        <div class="col-md-6 mb-4">
-          <div class="d-flex">
-            <div class="badge bg-primary rounded-pill" style="height: 40px; width: 40px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
-              3
+
+        <!-- Step 2 -->
+        <div class="col-md-6">
+          <div class="d-flex align-items-start">
+            <div class="badge bg-primary rounded-circle p-3 me-3 flex-shrink-0" style="width: 50px; height: 50px; display: flex; align-items: center; justify-content: center;">
+              <span class="fw-bold text-white">2</span>
             </div>
-            <div class="ms-3">
-              <h5 class="mb-1">Réservez et payez</h5>
-              <p class="text-muted small mb-0">Réservez votre bien, versez votre acompte et gérez vos paiements en ligne.</p>
+            <div class="flex-grow-1">
+              <h5 class="fw-bold mb-2">Créez votre compte</h5>
+              <p class="text-muted small mb-0">Inscrivez-vous en 2 minutes et accédez à votre espace client personnel où vous gérerez tous vos projets.</p>
             </div>
           </div>
+          <hr class="my-3">
         </div>
-        <div class="col-md-6 mb-4">
-          <div class="d-flex">
-            <div class="badge bg-primary rounded-pill" style="height: 40px; width: 40px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
-              4
+
+        <!-- Step 3 -->
+        <div class="col-md-6">
+          <div class="d-flex align-items-start">
+            <div class="badge bg-primary rounded-circle p-3 me-3 flex-shrink-0" style="width: 50px; height: 50px; display: flex; align-items: center; justify-content: center;">
+              <span class="fw-bold text-white">3</span>
             </div>
-            <div class="ms-3">
-              <h5 class="mb-1">Signez votre contrat</h5>
-              <p class="text-muted small mb-0">Accédez à votre contrat numérique, signez-le électroniquement et archivez-le.</p>
+            <div class="flex-grow-1">
+              <h5 class="fw-bold mb-2">Réservez et versez votre acompte</h5>
+              <p class="text-muted small mb-0">Sélectionnez votre bien, effectuez la réservation et versez votre acompte via plusieurs moyens de paiement sécurisés.</p>
             </div>
           </div>
+          <hr class="my-3">
         </div>
-        <div class="col-md-6 mb-4">
-          <div class="d-flex">
-            <div class="badge bg-primary rounded-pill" style="height: 40px; width: 40px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
-              5
+
+        <!-- Step 4 -->
+        <div class="col-md-6">
+          <div class="d-flex align-items-start">
+            <div class="badge bg-primary rounded-circle p-3 me-3 flex-shrink-0" style="width: 50px; height: 50px; display: flex; align-items: center; justify-content: center;">
+              <span class="fw-bold text-white">4</span>
             </div>
-            <div class="ms-3">
-              <h5 class="mb-1">Suivez le chantier</h5>
-              <p class="text-muted small mb-0">Consultez l'avancement du chantier, les photos, les jalons et les dates de livraison.</p>
+            <div class="flex-grow-1">
+              <h5 class="fw-bold mb-2">Signez votre contrat</h5>
+              <p class="text-muted small mb-0">Accédez à votre contrat préparé par nos partenaires notaires, signez-le électroniquement et archivez-le en sécurité.</p>
             </div>
           </div>
+          <hr class="my-3">
         </div>
-        <div class="col-md-6 mb-4">
-          <div class="d-flex">
-            <div class="badge bg-success rounded-pill" style="height: 40px; width: 40px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
-              ✓
+
+        <!-- Step 5 -->
+        <div class="col-md-6">
+          <div class="d-flex align-items-start">
+            <div class="badge bg-warning rounded-circle p-3 me-3 flex-shrink-0" style="width: 50px; height: 50px; display: flex; align-items: center; justify-content: center;">
+              <span class="fw-bold text-dark">5</span>
             </div>
-            <div class="ms-3">
-              <h5 class="mb-1">Réception et livraison</h5>
-              <p class="text-muted small mb-0">Recevez votre bien à la livraison. Tous les documents sont sur la plateforme.</p>
+            <div class="flex-grow-1">
+              <h5 class="fw-bold mb-2">Suivez le chantier en temps réel</h5>
+              <p class="text-muted small mb-0">Consultez l'avancement du chantier avec photos géolocalisées, jalons respectés, et mises à jour régulières du calendrier.</p>
+            </div>
+          </div>
+          <hr class="my-3">
+        </div>
+
+        <!-- Step 6 -->
+        <div class="col-md-6">
+          <div class="d-flex align-items-start">
+            <div class="badge bg-success rounded-circle p-3 me-3 flex-shrink-0" style="width: 50px; height: 50px; display: flex; align-items: center; justify-content: center;">
+              <span class="fw-bold text-white">✓</span>
+            </div>
+            <div class="flex-grow-1">
+              <h5 class="fw-bold mb-2">Réception et livraison du bien</h5>
+              <p class="text-muted small mb-0">Réception officielle du bien et transfert de propriété. Tous les documents sont dans votre espace et accessibles indefiniment.</p>
             </div>
           </div>
         </div>
       </div>
     </div>
   </div>
-</div>
+</section>
 
-<!-- CTA -->
-<div class="alert alert-primary" role="alert">
-  <div class="d-flex align-items-center justify-content-between">
-    <div>
-      <h4 class="alert-heading mb-2">Prêt à démarrer ?</h4>
-      <p class="mb-0">Explorez nos programmes disponibles et trouvez l'unité qui correspond à votre projet.</p>
-    </div>
-    <div class="ms-3">
-      <a href="{% url 'programme_list' %}" class="btn btn-primary btn-lg text-nowrap">
-        Voir les programmes →
-      </a>
+<!-- CTA Section -->
+<section class="bg-primary text-white py-5 rounded-3 shadow">
+  <div class="container">
+    <div class="row align-items-center">
+      <div class="col-lg-8">
+        <h2 class="display-5 fw-bold mb-3">🚀 Prêt à démarrer votre projet ?</h2>
+        <p class="lead mb-0">Explorez nos programmes disponibles et trouvez l'unité immobilière qui correspond exactement à votre projet et votre budget.</p>
+      </div>
+      <div class="col-lg-4 text-lg-end mt-4 mt-lg-0">
+        <a href="{% url 'programme_list' %}" class="btn btn-light btn-lg fw-semibold">
+          Voir les programmes →
+        </a>
+      </div>
     </div>
   </div>
-</div>
+</section>
+
+<!-- FAQ ou Info additionnelle -->
+<section class="mt-5 pt-5">
+  <h2 class="display-6 fw-bold mb-4 text-center">❓ Questions Fréquentes</h2>
+  <div class="row g-4">
+    <div class="col-lg-6">
+      <div class="accordion" id="faqAccordion1">
+        <div class="accordion-item border-0 mb-3">
+          <h2 class="accordion-header">
+            <button class="accordion-button fw-bold" type="button" data-bs-toggle="collapse" data-bs-target="#faq1">
+              Quel est le délai d'obtention de mon bien ?
+            </button>
+          </h2>
+          <div id="faq1" class="accordion-collapse collapse" data-bs-parent="#faqAccordion1">
+            <div class="accordion-body text-muted">
+              Le délai varie selon le programme. Consultez la fiche du programme pour connaître la date estimée de livraison. Vous recevrez des mises à jour régulières via votre espace client.
+            </div>
+          </div>
+        </div>
+        <div class="accordion-item border-0 mb-3">
+          <h2 class="accordion-header">
+            <button class="accordion-button fw-bold" type="button" data-bs-toggle="collapse" data-bs-target="#faq2">
+              Puis-je modifier mon paiement après réservation ?
+            </button>
+          </h2>
+          <div id="faq2" class="accordion-collapse collapse" data-bs-parent="#faqAccordion1">
+            <div class="accordion-body text-muted">
+              Oui, vous pouvez contacter notre équipe pour discuter de modalités de paiement adaptées à votre situation. Notre service client est disponible pour vous aider.
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="col-lg-6">
+      <div class="accordion" id="faqAccordion2">
+        <div class="accordion-item border-0 mb-3">
+          <h2 class="accordion-header">
+            <button class="accordion-button fw-bold" type="button" data-bs-toggle="collapse" data-bs-target="#faq3">
+              Comment puis-je financer mon achat ?
+            </button>
+          </h2>
+          <div id="faq3" class="accordion-collapse collapse" data-bs-parent="#faqAccordion2">
+            <div class="accordion-body text-muted">
+              SCINDONGO Immo propose des partenariats avec plusieurs banques. Vous pouvez simuler un financement dans votre espace client et obtenir une étude de financement.
+            </div>
+          </div>
+        </div>
+        <div class="accordion-item border-0 mb-3">
+          <h2 class="accordion-header">
+            <button class="accordion-button fw-bold" type="button" data-bs-toggle="collapse" data-bs-target="#faq4">
+              Mes données sont-elles sécurisées ?
+            </button>
+          </h2>
+          <div id="faq4" class="accordion-collapse collapse" data-bs-parent="#faqAccordion2">
+            <div class="accordion-body text-muted">
+              Absolument. Nos serveurs utilisent le chiffrement SSL/TLS, et toutes les transactions sont protégées. Vos documents contractuels sont archivés en sécurité maximale.
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
 
 {% endblock %}

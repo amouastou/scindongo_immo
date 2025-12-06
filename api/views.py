@@ -21,6 +21,7 @@ from .serializers import (
     UniteSerializer,
     ClientSerializer,
     ReservationSerializer,
+    ReservationDocumentSerializer,
     TypeBienSerializer,
     ModeleBienSerializer,
     EtapeChantierSerializer,
@@ -46,6 +47,7 @@ from catalog.models import (
 from sales.models import (
     Client,
     Reservation,
+    ReservationDocument,
     BanquePartenaire,
     Financement,
     Echeance,
@@ -164,6 +166,44 @@ class ClientViewSet(viewsets.ModelViewSet):
             return qs.filter(pk=client_profile.pk)
         
         return qs.none()
+
+
+# ============================
+#   RESERVATION DOCUMENTS
+# ============================
+
+
+class ReservationDocumentViewSet(viewsets.ModelViewSet):
+    """ViewSet pour uploader et gérer documents de réservation"""
+    queryset = ReservationDocument.objects.all()
+    serializer_class = ReservationDocumentSerializer
+    permission_classes = [IsAuthenticated, IsClientOwnerOrAdminOrCommercial]
+    filter_backends = [DjangoFilterBackend, filters.OrderingFilter]
+    filterset_fields = ["document_type", "statut", "reservation"]
+    ordering_fields = ["created_at"]
+    ordering = ["-created_at"]
+
+    def get_queryset(self):
+        """Client voit QUE ses documents. Admin/Commercial voient tous."""
+        qs = super().get_queryset()
+        user = self.request.user
+        
+        if getattr(user, "is_admin_scindongo", False) or getattr(user, "is_commercial", False):
+            return qs
+        
+        # Client : ne voir que les documents de SES réservations
+        client_profile = getattr(user, "client_profile", None)
+        if client_profile:
+            return qs.filter(reservation__client=client_profile)
+        
+        return qs.none()
+
+    def perform_create(self, serializer):
+        """Log l'upload du document"""
+        doc = serializer.save()
+        from core.utils import audit_log
+        audit_log(self.request.user, doc, 'reservation_document_uploaded',
+                 {'document_type': doc.document_type}, self.request)
 
 
 class ReservationViewSet(viewsets.ModelViewSet):

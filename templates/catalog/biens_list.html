@@ -1,0 +1,256 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
+
+<!-- Breadcrumbs -->
+<nav aria-label="breadcrumb" class="mb-4">
+  <ol class="breadcrumb">
+    <li class="breadcrumb-item"><a href="{% url 'home' %}" class="text-decoration-none">Accueil</a></li>
+    <li class="breadcrumb-item active">Biens disponibles</li>
+  </ol>
+</nav>
+
+<!-- Header Banner -->
+<div class="bg-primary text-white py-5 mb-5 rounded-3 shadow">
+  <div class="container">
+    <h1 class="display-4 fw-bold mb-3">🏠 Biens Disponibles</h1>
+    <p class="lead mb-0">Explorez nos unités immobilières et trouvez le bien qui correspond à votre projet</p>
+  </div>
+</div>
+
+<!-- Filters Section -->
+<section class="mb-5">
+  <div class="card shadow-sm border-0 mb-4">
+    <div class="card-body p-4">
+      <h5 class="card-title fw-bold mb-3">🔍 Affiner votre recherche</h5>
+      <form method="GET" class="row g-3">
+        <!-- Search -->
+        <div class="col-md-4">
+          <label for="search" class="form-label fw-semibold">Recherche</label>
+          <input type="text" class="form-control form-control-lg" id="search" name="search" 
+                 placeholder="Référence, programme..." value="{{ request.GET.search|default:'' }}">
+        </div>
+
+        <!-- Programme Filter -->
+        <div class="col-md-4">
+          <label for="programme" class="form-label fw-semibold">Programme</label>
+          <select class="form-select form-select-lg" id="programme" name="programme">
+            <option value="">-- Tous les programmes --</option>
+            {% for prog in programmes %}
+              <option value="{{ prog.id }}" {% if request.GET.programme|add:'0'|add:'' == prog.id|stringformat:'s' %}selected{% endif %}>
+                {{ prog.nom }}
+              </option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <!-- Status Filter -->
+        <div class="col-md-4">
+          <label for="statut" class="form-label fw-semibold">Statut</label>
+          <select class="form-select form-select-lg" id="statut" name="statut">
+            <option value="">-- Tous les statuts --</option>
+            <option value="disponible" {% if request.GET.statut == 'disponible' %}selected{% endif %}>
+              ✓ Disponible
+            </option>
+            <option value="reserve" {% if request.GET.statut == 'reserve' %}selected{% endif %}>
+              ⏱️ Réservé
+            </option>
+            <option value="vendu" {% if request.GET.statut == 'vendu' %}selected{% endif %}>
+              ✗ Vendu
+            </option>
+            <option value="livre" {% if request.GET.statut == 'livre' %}selected{% endif %}>
+              📦 Livré
+            </option>
+          </select>
+        </div>
+
+        <!-- Action Buttons -->
+        <div class="col-12">
+          <button type="submit" class="btn btn-primary btn-lg fw-semibold">
+            🔎 Rechercher
+          </button>
+          <a href="{% url 'biens_list' %}" class="btn btn-outline-secondary btn-lg fw-semibold">
+            ↻ Réinitialiser
+          </a>
+        </div>
+      </form>
+    </div>
+  </div>
+</section>
+
+<!-- Results Info -->
+<section class="mb-4">
+  <div class="row align-items-center">
+    <div class="col-md-8">
+      <h4 class="fw-bold">
+        📊 {{ biens.count }} bien{{ biens.count|pluralize }} trouvé{{ biens.count|pluralize }}
+      </h4>
+    </div>
+    <div class="col-md-4 text-md-end">
+      <small class="text-muted">Triés par programme et référence</small>
+    </div>
+  </div>
+  <hr>
+</section>
+
+<!-- Biens Grid -->
+<section class="mb-5">
+  {% if biens %}
+    <div class="row g-4">
+      {% for bien in biens %}
+        <div class="col-md-6 col-lg-4">
+          <div class="card h-100 shadow-sm border-0 hover-shadow" style="transition: box-shadow 0.3s;">
+            <!-- Image -->
+            <div style="position: relative; overflow: hidden; background: #f0f0f0; height: 250px;">
+              {% if bien.image %}
+                <img src="{{ bien.image.url }}" alt="{{ bien.reference_lot }}" 
+                     class="card-img-top" style="height: 100%; object-fit: cover;">
+              {% else %}
+                <div class="d-flex align-items-center justify-content-center h-100 bg-light">
+                  <div class="text-center">
+                    <div class="display-1">🏢</div>
+                    <small class="text-muted">Pas d'image</small>
+                  </div>
+                </div>
+              {% endif %}
+              
+              <!-- Badge Statut -->
+              <div style="position: absolute; top: 10px; right: 10px;">
+                {% if bien.statut_disponibilite == 'disponible' %}
+                  <span class="badge bg-success fs-6">✓ Disponible</span>
+                {% elif bien.statut_disponibilite == 'reserve' %}
+                  <span class="badge bg-warning fs-6">⏱️ Réservé</span>
+                {% elif bien.statut_disponibilite == 'vendu' %}
+                  <span class="badge bg-danger fs-6">✗ Vendu</span>
+                {% elif bien.statut_disponibilite == 'livre' %}
+                  <span class="badge bg-info fs-6">📦 Livré</span>
+                {% endif %}
+              </div>
+            </div>
+
+            <div class="card-body">
+              <!-- Référence -->
+              <h5 class="card-title fw-bold">{{ bien.reference_lot }}</h5>
+              
+              <!-- Programme -->
+              <p class="text-muted mb-2">
+                <small>
+                  <strong>Programme:</strong> 
+                  <a href="{% url 'programme_detail' bien.programme.pk %}" class="text-decoration-none text-primary">
+                    {{ bien.programme.nom }}
+                  </a>
+                </small>
+              </p>
+
+              <!-- Type de bien -->
+              <p class="text-muted mb-2">
+                <small>
+                  <strong>Type:</strong> {{ bien.modele_bien.type_bien.nom }}
+                </small>
+              </p>
+
+              <!-- Surface -->
+              {% if bien.modele_bien.surface_hab_m2 %}
+                <p class="text-muted mb-2">
+                  <small>
+                    <strong>Surface:</strong> {{ bien.modele_bien.surface_hab_m2 }} m²
+                  </small>
+                </p>
+              {% endif %}
+
+              <!-- Prix -->
+              <div class="alert alert-info p-2 mb-3 text-center">
+                <h6 class="mb-0 fw-bold text-primary">
+                  {{ bien.prix_ttc|floatformat:0|add:"0" }} FCFA
+                </h6>
+                <small class="text-muted">Prix TTC</small>
+              </div>
+
+              <!-- Description/Caractéristiques -->
+              {% if bien.caracteristiques %}
+                <p class="text-muted small mb-3">
+                  <strong>Caractéristiques:</strong><br>
+                  {% for key, value in bien.caracteristiques.items %}
+                    • {{ key }}: {{ value }}<br>
+                  {% endfor %}
+                </p>
+              {% endif %}
+
+              <!-- Boutons d'action -->
+              <div class="d-grid gap-2">
+                <a href="{% url 'unite_detail' bien.pk %}" class="btn btn-primary btn-sm fw-semibold">
+                  👁️ Voir les détails
+                </a>
+                {% if user.is_authenticated and bien.statut_disponibilite == 'disponible' %}
+                  <a href="{% url 'client_dashboard' %}" class="btn btn-outline-success btn-sm fw-semibold">
+                    🛒 Réserver ce bien
+                  </a>
+                {% elif not user.is_authenticated and bien.statut_disponibilite == 'disponible' %}
+                  <a href="{% url 'register' %}" class="btn btn-outline-success btn-sm fw-semibold">
+                    📝 S'inscrire pour réserver
+                  </a>
+                {% endif %}
+              </div>
+            </div>
+          </div>
+        </div>
+      {% endfor %}
+    </div>
+  {% else %}
+    <!-- No results message -->
+    <div class="alert alert-warning" role="alert">
+      <div class="text-center py-5">
+        <div class="display-4 mb-3">🔍</div>
+        <h4 class="fw-bold mb-2">Aucun bien trouvé</h4>
+        <p class="text-muted mb-4">Essayez de modifier vos filtres de recherche ou explorez tous nos biens.</p>
+        <a href="{% url 'biens_list' %}" class="btn btn-primary btn-lg fw-semibold">
+          ↻ Réinitialiser la recherche
+        </a>
+      </div>
+    </div>
+  {% endif %}
+</section>
+
+<!-- Stats Section -->
+<section class="bg-light py-5 rounded-3">
+  <div class="container">
+    <h3 class="display-6 fw-bold mb-4 text-center">📈 Statistiques Globales</h3>
+    <div class="row g-4 text-center">
+      <div class="col-md-3">
+        <div class="card border-0 shadow-sm">
+          <div class="card-body">
+            <div class="display-4 text-primary mb-2">{{ total_biens }}</div>
+            <p class="text-muted mb-0">Biens Total</p>
+          </div>
+        </div>
+      </div>
+      <div class="col-md-3">
+        <div class="card border-0 shadow-sm">
+          <div class="card-body">
+            <div class="display-4 text-success mb-2">{{ biens_disponibles }}</div>
+            <p class="text-muted mb-0">Disponibles</p>
+          </div>
+        </div>
+      </div>
+      <div class="col-md-3">
+        <div class="card border-0 shadow-sm">
+          <div class="card-body">
+            <div class="display-4 text-warning mb-2">{{ biens_reserves }}</div>
+            <p class="text-muted mb-0">Réservés</p>
+          </div>
+        </div>
+      </div>
+      <div class="col-md-3">
+        <div class="card border-0 shadow-sm">
+          <div class="card-body">
+            <div class="display-4 text-danger mb-2">{{ biens_vendus }}</div>
+            <p class="text-muted mb-0">Vendus/Livrés</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+{% endblock %}

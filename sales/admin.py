@@ -1,5 +1,13 @@
 from django.contrib import admin
-from .models import Client, Reservation, Contrat, Paiement, BanquePartenaire, Financement, Echeance
+from .models import Client, Reservation, ReservationDocument, Contrat, Paiement, BanquePartenaire, Financement, Echeance
+
+
+class ReservationDocumentInline(admin.TabularInline):
+    """Inline pour voir/gérer documents dans la fiche Réservation"""
+    model = ReservationDocument
+    extra = 0
+    fields = ('document_type', 'statut', 'raison_rejet', 'verifie_par', 'verifie_le', 'fichier')
+    readonly_fields = ('created_at', 'updated_at', 'fichier')
 
 
 @admin.register(Client)
@@ -15,6 +23,23 @@ class ReservationAdmin(admin.ModelAdmin):
     list_filter = ("statut", "date_reservation")
     search_fields = ("client__nom", "client__prenom", "unite__reference_lot")
     autocomplete_fields = ("client", "unite")
+    inlines = [ReservationDocumentInline]
+
+
+@admin.register(ReservationDocument)
+class ReservationDocumentAdmin(admin.ModelAdmin):
+    list_display = ("reservation", "document_type", "statut", "verifie_par", "verifie_le", "created_at")
+    list_filter = ("document_type", "statut", "created_at")
+    search_fields = ("reservation__client__nom", "reservation__client__prenom")
+    readonly_fields = ("reservation", "document_type", "fichier", "created_at", "updated_at")
+    
+    def save_model(self, request, obj, form, change):
+        """Quand un commercial valide un document, on log qui et quand"""
+        if change and obj.statut == 'valide' and not obj.verifie_par:
+            obj.verifie_par = request.user
+            from django.utils import timezone
+            obj.verifie_le = timezone.now()
+        super().save_model(request, obj, form, change)
 
 
 @admin.register(Contrat)

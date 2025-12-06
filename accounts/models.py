@@ -40,6 +40,13 @@ class User(AbstractUser):
         },
     )
     email = models.EmailField("adresse email", unique=True)
+    telephone = models.CharField(
+        max_length=20,
+        blank=True,
+        null=True,
+        help_text="Numéro de téléphone",
+        verbose_name="Téléphone"
+    )
     roles = models.ManyToManyField(Role, related_name="utilisateurs", blank=True)
 
     USERNAME_FIELD = "email"

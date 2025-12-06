@@ -3,6 +3,7 @@ from django.contrib.auth.mixins import LoginRequiredMixin
 from django.urls import reverse_lazy
 from django.shortcuts import redirect
 from django.contrib import messages
+from django.db.models import Q
 from accounts.mixins import RoleRequiredMixin
 from .models import Programme, Unite, TypeBien, ModeleBien
 from .forms import ProgrammeForm
@@ -33,6 +34,51 @@ class UniteDetailView(DetailView):
     template_name = 'catalog/unite_detail.html'
     context_object_name = 'unite'
 
+
+class BiensListView(ListView):
+    """
+    Page publique pour afficher tous les biens disponibles avec filtrage
+    """
+    model = Unite
+    template_name = 'catalog/biens_list.html'
+    context_object_name = 'biens'
+    paginate_by = 12
+
+    def get_queryset(self):
+        queryset = Unite.objects.select_related('programme', 'modele_bien', 'modele_bien__type_bien')
+        
+        # Filtrage par recherche
+        search = self.request.GET.get('search', '')
+        if search:
+            queryset = queryset.filter(
+                Q(reference_lot__icontains=search) |
+                Q(programme__nom__icontains=search)
+            )
+        
+        # Filtrage par programme
+        programme_id = self.request.GET.get('programme', '')
+        if programme_id:
+            queryset = queryset.filter(programme_id=programme_id)
+        
+        # Filtrage par statut
+        statut = self.request.GET.get('statut', '')
+        if statut:
+            queryset = queryset.filter(statut_disponibilite=statut)
+        
+        return queryset.order_by('programme', 'reference_lot')
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['programmes'] = Programme.objects.all().order_by('nom')
+        
+        # Statistiques globales
+        all_biens = Unite.objects.all()
+        context['total_biens'] = all_biens.count()
+        context['biens_disponibles'] = all_biens.filter(statut_disponibilite='disponible').count()
+        context['biens_reserves'] = all_biens.filter(statut_disponibilite='reserve').count()
+        context['biens_vendus'] = all_biens.filter(statut_disponibilite__in=['vendu', 'livre']).count()
+        
+        return context
 
 # === Pages publiques supplémentaires ===
 

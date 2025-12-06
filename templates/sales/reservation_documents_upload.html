@@ -1,0 +1,171 @@
+{% extends 'base.html' %}
+
+{% block title %}Uploader documents - Réservation{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="row">
+        <div class="col-lg-8 mx-auto">
+            
+            <!-- En-tête avec infos bien -->
+            <div class="card mb-4 border-primary">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0">📋 Réservation - {{ reservation.unite.reference_lot }}</h5>
+                </div>
+                <div class="card-body">
+                    <dl class="row">
+                        <dt class="col-sm-4">Programme:</dt>
+                        <dd class="col-sm-8">{{ reservation.unite.programme.nom }}</dd>
+                        
+                        <dt class="col-sm-4">Bien:</dt>
+                        <dd class="col-sm-8">{{ reservation.unite.reference_lot }} - {{ reservation.unite.modele_bien.nom }}</dd>
+                        
+                        <dt class="col-sm-4">Prix TTC:</dt>
+                        <dd class="col-sm-8">{{ reservation.unite.prix_ttc|floatformat:0|add:"0" }} FCFA</dd>
+                        
+                        <dt class="col-sm-4">Acompte:</dt>
+                        <dd class="col-sm-8">{{ reservation.acompte|floatformat:0|add:"0" }} FCFA</dd>
+                    </dl>
+                </div>
+            </div>
+
+            <!-- Status documents -->
+            <div class="card mb-4">
+                <div class="card-header {% if can_reserve %}bg-success{% else %}bg-warning{% endif %} text-white">
+                    <h5 class="mb-0">
+                        {% if can_reserve %}
+                            ✅ Tous les documents uploadés et validés
+                        {% else %}
+                            ⚠️ Documents incomplets
+                        {% endif %}
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-sm">
+                            <thead>
+                                <tr>
+                                    <th>Type de document</th>
+                                    <th>Statut</th>
+                                    <th>Date upload</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for doc in documents %}
+                                    <tr>
+                                        <td>{{ doc.get_document_type_display }}</td>
+                                        <td>
+                                            {% if doc.statut == 'valide' %}
+                                                <span class="badge bg-success">✅ Validé</span>
+                                            {% elif doc.statut == 'rejete' %}
+                                                <span class="badge bg-danger">❌ Rejeté</span>
+                                                {% if doc.raison_rejet %}
+                                                    <small class="d-block text-danger mt-1">{{ doc.raison_rejet }}</small>
+                                                {% endif %}
+                                            {% else %}
+                                                <span class="badge bg-warning text-dark">⏳ En attente</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>{{ doc.created_at|date:"d/m/Y H:i" }}</td>
+                                    </tr>
+                                {% empty %}
+                                    <tr>
+                                        <td colspan="3" class="text-center text-muted">Aucun document uploadé</td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- Documents manquants -->
+                    {% if not can_reserve %}
+                        <div class="alert alert-info mt-3">
+                            <strong>📝 Documents à uploader:</strong>
+                            <ul class="mb-0 mt-2">
+                                {% for missing in missing_documents %}
+                                    <li>{{ missing.label }} (<code>{{ missing.type }}</code>)</li>
+                                {% endfor %}
+                            </ul>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Formulaire upload -->
+            <div class="card">
+                <div class="card-header bg-info text-white">
+                    <h5 class="mb-0">📤 Uploader un document</h5>
+                </div>
+                <div class="card-body">
+                    {% if messages %}
+                        {% for message in messages %}
+                            <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                                {{ message }}
+                                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                            </div>
+                        {% endfor %}
+                    {% endif %}
+
+                    <form method="post" enctype="multipart/form-data" class="needs-validation" novalidate>
+                        {% csrf_token %}
+                        
+                        <div class="mb-3">
+                            <label for="id_document_type" class="form-label">{{ form.document_type.label_tag }}</label>
+                            {{ form.document_type }}
+                            {% if form.document_type.errors %}
+                                <div class="invalid-feedback d-block">{{ form.document_type.errors }}</div>
+                            {% endif %}
+                            <small class="form-text text-muted d-block mt-1">
+                                Sélectionnez le type de document à uploader
+                            </small>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="id_fichier" class="form-label">{{ form.fichier.label_tag }}</label>
+                            {{ form.fichier }}
+                            {% if form.fichier.errors %}
+                                <div class="invalid-feedback d-block">{{ form.fichier.errors }}</div>
+                            {% endif %}
+                            <small class="form-text text-muted d-block mt-1">
+                                Formats acceptés: PDF, JPG, PNG | Taille max: 5MB
+                            </small>
+                        </div>
+
+                        <div class="d-flex gap-2">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="bi bi-cloud-upload"></i> Uploader le document
+                            </button>
+                            <a href="{% url 'client_dashboard' %}" class="btn btn-secondary">
+                                Retour au tableau de bord
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Info complément -->
+            <div class="alert alert-secondary mt-4">
+                <strong>ℹ️ À savoir:</strong>
+                <ul class="mb-0 mt-2">
+                    <li>Vous devez uploader <strong>3 documents</strong>: CNI, Photo, et Preuve de résidence</li>
+                    <li>Chaque document doit être <strong>validé par nos commerciaux</strong></li>
+                    <li>Une fois tous les documents validés, vous pourrez <strong>confirmer votre réservation</strong></li>
+                    <li>En cas de rejet, vous pouvez <strong>re-uploader</strong> le document</li>
+                </ul>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+<style>
+    .table-responsive {
+        border-radius: 0.25rem;
+    }
+    code {
+        background-color: #f5f5f5;
+        padding: 0.2rem 0.4rem;
+        border-radius: 0.25rem;
+    }
+</style>
+{% endblock %}
