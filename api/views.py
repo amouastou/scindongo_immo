@@ -27,6 +27,9 @@ from .serializers import (
     EtapeChantierSerializer,
     AvancementChantierSerializer,
     PhotoChantierSerializer,
+    AvancementChantierUniteSerializer,
+    AvancementChantierUniteListSerializer,
+    PhotoChantierUniteSerializer,
     BanquePartenaireSerializer,
     FinancementSerializer,
     EcheanceSerializer,
@@ -42,6 +45,8 @@ from catalog.models import (
     EtapeChantier,
     AvancementChantier,
     PhotoChantier,
+    AvancementChantierUnite,
+    PhotoChantierUnite,
 )
 
 from sales.models import (
@@ -137,6 +142,137 @@ class PhotoChantierViewSet(viewsets.ModelViewSet):
         if avancement_id:
             qs = qs.filter(avancement_id=avancement_id)
         return qs
+
+
+# ============================
+# AVANCEMENTS CHANTIER PAR UNITÉ
+# ============================
+
+
+class AvancementChantierUniteViewSet(viewsets.ModelViewSet):
+    """
+    ViewSet pour gérer l'avancement des chantiers par unité individuelle.
+    
+    Permissions:
+    - Commercial/Admin: CRUD complet
+    - Client: READ ONLY, filtrés sur ses propres réservations confirmées
+    """
+    permission_classes = [IsAuthenticated]
+    filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
+    filterset_fields = ["unite", "unite__programme", "reservation", "etape"]
+    search_fields = ["unite__reference_lot", "etape", "commentaire"]
+    ordering_fields = ["date_pointage", "pourcentage", "created_at"]
+    ordering = ["-date_pointage"]
+
+    def get_serializer_class(self):
+        if self.action == "list":
+            return AvancementChantierUniteListSerializer
+        return AvancementChantierUniteSerializer
+
+    def get_queryset(self):
+        user = self.request.user
+        
+        # Admin et Commercial : toutes les avancements
+        if user.is_admin_scindongo or user.is_commercial:
+            return AvancementChantierUnite.objects.select_related(
+                'unite', 'unite__programme', 'reservation'
+            ).all()
+        
+        # Client : seulement ses réservations avec contrat signé
+        if user.is_client:
+            from sales.models import Client as ClientModel
+            from core.choices import ContratStatus
+            try:
+                client_profile = ClientModel.objects.get(user=user)
+                # Avancements liés aux réservations du client avec contrat signé
+                return AvancementChantierUnite.objects.filter(
+                    reservation__client=client_profile,
+                    reservation__contrat__statut=ContratStatus.SIGNE
+                ).select_related('unite', 'unite__programme', 'reservation')
+            except ClientModel.DoesNotExist:
+                return AvancementChantierUnite.objects.none()
+        
+        return AvancementChantierUnite.objects.none()
+
+    def get_permissions(self):
+        """
+        - list, retrieve : IsAuthenticated (filtrés par get_queryset)
+        - create, update, partial_update, destroy : IsAdminOrCommercial
+        """
+        if self.action in ['list', 'retrieve']:
+            permission_classes = [IsAuthenticated]
+        else:
+            permission_classes = [IsAuthenticated, IsAdminOrCommercial]
+        return [permission() for permission in permission_classes]
+
+    def perform_create(self, serializer):
+        """Log l'ajout d'un avancement chantier"""
+        instance = serializer.save()
+        # Optionnel : audit log
+        # audit_log(self.request.user, instance, 'create', {...}, self.request)
+
+    @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated, IsAdminOrCommercial])
+    def add_photo(self, request, pk=None):
+        """
+        Ajoute une photo à un avancement existant.
+        POST /api/avancements-unites/{id}/add_photo/
+        Body: { image, gps_lat, gps_lng, pris_le, description }
+        """
+        avancement = self.get_object()
+        serializer = PhotoChantierUniteSerializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save(avancement=avancement)
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+class PhotoChantierUniteViewSet(viewsets.ModelViewSet):
+    """
+    ViewSet pour les photos d'avancements unitaires.
+    
+    Permissions:
+    - Commercial/Admin: CRUD complet
+    - Client: READ ONLY sur les photos des avancements de ses réservations confirmées
+    """
+    permission_classes = [IsAuthenticated]
+    filter_backends = [DjangoFilterBackend, filters.OrderingFilter]
+    filterset_fields = ["avancement", "avancement__unite"]
+    ordering_fields = ["pris_le", "created_at"]
+    ordering = ["-pris_le"]
+
+    def get_queryset(self):
+        user = self.request.user
+        
+        # Admin et Commercial : toutes les photos
+        if user.is_admin_scindongo or user.is_commercial:
+            return PhotoChantierUnite.objects.select_related(
+                'avancement', 'avancement__unite', 'avancement__reservation'
+            ).all()
+        
+        # Client : photos des avancements de ses réservations confirmées
+        if user.is_client:
+            from sales.models import Client as ClientModel
+            from core.choices import ContratStatus
+            try:
+                client_profile = ClientModel.objects.get(user=user)
+                return PhotoChantierUnite.objects.filter(
+                    avancement__reservation__client=client_profile,
+                    avancement__reservation__contrat__statut=ContratStatus.SIGNE
+                ).select_related('avancement', 'avancement__unite', 'avancement__reservation')
+            except ClientModel.DoesNotExist:
+                return PhotoChantierUnite.objects.none()
+        
+        return PhotoChantierUnite.objects.none()
+
+    def get_serializer_class(self):
+        return PhotoChantierUniteSerializer
+
+    def get_permissions(self):
+        if self.action in ['list', 'retrieve']:
+            permission_classes = [IsAuthenticated]
+        else:
+            permission_classes = [IsAuthenticated, IsAdminOrCommercial]
+        return [permission() for permission in permission_classes]
 
 
 # ============================

@@ -388,6 +388,89 @@
         </div>
     </div>
 
+    <!-- Suivi Chantier (visible seulement si contrat signé) -->
+    {% if contrat_signe %}
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card border-warning">
+                <div class="card-header bg-warning text-dark">
+                    <h5 class="mb-0">🏗️ Suivi de Chantier</h5>
+                </div>
+                <div class="card-body">
+                    {% if avancements_chantier %}
+                        <div class="alert alert-info mb-4">
+                            <i class="fas fa-info-circle"></i> 
+                            <strong>Progression de la construction de votre bien</strong>
+                            <br>Suivez ici l'évolution des travaux de construction de votre unité.
+                        </div>
+                        
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>Étape</th>
+                                        <th>Progression</th>
+                                        <th>Date</th>
+                                        <th>Photos</th>
+                                        <th>Commentaire</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for avancement in avancements_chantier %}
+                                    <tr>
+                                        <td><strong>{{ avancement.etape }}</strong></td>
+                                        <td>
+                                            <div style="width: 120px;">
+                                                <div class="progress" style="height: 25px;">
+                                                    <div class="progress-bar {% if avancement.pourcentage == 100 %}bg-success{% elif avancement.pourcentage >= 50 %}bg-info{% else %}bg-warning{% endif %}" 
+                                                         data-percentage="{{ avancement.pourcentage }}" 
+                                                         style="width: 0%;">
+                                                        {{ avancement.pourcentage }}%
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td>{{ avancement.date_pointage|date:"d/m/Y" }}</td>
+                                        <td>
+                                            {% if avancement.photos.exists %}
+                                                <span class="badge bg-primary">
+                                                    <i class="fas fa-images"></i> {{ avancement.photos.count }} photo(s)
+                                                </span>
+                                            {% else %}
+                                                <span class="text-muted">—</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            {% if avancement.commentaire %}
+                                                <small class="text-muted">{{ avancement.commentaire|truncatewords:10 }}</small>
+                                            {% else %}
+                                                <span class="text-muted">—</span>
+                                            {% endif %}
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                        
+                        <div class="text-center mt-3">
+                            <a href="{% url 'client_suivi_chantier' %}" class="btn btn-warning">
+                                <i class="fas fa-construction"></i> Voir tous les avancements
+                            </a>
+                        </div>
+                    {% else %}
+                        <div class="alert alert-secondary mb-0">
+                            <i class="fas fa-hard-hat"></i> 
+                            Aucun avancement de chantier enregistré pour le moment. 
+                            Les mises à jour apparaîtront ici dès que la construction démarre.
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
     <!-- Détails Financement -->
     {% if has_financement %}
         <div class="collapse" id="financementDetails">
@@ -668,4 +751,16 @@
     box-shadow: 0 4px 15px rgba(0,0,0,0.2);
 }
 </style>
+
+<script>
+  /*<![CDATA[*/
+  document.addEventListener('DOMContentLoaded', function() {
+    // Appliquer la largeur des progress bars basée sur data-percentage
+    document.querySelectorAll('.progress-bar[data-percentage]').forEach(function(bar) {
+      const percentage = bar.getAttribute('data-percentage');
+      bar.style.width = percentage + '%';
+    });
+  });
+  /*]]>*/
+</script>
 {% endblock %}

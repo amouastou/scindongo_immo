@@ -13,6 +13,8 @@ from .views import (
     EtapeChantierViewSet,
     AvancementChantierViewSet,
     PhotoChantierViewSet,
+    AvancementChantierUniteViewSet,
+    PhotoChantierUniteViewSet,
     BanquePartenaireViewSet,
     FinancementViewSet,
     EcheanceViewSet,
@@ -30,6 +32,8 @@ router.register("modelesbien", ModeleBienViewSet)
 router.register("etapes-chantier", EtapeChantierViewSet)
 router.register("avancements-chantier", AvancementChantierViewSet)
 router.register("photos-chantier", PhotoChantierViewSet)
+router.register("avancements-unites", AvancementChantierUniteViewSet, basename="avancement-unite")
+router.register("photos-unites", PhotoChantierUniteViewSet, basename="photo-unite")
 
 # Commercial
 router.register("clients", ClientViewSet)

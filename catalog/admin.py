@@ -7,6 +7,9 @@ from .models import (
     EtapeChantier,
     AvancementChantier,
     PhotoChantier,
+    AvancementChantierUnite,
+    PhotoChantierUnite,
+    MessageChantier,
 )
 
 
@@ -51,11 +54,13 @@ class UniteAdmin(admin.ModelAdmin):
         "modele_bien",
         "prix_ttc",
         "statut_disponibilite",
+        "statut_chantier",
         "created_at",
     )
-    list_filter = ("programme", "statut_disponibilite", "modele_bien__type_bien")
+    list_filter = ("programme", "statut_disponibilite", "statut_chantier", "modele_bien__type_bien")
     search_fields = ("reference_lot",)
     autocomplete_fields = ("programme", "modele_bien")
+    readonly_fields = ("statut_chantier",)  # Auto-géré par signaux
 
 
 @admin.register(EtapeChantier)
@@ -76,3 +81,34 @@ class AvancementChantierAdmin(admin.ModelAdmin):
 class PhotoChantierAdmin(admin.ModelAdmin):
     list_display = ("avancement", "pris_le", "gps_lat", "gps_lng", "created_at")
     list_filter = ("avancement__etape__programme", "pris_le")
+
+
+@admin.register(AvancementChantierUnite)
+class AvancementChantierUniteAdmin(admin.ModelAdmin):
+    list_display = ("unite", "etape", "date_pointage", "pourcentage", "reservation", "created_at")
+    list_filter = ("unite__programme", "date_pointage", "pourcentage")
+    search_fields = ("unite__reference_lot", "etape", "commentaire", "reservation__client__nom")
+    autocomplete_fields = ("unite", "reservation")
+    readonly_fields = ("created_at", "updated_at")
+
+
+@admin.register(PhotoChantierUnite)
+class PhotoChantierUniteAdmin(admin.ModelAdmin):
+    list_display = ("avancement", "pris_le", "gps_lat", "gps_lng", "created_at")
+    list_filter = ("avancement__unite__programme", "pris_le")
+    search_fields = ("description", "avancement__unite__reference_lot")
+    autocomplete_fields = ("avancement",)
+    readonly_fields = ("created_at", "updated_at")
+
+
+@admin.register(MessageChantier)
+class MessageChantierAdmin(admin.ModelAdmin):
+    list_display = ("auteur", "avancement", "message_preview", "lu", "created_at")
+    list_filter = ("lu", "created_at", "avancement__unite__programme")
+    search_fields = ("message", "auteur__email", "avancement__unite__reference_lot")
+    autocomplete_fields = ("avancement", "auteur")
+    readonly_fields = ("created_at", "updated_at")
+    
+    def message_preview(self, obj):
+        return obj.message[:50] + "..." if len(obj.message) > 50 else obj.message
+    message_preview.short_description = "Message"

@@ -44,6 +44,15 @@ from .views import (
     # OTP Contract Signature views
     CommercialGenerateOTPView,
     ClientSignContratView,
+    # Suivi chantier client
+    ClientSuiviChantierView,
+    ClientChantierDetailView,
+    ClientSendMessageChantierView,
+    # Chat views
+    CommercialReplyMessageChantierView,
+    CommercialSendMessageChantierView,
+    DeleteMessageChantierView,
+    ClearChatChantierView,
 )
 
 urlpatterns = [
@@ -99,6 +108,17 @@ urlpatterns = [
     # OTP Contract Signature
     path('contrats/<uuid:contrat_id>/generate-otp/', CommercialGenerateOTPView.as_view(), name='commercial_generate_otp'),
     path('reservations/<uuid:reservation_id>/contrats/<uuid:contrat_id>/sign/', ClientSignContratView.as_view(), name='client_sign_contrat'),
+    
+    # Suivi chantier client
+    path('client/chantiers/', ClientSuiviChantierView.as_view(), name='client_suivi_chantier'),
+    path('client/chantiers/<uuid:pk>/', ClientChantierDetailView.as_view(), name='client_chantier_detail'),
+    path('client/chantiers/<uuid:avancement_id>/message/', ClientSendMessageChantierView.as_view(), name='client_send_message_chantier'),
+    
+    # Chat - Réponses et suppression
+    path('messages/<uuid:message_id>/repondre/', CommercialReplyMessageChantierView.as_view(), name='commercial_reply_message'),
+    path('messages/<uuid:message_id>/supprimer/', DeleteMessageChantierView.as_view(), name='delete_message_chantier'),
+    path('chantiers/<uuid:avancement_id>/vider-chat/', ClearChatChantierView.as_view(), name='clear_chat_chantier'),
+    path('chantiers/<uuid:avancement_id>/message/', CommercialSendMessageChantierView.as_view(), name='commercial_send_message_chantier'),
     
     # Banques partenaires
     path('banques/', BanquePartenaireListView.as_view(), name='banque_partenaire_list'),

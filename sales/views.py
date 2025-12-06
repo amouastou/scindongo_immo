@@ -9,7 +9,7 @@ from django.http import Http404
 
 from accounts.mixins import RoleRequiredMixin
 from accounts.models import User, Role
-from catalog.models import Unite
+from catalog.models import Unite, MessageChantier, AvancementChantierUnite
 from .models import Client, Reservation, ReservationDocument, FinancementDocument, Paiement, Contrat, Financement, BanquePartenaire
 from .forms import ReservationForm, ReservationDocumentForm, FinancementDocumentForm, PaiementForm, ClientForm, FinancementForm, ContratForm, PaymentModeForm, FinancingRequestForm
 from .utils import set_pending_unite
@@ -542,7 +542,7 @@ class CommercialDashboardView(RoleRequiredMixin, TemplateView):
 
     def get_context_data(self, **kwargs):
         from .models import Reservation, Paiement, Financement, Contrat
-        from catalog.models import Programme
+        from catalog.models import Programme, Unite
         from accounts.models import User, Role
         
         ctx = super().get_context_data(**kwargs)
@@ -571,6 +571,12 @@ class CommercialDashboardView(RoleRequiredMixin, TemplateView):
         ctx["paiements"] = Paiement.objects.select_related("reservation", "reservation__client").all()[:20]
         ctx["financements"] = Financement.objects.select_related("banque", "reservation", "reservation__client").all()[:20]
         ctx["programmes"] = Programme.objects.filter(statut="actif").all()
+        
+        # Unités en chantier (réservées ou vendues)
+        from core.choices import UniteStatus
+        ctx["chantiers_unites"] = Unite.objects.filter(
+            statut_disponibilite__in=[UniteStatus.RESERVE, UniteStatus.VENDU]
+        ).select_related('programme').prefetch_related('avancements_chantier').order_by('-updated_at')[:20]
         
         return ctx
 
@@ -814,6 +820,17 @@ class ClientReservationDetailView(RoleRequiredMixin, TemplateView):
             if SignatureService.otp_exists(contrat):
                 ctx['contrat_otp'] = SignatureService.get_otp(contrat)
                 ctx['otp_remaining'] = SignatureService.get_otp_remaining_time(contrat)
+        
+        # Suivi Chantier (seulement si contrat signé)
+        ctx['contrat_signe'] = False
+        ctx['avancements_chantier'] = []
+        if ctx['has_contrat'] and reservation.contrat.statut == 'signe':
+            ctx['contrat_signe'] = True
+            # Récupérer les avancements de l'unité
+            from catalog.models import AvancementChantierUnite
+            ctx['avancements_chantier'] = AvancementChantierUnite.objects.filter(
+                unite=reservation.unite
+            ).select_related('unite', 'reservation').prefetch_related('photos').order_by('-date_pointage')[:5]
         
         return ctx
 
@@ -1935,3 +1952,276 @@ class ClientSignContratView(RoleRequiredMixin, View):
         except Exception as e:
             messages.error(request, f"❌ Erreur: {str(e)}")
             return redirect('client_reservation_detail', reservation_id=kwargs.get('reservation_id', ''))
+
+
+# ============================
+# SUIVI CHANTIER CLIENT
+# ============================
+
+
+class ClientSuiviChantierView(RoleRequiredMixin, ListView):
+    """Vue client pour suivre l'avancement du chantier de son unité."""
+    template_name = 'sales/client_suivi_chantier.html'
+    context_object_name = 'avancements'
+    required_roles = ["CLIENT"]
+    paginate_by = 10
+
+    def get_queryset(self):
+        """Récupérer les avancements chantier de ses réservations confirmées."""
+        from catalog.models import AvancementChantierUnite
+        from core.choices import ContratStatus
+        
+        client = self.request.user.client_profile
+        return AvancementChantierUnite.objects.filter(
+            reservation__client=client,
+            reservation__contrat__statut=ContratStatus.SIGNE
+        ).select_related(
+            'unite', 'unite__programme', 'reservation'
+        ).prefetch_related('photos').order_by('-date_pointage')
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        client = self.request.user.client_profile
+        from core.choices import ContratStatus
+        
+        # Récupérer les réservations confirmées du client
+        context['reservations_confirmees'] = Reservation.objects.filter(
+            client=client,
+            contrat__statut=ContratStatus.SIGNE
+        ).select_related('unite', 'unite__programme')
+        
+        return context
+
+
+class ClientChantierDetailView(RoleRequiredMixin, TemplateView):
+    """Détail complet du suivi chantier pour un client."""
+    template_name = 'sales/client_chantier_detail.html'
+    required_roles = ["CLIENT"]
+
+    def get_context_data(self, **kwargs):
+        from catalog.models import AvancementChantierUnite, MessageChantier
+        from core.choices import ContratStatus
+        
+        context = super().get_context_data(**kwargs)
+        client = self.request.user.client_profile
+        
+        try:
+            # Vérifier que c'est bien son avancement
+            avancement = AvancementChantierUnite.objects.get(
+                pk=self.kwargs['pk'],
+                reservation__client=client,
+                reservation__contrat__statut=ContratStatus.SIGNE
+            )
+            context['avancement'] = avancement
+            context['photos'] = avancement.photos.all().order_by('-pris_le')
+            
+            # Historique des 10 derniers avancements
+            context['historique'] = avancement.unite.avancements_chantier.exclude(
+                pk=avancement.pk
+            ).order_by('-date_pointage')[:10]
+            
+            # Tous les avancements de cette unité pour le client
+            context['tous_avancements'] = avancement.unite.avancements_chantier.filter(
+                reservation__client=client
+            ).order_by('-date_pointage')
+            
+            # Messages entre client et commercial (exclure les messages supprimés pour cet utilisateur)
+            # Utiliser exclude au lieu de filter Python pour plus de fiabilité
+            context['messages'] = avancement.messages.exclude(supprime_par=self.request.user).order_by('created_at')
+            
+            # Informations du commercial
+            if avancement.unite.programme.contact_commercial:
+                context['commercial'] = avancement.unite.programme.contact_commercial
+                # Téléphone du commercial (si existe)
+                if hasattr(context['commercial'], 'telephone'):
+                    context['commercial_telephone'] = context['commercial'].telephone
+                else:
+                    context['commercial_telephone'] = None
+            else:
+                context['commercial'] = None
+                context['commercial_telephone'] = None
+            
+        except AvancementChantierUnite.DoesNotExist:
+            raise Http404("Avancement non trouvé")
+        
+        return context
+
+# ============================================================================
+# MESSAGES CHANTIER - Client <-> Commercial
+# ============================================================================
+
+@method_decorator(login_required(login_url='login'), name='dispatch')
+class ClientSendMessageChantierView(RoleRequiredMixin, View):
+    """Permet au client d'envoyer un message au commercial sur un avancement."""
+    required_roles = ["CLIENT"]
+    
+    def post(self, request, avancement_id):
+        from catalog.models import AvancementChantierUnite, MessageChantier
+        
+        client = get_object_or_404(Client, user=request.user)
+        avancement = get_object_or_404(AvancementChantierUnite, id=avancement_id)
+        
+        # Vérifier que l'avancement appartient bien au client (via sa réservation)
+        if not avancement.reservation or avancement.reservation.client != client:
+            messages.error(request, "Vous n'avez pas accès à cet avancement.")
+            return redirect('client_suivi_chantier')
+        
+        message_text = request.POST.get('message', '').strip()
+        if not message_text:
+            messages.error(request, "Le message ne peut pas être vide.")
+            return redirect('client_chantier_detail', pk=avancement_id)
+        
+        # Créer le message
+        MessageChantier.objects.create(
+            avancement=avancement,
+            auteur=request.user,
+            message=message_text,
+            lu=False
+        )
+        
+        messages.success(request, "✅ Votre message a été envoyé au commercial.")
+        return redirect('client_chantier_detail', pk=avancement_id)
+
+
+# ============================
+#   MESSAGING SYSTEM - CHAT
+# ============================
+
+class CommercialReplyMessageChantierView(RoleRequiredMixin, View):
+    """Commercial répond aux messages des clients (DEPRECATED - utiliser CommercialSendMessageChantierView)"""
+    required_roles = ["COMMERCIAL", "ADMIN"]
+
+    def post(self, request, message_id):
+        # Récupérer le message
+        msg = get_object_or_404(MessageChantier, id=message_id)
+        avancement = msg.avancement
+
+        # Vérifier que c'est bien le commercial du programme
+        if request.user != avancement.unite.programme.contact_commercial and not request.user.is_staff:
+            raise Http404("Vous n'êtes pas autorisé à répondre à ce message.")
+
+        # Récupérer la réponse
+        reponse = request.POST.get('reponse', '').strip()
+        if reponse:
+            msg.reponse = reponse
+            msg.repondu_par = request.user
+            msg.lu = True  # Marquer comme lu
+            msg.save()
+            messages.success(request, "✅ Votre réponse a été envoyée.")
+
+        return redirect('avancement_detail', pk=avancement.id)
+
+
+class CommercialSendMessageChantierView(RoleRequiredMixin, View):
+    """Commercial envoie un message/réponse aux clients (nouveau message ou réponse)"""
+    required_roles = ["COMMERCIAL", "ADMIN"]
+
+    def post(self, request, avancement_id):
+        avancement = get_object_or_404(AvancementChantierUnite, id=avancement_id)
+
+        # Vérifier que c'est bien le commercial du programme
+        if request.user != avancement.unite.programme.contact_commercial and not request.user.is_staff:
+            raise Http404("Vous n'êtes pas autorisé à envoyer des messages sur cet avancement.")
+
+        # Récupérer le message
+        message_text = request.POST.get('message', '').strip()
+        if message_text:
+            # Créer un nouveau message de type "réponse"
+            MessageChantier.objects.create(
+                avancement=avancement,
+                auteur=request.user,
+                message=message_text,
+                lu=True  # Les messages du commercial sont marqués comme lus
+            )
+            messages.success(request, "✅ Votre message a été envoyé.")
+
+        return redirect('avancement_detail', pk=avancement_id)
+
+
+class DeleteMessageChantierView(RoleRequiredMixin, View):
+    """Supprimer un message (soft delete - disparaît seulement pour celui qui le supprime)"""
+    required_roles = ["CLIENT", "COMMERCIAL", "ADMIN"]
+
+    def post(self, request, message_id):
+        msg = get_object_or_404(MessageChantier, id=message_id)
+        avancement = msg.avancement
+
+        # Vérifier les permissions
+        is_admin = request.user.is_staff or request.user.is_superuser or request.user.roles.filter(code="ADMIN").exists()
+        is_client = request.user.roles.filter(code="CLIENT").exists()
+        is_commercial = request.user.roles.filter(code="COMMERCIAL").exists()
+        
+        redirect_url = None
+        
+        # Admin peut toujours supprimer
+        if is_admin:
+            redirect_url = 'avancement_detail'
+        # Commercial peut supprimer les messages de ses programmes (priorité sur CLIENT)
+        elif is_commercial:
+            # Vérifier que c'est le bon commercial pour ce programme
+            if request.user != avancement.unite.programme.contact_commercial:
+                raise Http404("Vous n'êtes pas autorisé à accéder à ce message.")
+            redirect_url = 'avancement_detail'
+        # Client peut supprimer ses propres messages
+        elif is_client:
+            try:
+                client_profile = request.user.client_profile
+                reservation = avancement.reservation
+                if not reservation or reservation.client != client_profile:
+                    raise Http404("Vous n'êtes pas autorisé à accéder à ce message.")
+            except AttributeError:
+                raise Http404("Vous n'êtes pas autorisé à accéder à ce message.")
+            redirect_url = 'client_chantier_detail'
+        else:
+            raise Http404("Vous n'êtes pas autorisé à accéder à ce message.")
+
+        # Soft delete - Ajouter l'utilisateur à la liste des utilisateurs qui ont supprimé
+        msg.supprime_par.add(request.user)
+        messages.success(request, "✅ Message supprimé de votre vue.")
+
+        # Redirection
+        return redirect(redirect_url, pk=avancement.id)
+
+
+class ClearChatChantierView(RoleRequiredMixin, View):
+    """Vider tous les messages d'un avancement (commercial ou client) - Soft delete"""
+    required_roles = ["CLIENT", "COMMERCIAL", "ADMIN"]
+
+    def post(self, request, avancement_id):
+        avancement = get_object_or_404(AvancementChantierUnite, id=avancement_id)
+
+        # Vérifier les permissions
+        is_admin = request.user.is_staff or request.user.is_superuser or request.user.roles.filter(code="ADMIN").exists()
+        is_client = request.user.roles.filter(code="CLIENT").exists()
+        is_commercial = request.user.roles.filter(code="COMMERCIAL").exists()
+        
+        redirect_url = None
+        
+        # Admin peut toujours vider
+        if is_admin:
+            redirect_url = 'avancement_detail'
+        # Commercial peut vider les messages de ses programmes (priorité sur CLIENT)
+        elif is_commercial:
+            # Vérifier que c'est le bon commercial pour ce programme
+            if request.user != avancement.unite.programme.contact_commercial:
+                raise Http404("Vous n'êtes pas autorisé à vider ce chat.")
+            redirect_url = 'avancement_detail'
+        # Client peut vider ses propres messages
+        elif is_client:
+            try:
+                client_profile = request.user.client_profile
+                reservation = avancement.reservation
+                if not reservation or reservation.client != client_profile:
+                    raise Http404("Vous n'êtes pas autorisé à vider ce chat.")
+            except AttributeError:
+                raise Http404("Vous n'êtes pas autorisé à vider ce chat.")
+            redirect_url = 'client_chantier_detail'
+        else:
+            raise Http404("Vous n'êtes pas autorisé à vider ce chat.")
+
+        # Soft delete - Ajouter l'utilisateur à tous les messages
+        for msg in avancement.messages.all():
+            msg.supprime_par.add(request.user)
+        
+        messages.success(request, "✅ Chat vidé. Tous les messages sont supprimés de votre vue.")
+        return redirect(redirect_url, pk=avancement_id)

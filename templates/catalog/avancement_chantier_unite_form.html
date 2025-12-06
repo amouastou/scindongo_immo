@@ -1,0 +1,301 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}{% if form.instance.pk %}Modifier{% else %}Nouveau{% endif %} Avancement Chantier{% endblock %}
+
+{% block extra_css %}
+<style>
+    .form-section {
+        background-color: #f8f9fa;
+        padding: 20px;
+        border-radius: 8px;
+        margin-bottom: 20px;
+        border-left: 4px solid #007bff;
+    }
+    .form-section h5 {
+        color: #007bff;
+        margin-bottom: 15px;
+        font-weight: 600;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container my-4">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h4 class="mb-0">
+                        {% if form.instance.pk %}
+                        <i class="fas fa-edit"></i> Modifier l'Avancement
+                        {% else %}
+                        <i class="fas fa-plus"></i> Nouveau Suivi de Chantier
+                        {% endif %}
+                    </h4>
+                </div>
+
+                <div class="card-body">
+                    {% if form.non_field_errors %}
+                    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                        <strong>Erreur!</strong>
+                        {% for error in form.non_field_errors %}
+                            <p>{{ error }}</p>
+                        {% endfor %}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                    </div>
+                    {% endif %}
+
+                    <form method="post" enctype="multipart/form-data" novalidate>
+                        {% csrf_token %}
+
+                        <!-- Unité et Réservation -->
+                        <div class="form-section">
+                            <h5>📍 Unité & Réservation</h5>
+
+                            <div class="mb-3">
+                                <label for="{{ form.unite.id_for_label }}" class="form-label">Unité *</label>
+                                {{ form.unite }}
+                                {% if form.unite.errors %}
+                                <div class="invalid-feedback d-block">
+                                    {% for error in form.unite.errors %}
+                                        {{ error }}<br>
+                                    {% endfor %}
+                                </div>
+                                {% endif %}
+                                <small class="form-text text-muted d-block mt-1">
+                                    Sélectionnez l'unité (bien) dont vous tracez le chantier
+                                </small>
+                            </div>
+
+                            <div class="mb-3">
+                                <label for="{{ form.reservation.id_for_label }}" class="form-label">Réservation (Optionnel)</label>
+                                {{ form.reservation }}
+                                {% if form.reservation.errors %}
+                                <div class="invalid-feedback d-block">
+                                    {% for error in form.reservation.errors %}
+                                        {{ error }}<br>
+                                    {% endfor %}
+                                </div>
+                                {% endif %}
+                                <small class="form-text text-muted d-block mt-1">
+                                    Liez à la réservation du client si applicable
+                                </small>
+                            </div>
+                        </div>
+
+                        <!-- Avancement -->
+                        <div class="form-section">
+                            <h5>📊 Avancement</h5>
+
+                            <div class="mb-3">
+                                <label for="{{ form.etape.id_for_label }}" class="form-label">Étape *</label>
+                                {{ form.etape }}
+                                {% if form.etape.errors %}
+                                <div class="invalid-feedback d-block">
+                                    {% for error in form.etape.errors %}
+                                        {{ error }}<br>
+                                    {% endfor %}
+                                </div>
+                                {% endif %}
+                                <small class="form-text text-muted d-block mt-1">
+                                    Ex: Fondations, Gros œuvre, Finitions, Livraison
+                                </small>
+                            </div>
+
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label for="{{ form.date_pointage.id_for_label }}" class="form-label">Date de Pointage *</label>
+                                    {{ form.date_pointage }}
+                                    {% if form.date_pointage.errors %}
+                                    <div class="invalid-feedback d-block">
+                                        {% for error in form.date_pointage.errors %}
+                                            {{ error }}<br>
+                                        {% endfor %}
+                                    </div>
+                                    {% endif %}
+                                </div>
+
+                                <div class="col-md-6 mb-3">
+                                    <label for="{{ form.pourcentage.id_for_label }}" class="form-label">Pourcentage (%) *</label>
+                                    <div class="input-group">
+                                        {{ form.pourcentage }}
+                                        <span class="input-group-text">%</span>
+                                    </div>
+                                    {% if form.pourcentage.errors %}
+                                    <div class="invalid-feedback d-block">
+                                        {% for error in form.pourcentage.errors %}
+                                            {{ error }}<br>
+                                        {% endfor %}
+                                    </div>
+                                    {% endif %}
+                                    <small class="form-text text-muted d-block mt-1">
+                                        Doit être entre 0 et 100
+                                    </small>
+                                </div>
+                            </div>
+
+                            <div class="mb-3">
+                                <label for="{{ form.commentaire.id_for_label }}" class="form-label">Commentaires</label>
+                                {{ form.commentaire }}
+                                {% if form.commentaire.errors %}
+                                <div class="invalid-feedback d-block">
+                                    {% for error in form.commentaire.errors %}
+                                        {{ error }}<br>
+                                    {% endfor %}
+                                </div>
+                                {% endif %}
+                                <small class="form-text text-muted d-block mt-1">
+                                    Observations, notes importantes, etc.
+                                </small>
+                            </div>
+                        </div>
+
+                        <!-- Photos -->
+                        <div class="form-section">
+                            <h5>📸 Photos du Chantier</h5>
+
+                            {% if existing_photos %}
+                            <div class="mb-3">
+                                <label class="form-label">Photos existantes ({{ existing_photos.count }})</label>
+                                <div class="row g-2">
+                                    {% for photo in existing_photos %}
+                                    <div class="col-md-3">
+                                        <div class="card">
+                                            <img src="{{ photo.image.url }}" class="card-img-top" alt="Photo chantier" style="height: 120px; object-fit: cover;">
+                                            <div class="card-body p-2 text-center">
+                                                <small class="text-muted">{{ photo.pris_le|date:"d/m/Y" }}</small>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                            {% endif %}
+
+                            <div class="mb-3">
+                                <label for="{{ form.photos.id_for_label }}" class="form-label">
+                                    {% if existing_photos %}Ajouter de nouvelles photos{% else %}Photos{% endif %}
+                                </label>
+                                {{ form.photos }}
+                                {% if form.photos.errors %}
+                                <div class="invalid-feedback d-block">
+                                    {% for error in form.photos.errors %}
+                                        {{ error }}<br>
+                                    {% endfor %}
+                                </div>
+                                {% endif %}
+                                <small class="form-text text-muted d-block mt-1">
+                                    {{ form.photos.help_text }}
+                                </small>
+                            </div>
+
+                            <!-- Preview des photos sélectionnées -->
+                            <div id="photo-preview" class="row g-2" style="display: none;"></div>
+                        </div>
+
+                        <!-- Boutons -->
+                        <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                            <a href="{% url 'chantiers_unites_list' %}" class="btn btn-secondary">
+                                <i class="fas fa-times"></i> Annuler
+                            </a>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-save"></i>
+                                {% if form.instance.pk %}
+                                Mettre à jour
+                                {% else %}
+                                Créer l'Avancement
+                                {% endif %}
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div id="form-meta" data-is-create="{% if not form.instance.pk %}true{% else %}false{% endif %}" data-date-id="{{ form.date_pointage.id_for_label }}" style="display:none;"></div>
+
+<script type="module">
+document.addEventListener('DOMContentLoaded', function() {
+    const formMeta = document.getElementById('form-meta');
+    const isCreate = formMeta.dataset.isCreate === 'true';
+    const dateId = formMeta.dataset.dateId;
+    
+    // Auto-set current date if creating new
+    if (isCreate) {
+        const dateField = document.getElementById(dateId);
+        if (dateField && !dateField.value) {
+            const today = new Date().toISOString().split('T')[0];
+            dateField.value = today;
+        }
+    }
+
+    // Add Bootstrap validation classes
+    const form = document.querySelector('form');
+    if (form) {
+        const inputs = form.querySelectorAll('input, textarea, select');
+        inputs.forEach(input => {
+            if (input.getAttribute('required')) {
+                input.classList.add('is-required');
+            }
+        });
+    }
+
+    // Preview photos on selection
+    const photoInput = document.querySelector('input[name="photos"]');
+    const photoPreview = document.getElementById('photo-preview');
+    
+    if (photoInput) {
+        photoInput.addEventListener('change', function(e) {
+            photoPreview.innerHTML = ''; // Clear previous previews
+            const files = e.target.files;
+            
+            if (files.length > 0) {
+                photoPreview.style.display = 'flex';
+                
+                Array.from(files).forEach((file, index) => {
+                    if (file.type.startsWith('image/')) {
+                        const reader = new FileReader();
+                        
+                        reader.onload = function(event) {
+                            const col = document.createElement('div');
+                            col.className = 'col-md-3';
+                            col.innerHTML = `
+                                <div class="card">
+                                    <img src="${event.target.result}" class="card-img-top" alt="Preview" style="height: 120px; object-fit: cover;">
+                                    <div class="card-body p-2 text-center">
+                                        <small class="text-success">✓ ${file.name}</small>
+                                    </div>
+                                </div>
+                            `;
+                            photoPreview.appendChild(col);
+                        };
+                        
+                        reader.readAsDataURL(file);
+                    }
+                });
+            } else {
+                photoPreview.style.display = 'none';
+            }
+        });
+    }
+});
+</script>
+
+<style>
+    input, textarea, select {
+        border: 1px solid #dee2e6;
+        border-radius: 0.25rem;
+        padding: 0.375rem 0.75rem;
+        font-size: 1rem;
+        font-family: inherit;
+    }
+    input:focus, textarea:focus, select:focus {
+        border-color: #80bdff;
+        outline: 0;
+        box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
+    }
+</style>
+{% endblock %}

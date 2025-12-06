@@ -1,0 +1,306 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Avancement Chantier - {{ avancement.unite.reference_lot }}{% endblock %}
+
+{% block extra_css %}
+<style>
+    .avancement-timeline {
+        position: relative;
+        padding: 20px 0;
+    }
+    .timeline-marker {
+        width: 30px;
+        height: 30px;
+        background-color: #28a745;
+        border-radius: 50%;
+        border: 3px solid white;
+        position: absolute;
+        left: 0;
+        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+    }
+    .progress-large {
+        height: 30px;
+        font-size: 1rem;
+    }
+    .photo-gallery {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+        gap: 15px;
+    }
+    .photo-card {
+        position: relative;
+        overflow: hidden;
+        border-radius: 8px;
+        transition: transform 0.3s ease;
+    }
+    .photo-card:hover {
+        transform: scale(1.05);
+    }
+    .photo-card img {
+        width: 100%;
+        height: 200px;
+        object-fit: cover;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid my-4">
+    <div class="row">
+        <div class="col-12 col-lg-8">
+            <!-- Détail Avancement -->
+            <div class="card mb-4">
+                <div class="card-header bg-primary text-white">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h5 class="mb-0">{{ avancement.unite.reference_lot }}</h5>
+                            <small>{{ avancement.unite.programme.nom }}</small>
+                        </div>
+                        <div class="text-end">
+                            <div class="badge bg-light text-dark">{{ avancement.etape }}</div>
+                            <div class="h3 mb-0" style="color: #fff;">{{ avancement.pourcentage }}%</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card-body">
+                    <div class="row mb-4">
+                        <div class="col-md-6">
+                            <h6 class="text-muted">Modèle</h6>
+                            <p class="mb-3">{{ avancement.unite.modele_bien.nom_marketing }}</p>
+
+                            <h6 class="text-muted">Réservation</h6>
+                            {% if avancement.reservation %}
+                            <p class="mb-3">
+                                <a href="{% url 'client_reservation_detail' avancement.reservation.id %}">
+                                    {{ avancement.reservation.client.prenom }} {{ avancement.reservation.client.nom }}
+                                </a>
+                            </p>
+                            {% else %}
+                            <p class="text-muted mb-3">-</p>
+                            {% endif %}
+                        </div>
+                        <div class="col-md-6">
+                            <h6 class="text-muted">Date de Pointage</h6>
+                            <p class="mb-3">{{ avancement.date_pointage|date:"d/m/Y" }}</p>
+
+                            <h6 class="text-muted">Créé le</h6>
+                            <p class="mb-3">{{ avancement.created_at|date:"d/m/Y H:i" }}</p>
+                        </div>
+                    </div>
+
+                    <div class="mb-4">
+                        <h6 class="text-muted">Avancement</h6>
+                        <div class="progress progress-large mb-2">
+                            <div class="progress-bar bg-success" role="progressbar" 
+                                 data-percentage="{{ avancement.pourcentage }}"
+                                 aria-valuenow="{{ avancement.pourcentage }}" 
+                                 aria-valuemin="0" aria-valuemax="100">
+                                {{ avancement.pourcentage }}%
+                            </div>
+                        </div>
+                    </div>
+
+                    {% if avancement.commentaire %}
+                    <div class="mb-4 p-3 bg-light rounded">
+                        <h6 class="text-muted">Commentaires</h6>
+                        <p class="mb-0">{{ avancement.commentaire }}</p>
+                    </div>
+                    {% endif %}
+
+                    <div class="btn-group w-100" role="group">
+                        <a href="{% url 'avancement_edit' avancement.pk %}" class="btn btn-outline-primary">
+                            <i class="fas fa-edit"></i> Modifier
+                        </a>
+                        <a href="{% url 'chantiers_unites_list' %}" class="btn btn-outline-secondary">
+                            <i class="fas fa-arrow-left"></i> Retour à la liste
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Photos -->
+            {% if photos %}
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-camera"></i> Photos ({{ photos.count }})
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="photo-gallery">
+                        {% for photo in photos %}
+                        <div class="photo-card">
+                            <img src="{{ photo.image.url }}" alt="Photo {{ forloop.counter }}" data-bs-toggle="modal" data-bs-target="#photoModal{{ photo.pk }}" style="cursor: pointer;">
+                            <small class="text-muted d-block mt-2">{{ photo.pris_le|date:"d/m/Y H:i" }}</small>
+                            {% if photo.gps_lat and photo.gps_lng %}
+                            <small class="text-info">📍 {{ photo.gps_lat }}, {{ photo.gps_lng }}</small>
+                            {% endif %}
+                        </div>
+
+                        <!-- Modal Détail Photo -->
+                        <div class="modal fade" id="photoModal{{ photo.pk }}" tabindex="-1">
+                            <div class="modal-dialog modal-lg">
+                                <div class="modal-content">
+                                    <div class="modal-header">
+                                        <h5 class="modal-title">Photo - {{ photo.pris_le|date:"d/m/Y H:i" }}</h5>
+                                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                    </div>
+                                    <div class="modal-body">
+                                        <img src="{{ photo.image.url }}" class="img-fluid" alt="Photo {{ forloop.counter }}">
+                                        {% if photo.description %}
+                                        <p class="mt-3 text-muted">{{ photo.description }}</p>
+                                        {% endif %}
+                                        {% if photo.gps_lat and photo.gps_lng %}
+                                        <p class="small text-muted">
+                                            📍 Latitude: {{ photo.gps_lat }}<br>
+                                            📍 Longitude: {{ photo.gps_lng }}
+                                        </p>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+
+                    <a href="{% url 'avancement_edit' avancement.pk %}" class="btn btn-sm btn-outline-primary mt-3">
+                        <i class="fas fa-plus"></i> Ajouter une photo
+                    </a>
+                </div>
+            </div>
+            {% endif %}
+
+        </div>
+
+        <!-- Sidebar: Historique -->
+        <div class="col-12 col-lg-4">
+            {% if historique %}
+            <div class="card">
+                <div class="card-header">
+                    <h6 class="mb-0">Historique récent</h6>
+                </div>
+                <div class="card-body">
+                    {% for h in historique %}
+                    <div class="timeline-item">
+                        <div class="d-flex justify-content-between align-items-start mb-2">
+                            <strong>{{ h.etape }}</strong>
+                            <span class="badge bg-info">{{ h.pourcentage }}%</span>
+                        </div>
+                        <small class="text-muted">{{ h.date_pointage|date:"d/m/Y" }}</small>
+                        <a href="{% url 'avancement_detail' h.pk %}" class="btn btn-sm btn-link">Voir détails</a>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- Info Unité -->
+            <div class="card mt-3">
+                <div class="card-header">
+                    <h6 class="mb-0">Informations Unité</h6>
+                </div>
+                <div class="card-body small">
+                    <p>
+                        <strong>Lot:</strong> {{ avancement.unite.reference_lot }}<br>
+                        <strong>Programme:</strong> {{ avancement.unite.programme.nom }}<br>
+                        <strong>Modèle:</strong> {{ avancement.unite.modele_bien.nom_marketing }}<br>
+                        <strong>Prix:</strong> {{ avancement.unite.prix_ttc|floatformat:0 }} FCFA<br>
+                        <strong>Statut:</strong> {{ avancement.unite.get_statut_disponibilite_display }}
+                    </p>
+                </div>
+            </div>
+
+            <!-- Messages des Clients -->
+            <div class="card mt-3">
+                <div class="card-header bg-info text-white d-flex justify-content-between align-items-center">
+                    <h6 class="mb-0">💬 Messages des Clients</h6>
+                    {% if messages %}
+                    <!-- Bouton pour vider le chat -->
+                    <form method="post" action="{% url 'clear_chat_chantier' avancement.id %}" style="display: inline;" onsubmit="return confirm('Êtes-vous sûr de vouloir supprimer TOUS les messages? Cette action est irréversible.');">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-sm btn-outline-light" title="Vider le chat">
+                            <i class="fas fa-broom"></i> Vider
+                        </button>
+                    </form>
+                    {% endif %}
+                </div>
+                <div class="card-body d-flex flex-column" style="height: 550px;">
+                    {% if messages %}
+                    <!-- Historique des messages -->
+                    <div class="messages-history mb-3 flex-grow-1" style="overflow-y: auto; min-height: 300px;">
+                        {% for msg in messages %}
+                        <div class="message-item mb-2 p-2 {% if msg.auteur.is_client %}bg-light border-start border-primary{% else %}bg-success bg-opacity-10 border-start border-success{% endif %} rounded" data-message-id="{{ msg.id }}">
+                            <!-- En-tête du message -->
+                            <div class="d-flex justify-content-between align-items-start mb-1">
+                                <small class="fw-bold {% if msg.auteur.is_client %}text-primary{% else %}text-success{% endif %}">
+                                    {% if msg.auteur.is_client %}
+                                        👤 {{ msg.auteur.get_full_name|default:msg.auteur.email }}
+                                    {% else %}
+                                        ✅ Vous
+                                    {% endif %}
+                                    {% if not msg.lu and msg.auteur.is_client %}
+                                    <span class="badge bg-warning text-dark ms-2">Non lue</span>
+                                    {% endif %}
+                                </small>
+                                <small class="text-muted">{{ msg.created_at|date:"d/m/Y H:i" }}</small>
+                            </div>
+                            <p class="mb-0 small">{{ msg.message }}</p>
+                            
+                            <!-- Bouton supprimer -->
+                            <div class="mt-1">
+                                <form method="post" action="{% url 'delete_message_chantier' msg.id %}" style="display: inline;" onsubmit="return confirm('Êtes-vous sûr?');">
+                                    {% csrf_token %}
+                                    <button type="submit" class="btn btn-sm btn-link text-danger p-0" title="Supprimer">
+                                        <i class="fas fa-trash-alt"></i> Supprimer
+                                    </button>
+                                </form>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% else %}
+                    <!-- Zone vide avec message -->
+                    <div class="flex-grow-1 d-flex align-items-center justify-content-center">
+                        <p class="text-muted text-center mb-0">Aucun message pour le moment.<br><small>Initiez le chat en envoyant un message!</small></p>
+                    </div>
+                    {% endif %}
+
+                    <!-- Formulaire de message permanent - En bas -->
+                    <div class="{% if messages %}mt-auto{% endif %} border-top pt-3">
+                        <form method="post" action="{% url 'commercial_send_message_chantier' avancement.id %}">
+                            {% csrf_token %}
+                            <div class="input-group">
+                                <input 
+                                    type="text" 
+                                    name="message" 
+                                    class="form-control" 
+                                    placeholder="Écrivez votre message..."
+                                    required
+                                >
+                                <button class="btn btn-success" type="submit" title="Envoyer">
+                                    <i class="fas fa-paper-plane"></i> Envoyer
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    /*<![CDATA[*/
+    // Appliquer les largeurs aux barres de progression
+    document.addEventListener('DOMContentLoaded', function() {
+        const progressBars = document.querySelectorAll('.progress-bar[data-percentage]');
+        progressBars.forEach(bar => {
+            const percentage = bar.dataset.percentage;
+            bar.style.width = percentage + '%';
+        });
+    });
+    /*]]>*/
+</script>
+{% endblock %}

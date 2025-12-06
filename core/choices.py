@@ -21,6 +21,14 @@ class UniteStatus(models.TextChoices):
     LIVRE = "livre", "Livré"
 
 
+# ========== STATUT CHANTIER (UNITÉ) ==========
+class StatutChantier(models.TextChoices):
+    NON_COMMENCE = "non_commence", "Non commencé"
+    EN_COURS = "en_cours", "En cours"
+    TERMINE = "termine", "Terminé"
+    LIVRE = "livre", "Livré"
+
+
 # ========== RÉSERVATIONS ==========
 class ReservationStatus(models.TextChoices):
     EN_COURS = "en_cours", "En cours"

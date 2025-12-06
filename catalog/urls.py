@@ -19,6 +19,10 @@ from .views import (
     UniteCreateView,
     UniteUpdateView,
     UniteDeleteView,
+    ChantiersUniteListView,
+    AvancementChantierUniteDetailView,
+    AvancementChantierUniteCreateView,
+    AvancementChantierUniteUpdateView,
 )
 
 urlpatterns = [
@@ -50,4 +54,10 @@ urlpatterns = [
     path('unites/<uuid:pk>/', UniteDetailView.as_view(), name='unite_detail'),
     path('unites/<uuid:pk>/modifier/', UniteUpdateView.as_view(), name='unite_edit'),
     path('unites/<uuid:pk>/supprimer/', UniteDeleteView.as_view(), name='unite_delete'),
+    
+    # Gestion chantier par unité (Commercial)
+    path('chantiers/', ChantiersUniteListView.as_view(), name='chantiers_unites_list'),
+    path('chantiers/<uuid:pk>/', AvancementChantierUniteDetailView.as_view(), name='avancement_detail'),
+    path('chantiers/nouveau/', AvancementChantierUniteCreateView.as_view(), name='avancement_create'),
+    path('chantiers/<uuid:pk>/modifier/', AvancementChantierUniteUpdateView.as_view(), name='avancement_edit'),
 ]

@@ -290,6 +290,11 @@
     </button>
   </li>
   <li class="nav-item" role="presentation">
+    <button class="nav-link" id="chantiers-tab" data-bs-toggle="tab" data-bs-target="#chantiers-content" type="button" role="tab">
+      🏗️ Gestion Chantiers
+    </button>
+  </li>
+  <li class="nav-item" role="presentation">
     <button class="nav-link" id="profil-tab" data-bs-toggle="tab" data-bs-target="#profil-content" type="button" role="tab">
       👤 Mon profil
     </button>
@@ -578,6 +583,98 @@
     {% endif %}
   </div>
 
+  <!-- Onglet Gestion Chantiers -->
+  <div class="tab-pane fade" id="chantiers-content" role="tabpanel">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+      <h3>🏗️ Gestion des Chantiers par Unité</h3>
+      <a href="{% url 'chantiers_unites_list' %}" class="btn btn-sm btn-primary">
+        <i class="fas fa-plus"></i> Gérer Chantiers
+      </a>
+    </div>
+    
+    {% if chantiers_unites %}
+      <div class="table-responsive">
+        <table class="table table-hover table-sm">
+          <thead class="table-light">
+            <tr>
+              <th>Unité</th>
+              <th>Programme</th>
+              <th>Statut Chantier</th>
+              <th>Progression</th>
+              <th>Dernier Avancement</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for unite in chantiers_unites %}
+              <tr>
+                <td><strong>{{ unite.reference_lot }}</strong></td>
+                <td>{{ unite.programme.nom }}</td>
+                <td>
+                  {% if unite.statut_chantier == 'non_commence' %}
+                    <span class="badge bg-secondary">⏹️ Non commencé</span>
+                  {% elif unite.statut_chantier == 'en_cours' %}
+                    <span class="badge bg-warning text-dark">🔄 En cours</span>
+                  {% elif unite.statut_chantier == 'termine' %}
+                    <span class="badge bg-success">✓ Terminé</span>
+                  {% elif unite.statut_chantier == 'livre' %}
+                    <span class="badge bg-info">📦 Livré</span>
+                  {% else %}
+                    <span class="badge bg-secondary">{{ unite.get_statut_chantier_display }}</span>
+                  {% endif %}
+                </td>
+                <td>
+                  {% if unite.avancements_chantier.exists %}
+                    {% with dernier=unite.avancements_chantier.first %}
+                      <div style="width: 100px;">
+                        <div class="progress" style="height: 20px;">
+                          <div class="progress-bar" data-percentage="{{ dernier.pourcentage }}" style="width: 0%;">
+                            {{ dernier.pourcentage }}%
+                          </div>
+                        </div>
+                      </div>
+                    {% endwith %}
+                  {% else %}
+                    <span class="text-muted">—</span>
+                  {% endif %}
+                </td>
+                <td>
+                  {% if unite.avancements_chantier.exists %}
+                    {% with dernier=unite.avancements_chantier.first %}
+                      <small class="text-muted">
+                        {{ dernier.etape }}<br>
+                        <strong>{{ dernier.date_pointage|date:"d/m/Y" }}</strong>
+                      </small>
+                    {% endwith %}
+                  {% else %}
+                    <span class="text-muted">—</span>
+                  {% endif %}
+                </td>
+                <td>
+                  {% if unite.avancements_chantier.exists %}
+                    {% with dernier=unite.avancements_chantier.first %}
+                      <a href="{% url 'avancement_detail' dernier.pk %}" class="btn btn-sm btn-outline-primary">
+                        <i class="fas fa-eye"></i> Détail
+                      </a>
+                    {% endwith %}
+                  {% else %}
+                    <a href="{% url 'avancement_create' %}?unite={{ unite.pk }}" class="btn btn-sm btn-outline-success">
+                      <i class="fas fa-plus"></i> Ajouter
+                    </a>
+                  {% endif %}
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <div class="alert alert-info">
+        <i class="fas fa-info-circle"></i> Aucune unité en chantier. Les unités réservées ou vendues apparaîtront ici.
+      </div>
+    {% endif %}
+  </div>
+
   <!-- Onglet Mon profil -->
   <div class="tab-pane fade" id="profil-content" role="tabpanel">
     <h3 class="mb-3">Mon profil</h3>
@@ -631,3 +728,15 @@
 </div>
 
 {% endblock %}
+
+<script>
+  /*<![CDATA[*/
+  document.addEventListener('DOMContentLoaded', function() {
+    // Appliquer la largeur des progress bars basée sur data-percentage
+    document.querySelectorAll('.progress-bar[data-percentage]').forEach(function(bar) {
+      const percentage = bar.getAttribute('data-percentage');
+      bar.style.width = percentage + '%';
+    });
+  });
+  /*]]>*/
+</script>

@@ -24,6 +24,8 @@ from catalog.models import (
     EtapeChantier,
     AvancementChantier,
     PhotoChantier,
+    AvancementChantierUnite,
+    PhotoChantierUnite,
 )
 
 
@@ -146,6 +148,113 @@ class PhotoChantierListSerializer(serializers.ModelSerializer):
             "gps_lat",
             "gps_lng",
             "pris_le",
+        ]
+
+
+# ============================
+# AVANCEMENT CHANTIER PAR UNITÉ
+# ============================
+
+
+class PhotoChantierUniteSerializer(serializers.ModelSerializer):
+    """Serializer pour photos d'avancement chantier unité."""
+    class Meta:
+        model = PhotoChantierUnite
+        fields = [
+            "id",
+            "avancement",
+            "image",
+            "gps_lat",
+            "gps_lng",
+            "pris_le",
+            "description",
+            "created_at",
+            "updated_at",
+        ]
+        read_only_fields = ("id", "created_at", "updated_at")
+
+    def validate(self, attrs):
+        gps_lat = attrs.get("gps_lat")
+        gps_lng = attrs.get("gps_lng")
+        errors = {}
+
+        # Si une coordonnée est remplie, l'autre doit l'être aussi
+        if (gps_lat is None) != (gps_lng is None):
+            errors["gps"] = "gps_lat et gps_lng doivent être fournis ensemble ou laissés vides."
+
+        if gps_lat is not None:
+            if gps_lat < Decimal("-90") or gps_lat > Decimal("90"):
+                errors["gps_lat"] = "Latitude invalide (doit être entre -90 et 90)."
+
+        if gps_lng is not None:
+            if gps_lng < Decimal("-180") or gps_lng > Decimal("180"):
+                errors["gps_lng"] = "Longitude invalide (doit être entre -180 et 180)."
+
+        if errors:
+            raise serializers.ValidationError(errors)
+
+        return attrs
+
+
+class AvancementChantierUniteSerializer(serializers.ModelSerializer):
+    """Serializer complet pour les avancements chantier unité."""
+    photos = PhotoChantierUniteSerializer(many=True, read_only=True)
+    unite_reference = serializers.CharField(source='unite.reference_lot', read_only=True)
+    programme_nom = serializers.CharField(source='unite.programme.nom', read_only=True)
+
+    class Meta:
+        model = AvancementChantierUnite
+        fields = [
+            "id",
+            "unite",
+            "unite_reference",
+            "programme_nom",
+            "reservation",
+            "etape",
+            "date_pointage",
+            "pourcentage",
+            "commentaire",
+            "photos",
+            "created_at",
+            "updated_at",
+        ]
+        read_only_fields = ("id", "created_at", "updated_at")
+
+    def validate_pourcentage(self, value):
+        if value < 0 or value > 100:
+            raise serializers.ValidationError("Le pourcentage doit être entre 0 et 100.")
+        return value
+
+    def validate(self, attrs):
+        unite = attrs.get("unite")
+        reservation = attrs.get("reservation")
+        
+        # Si une réservation est liée, elle doit être celle de l'unité
+        if reservation is not None:
+            if reservation.unite != unite:
+                raise serializers.ValidationError(
+                    "La réservation doit correspondre à l'unité."
+                )
+        
+        return attrs
+
+
+class AvancementChantierUniteListSerializer(serializers.ModelSerializer):
+    """Serializer léger pour les listes d'avancements."""
+    unite_reference = serializers.CharField(source='unite.reference_lot', read_only=True)
+    programme_nom = serializers.CharField(source='unite.programme.nom', read_only=True)
+
+    class Meta:
+        model = AvancementChantierUnite
+        fields = [
+            "id",
+            "unite",
+            "unite_reference",
+            "programme_nom",
+            "etape",
+            "date_pointage",
+            "pourcentage",
+            "created_at",
         ]
 
 

@@ -1,0 +1,195 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Gestion des Chantiers par Unité{% endblock %}
+
+{% block extra_css %}
+<style>
+    .avancement-bar {
+        height: 10px;
+        background-color: #e9ecef;
+        border-radius: 5px;
+        overflow: hidden;
+        margin: 5px 0;
+    }
+    .avancement-bar-fill {
+        height: 100%;
+        background: linear-gradient(90deg, #28a745, #20c997);
+        transition: width 0.3s ease;
+    }
+    .unite-card {
+        border-left: 5px solid #007bff;
+        transition: all 0.3s ease;
+    }
+    .unite-card:hover {
+        box-shadow: 0 4px 15px rgba(0, 123, 255, 0.2);
+        border-left-color: #0056b3;
+    }
+    .badge-statut {
+        font-size: 0.85rem;
+        padding: 0.5rem 0.75rem;
+    }
+    .timeline-item {
+        border-left: 3px solid #dee2e6;
+        padding-left: 15px;
+        margin-left: 10px;
+        padding-bottom: 15px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid my-4">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <div>
+                    <h1 class="h2 mb-1">
+                        <i class="fas fa-hard-hat"></i> Gestion des Chantiers
+                    </h1>
+                    <p class="text-muted">Suivi des avancements par unité (biens réservés/vendus)</p>
+                </div>
+                <a href="{% url 'avancement_create' %}" class="btn btn-primary btn-lg">
+                    <i class="fas fa-plus"></i> Nouveau Suivi
+                </a>
+            </div>
+
+            {% if messages %}
+                {% for message in messages %}
+                    <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                        {{ message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                    </div>
+                {% endfor %}
+            {% endif %}
+
+            {% if unites %}
+                <div class="row">
+                    {% for unite in unites %}
+                    <div class="col-lg-6 col-xl-4 mb-4">
+                        <div class="card unite-card h-100">
+                            {% if unite.image %}
+                            <img src="{{ unite.image.url }}" class="card-img-top" alt="{{ unite.reference_lot }}" style="height: 200px; object-fit: cover;">
+                            {% else %}
+                            <div class="card-img-top bg-light d-flex align-items-center justify-content-center" style="height: 200px;">
+                                <i class="fas fa-home text-muted" style="font-size: 3rem;"></i>
+                            </div>
+                            {% endif %}
+
+                            <div class="card-body">
+                                <h5 class="card-title mb-2">
+                                    {{ unite.reference_lot }}
+                                    <span class="badge badge-statut {% if unite.statut_disponibilite == 'reserve' %}bg-warning{% else %}bg-danger{% endif %}">
+                                        {{ unite.get_statut_disponibilite_display }}
+                                    </span>
+                                </h5>
+                                
+                                <p class="card-text small text-muted mb-3">
+                                    <strong>Programme:</strong> {{ unite.programme.nom }}<br>
+                                    <strong>Modèle:</strong> {{ unite.modele_bien.nom_marketing }}<br>
+                                    <strong>Prix:</strong> {{ unite.prix_ttc|floatformat:0 }} FCFA
+                                </p>
+
+                                {% if unite.dernier_avancement %}
+                                    <div class="mb-3">
+                                        <small class="text-muted">Étape actuelle</small>
+                                        <p class="mb-2 fw-bold">{{ unite.dernier_avancement.etape }}</p>
+                                        <div class="avancement-bar">
+                                            <div class="avancement-bar-fill" data-width="{{ unite.dernier_avancement.pourcentage }}"></div>
+                                        </div>
+                                        <div class="d-flex justify-content-between align-items-center">
+                                            <small class="text-muted">{{ unite.dernier_avancement.date_pointage|date:"d/m/Y" }}</small>
+                                            <strong>{{ unite.dernier_avancement.pourcentage }}%</strong>
+                                        </div>
+                                    </div>
+                                    
+                                    {% if unite.dernier_avancement.photos.exists %}
+                                    <small class="text-success d-block mb-2">
+                                        <i class="fas fa-check-circle"></i> {{ unite.dernier_avancement.photos.count }} photo(s)
+                                    </small>
+                                    {% endif %}
+                                {% else %}
+                                    <div class="alert alert-info py-2 small mb-3">
+                                        <i class="fas fa-info-circle"></i> Aucun avancement enregistré
+                                    </div>
+                                {% endif %}
+                            </div>
+
+                            <div class="card-footer bg-transparent border-top">
+                                <div class="btn-group w-100" role="group">
+                                    {% if unite.dernier_avancement %}
+                                    <a href="{% url 'avancement_detail' unite.dernier_avancement.pk %}" class="btn btn-sm btn-outline-primary flex-fill">
+                                        <i class="fas fa-eye"></i> Détails
+                                    </a>
+                                    {% endif %}
+                                    <a href="{% url 'avancement_create' %}?unite={{ unite.pk }}" class="btn btn-sm btn-outline-success flex-fill">
+                                        <i class="fas fa-plus"></i> Nouvel Avancement
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+
+                <!-- Pagination -->
+                {% if is_paginated %}
+                <nav aria-label="Navigation pagination" class="mt-4">
+                    <ul class="pagination justify-content-center">
+                        {% if page_obj.has_previous %}
+                        <li class="page-item">
+                            <a class="page-link" href="?page=1" tabindex="-1">Première</a>
+                        </li>
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ page_obj.previous_page_number }}">Précédente</a>
+                        </li>
+                        {% endif %}
+
+                        {% for num in page_obj.paginator.page_range %}
+                            {% if page_obj.number == num %}
+                            <li class="page-item active" aria-current="page">
+                                <span class="page-link">{{ num }}</span>
+                            </li>
+                            {% else %}
+                            <li class="page-item">
+                                <a class="page-link" href="?page={{ num }}">{{ num }}</a>
+                            </li>
+                            {% endif %}
+                        {% endfor %}
+
+                        {% if page_obj.has_next %}
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ page_obj.next_page_number }}">Suivante</a>
+                        </li>
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}">Dernière</a>
+                        </li>
+                        {% endif %}
+                    </ul>
+                </nav>
+                {% endif %}
+
+            {% else %}
+                <div class="alert alert-info text-center py-5">
+                    <i class="fas fa-info-circle" style="font-size: 2rem;"></i>
+                    <h5 class="mt-3">Aucune unité en chantier</h5>
+                    <p class="text-muted">Les unités doivent être réservées ou vendues pour apparaître ici.</p>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<script>
+    /*<![CDATA[*/
+    // Appliquer les largeurs aux barres de progression
+    document.addEventListener('DOMContentLoaded', function() {
+        const progressBars = document.querySelectorAll('.avancement-bar-fill[data-width]');
+        progressBars.forEach(bar => {
+            const width = bar.dataset.width;
+            bar.style.width = width + '%';
+        });
+    });
+    /*]]>*/
+</script>
+{% endblock %}
