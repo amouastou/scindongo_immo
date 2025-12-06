@@ -1,5 +1,5 @@
 from django import forms
-from django.contrib.auth.forms import UserCreationForm, AuthenticationForm
+from django.contrib.auth.forms import UserCreationForm, AuthenticationForm, PasswordChangeForm
 from .models import User, Role
 
 
@@ -10,7 +10,13 @@ class LoginForm(AuthenticationForm):
 class RegisterForm(UserCreationForm):
     class Meta:
         model = User
-        fields = ("email", "first_name", "last_name", "password1", "password2")
+        fields = ("email", "first_name", "last_name", "telephone", "password1", "password2")
+        widgets = {
+            'email': forms.EmailInput(attrs={'class': 'form-control', 'placeholder': 'Email'}),
+            'first_name': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Prénom'}),
+            'last_name': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Nom'}),
+            'telephone': forms.TextInput(attrs={'class': 'form-control', 'placeholder': '+221 XX XXX XXXX', 'type': 'tel'}),
+        }
 
     def save(self, commit=True):
         user = super().save(commit=False)
@@ -32,12 +38,13 @@ class UserManagementForm(forms.ModelForm):
     
     class Meta:
         model = User
-        fields = ['username', 'email', 'first_name', 'last_name', 'is_active', 'is_staff', 'roles']
+        fields = ['username', 'email', 'first_name', 'last_name', 'telephone', 'is_active', 'is_staff', 'roles']
         widgets = {
             'username': forms.TextInput(attrs={'class': 'form-control'}),
             'email': forms.EmailInput(attrs={'class': 'form-control'}),
             'first_name': forms.TextInput(attrs={'class': 'form-control'}),
             'last_name': forms.TextInput(attrs={'class': 'form-control'}),
+            'telephone': forms.TextInput(attrs={'class': 'form-control', 'type': 'tel'}),
         }
 
 
@@ -71,3 +78,55 @@ class UserCreationFormWithPassword(UserManagementForm):
             user.save()
             self.save_m2m()
         return user
+
+
+class ClientProfileForm(forms.ModelForm):
+    """Formulaire pour modifier le profil du client"""
+    
+    class Meta:
+        model = User
+        fields = ['first_name', 'last_name', 'telephone']
+        widgets = {
+            'first_name': forms.TextInput(attrs={
+                'class': 'form-control',
+                'placeholder': 'Prénom'
+            }),
+            'last_name': forms.TextInput(attrs={
+                'class': 'form-control',
+                'placeholder': 'Nom'
+            }),
+            'telephone': forms.TextInput(attrs={
+                'class': 'form-control',
+                'placeholder': '+221 XX XXX XXXX',
+                'type': 'tel'
+            }),
+        }
+        labels = {
+            'first_name': 'Prénom',
+            'last_name': 'Nom',
+            'telephone': 'Téléphone',
+        }
+
+
+class ClientChangePasswordForm(PasswordChangeForm):
+    """Formulaire pour changer le mot de passe du client"""
+    
+    def __init__(self, user, *args, **kwargs):
+        super().__init__(user, *args, **kwargs)
+        # Styling Bootstrap
+        self.fields['old_password'].widget.attrs.update({'class': 'form-control', 'placeholder': 'Ancien mot de passe'})
+        self.fields['new_password1'].widget.attrs.update({'class': 'form-control', 'placeholder': 'Nouveau mot de passe'})
+        self.fields['new_password2'].widget.attrs.update({'class': 'form-control', 'placeholder': 'Confirmation du mot de passe'})
+    
+    old_password = forms.CharField(
+        label="Ancien mot de passe",
+        widget=forms.PasswordInput(attrs={'class': 'form-control'})
+    )
+    new_password1 = forms.CharField(
+        label="Nouveau mot de passe",
+        widget=forms.PasswordInput(attrs={'class': 'form-control'})
+    )
+    new_password2 = forms.CharField(
+        label="Confirmation du nouveau mot de passe",
+        widget=forms.PasswordInput(attrs={'class': 'form-control'})
+    )

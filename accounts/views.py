@@ -1,11 +1,15 @@
 from django.urls import reverse_lazy
 from django.views.generic import CreateView, ListView, UpdateView, DeleteView
-from django.contrib.auth.views import LoginView, LogoutView
+from django.contrib.auth.views import LoginView, LogoutView, PasswordChangeView
 from django.shortcuts import redirect
 from django.contrib.auth import authenticate, login, get_user_model
 from django.contrib import messages
+from django.contrib.auth.mixins import LoginRequiredMixin
 
-from .forms import LoginForm, RegisterForm, UserManagementForm, UserCreationFormWithPassword
+from .forms import (
+    LoginForm, RegisterForm, UserManagementForm, UserCreationFormWithPassword,
+    ClientProfileForm, ClientChangePasswordForm
+)
 from .mixins import RoleRequiredMixin
 from sales.utils import get_pending_unite_and_clear
 
@@ -138,3 +142,42 @@ class UserDeleteView(RoleRequiredMixin, DeleteView):
         """Suppression directe sans page de confirmation"""
         messages.success(request, "Utilisateur supprimé avec succès.")
         return self.delete(request, *args, **kwargs)
+
+
+# === Gestion du profil client ===
+
+class ClientProfileUpdateView(LoginRequiredMixin, UpdateView):
+    """Modifier le profil du client (prénom, nom, email)"""
+    model = User
+    form_class = ClientProfileForm
+    template_name = 'accounts/edit_profile.html'
+    success_url = reverse_lazy('client_dashboard')
+    
+    def get_object(self, queryset=None):
+        """Retourner l'utilisateur connecté"""
+        return self.request.user
+    
+    def form_valid(self, form):
+        messages.success(self.request, "✅ Votre profil a été mis à jour avec succès.")
+        return super().form_valid(form)
+    
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['title'] = "Modifier mon profil"
+        return context
+
+
+class ClientChangePasswordView(LoginRequiredMixin, PasswordChangeView):
+    """Changer le mot de passe du client"""
+    form_class = ClientChangePasswordForm
+    template_name = 'accounts/change_password.html'
+    success_url = reverse_lazy('client_dashboard')
+    
+    def form_valid(self, form):
+        messages.success(self.request, "✅ Votre mot de passe a été changé avec succès.")
+        return super().form_valid(form)
+    
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['title'] = "Changer mon mot de passe"
+        return context

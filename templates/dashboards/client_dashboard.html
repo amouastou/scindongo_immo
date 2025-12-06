@@ -330,8 +330,8 @@
 
               <dt class="col-sm-4">Téléphone :</dt>
               <dd class="col-sm-8">
-                {% if user.client_profile.telephone %}
-                  {{ user.client_profile.telephone }}
+                {% if user.telephone %}
+                  {{ user.telephone }}
                 {% else %}
                   <span class="text-muted">Non renseigné</span>
                 {% endif %}
@@ -340,13 +340,13 @@
           </div>
         </div>
       </div>
-      <div class="col-md-6">
+          <div class="col-md-6">
         <div class="card shadow-sm border-0">
           <div class="card-body">
             <h5 class="card-title mb-3">Actions</h5>
             <div class="d-grid gap-2">
-              <a href="#" class="btn btn-outline-primary">📝 Modifier mon profil</a>
-              <a href="#" class="btn btn-outline-secondary">🔐 Changer mon mot de passe</a>
+              <a href="{% url 'edit_profile' %}" class="btn btn-outline-primary">📝 Modifier mon profil</a>
+              <a href="{% url 'change_password' %}" class="btn btn-outline-secondary">🔐 Changer mon mot de passe</a>
               <form method="post" action="{% url 'logout' %}" class="d-grid">
                 {% csrf_token %}
                 <button type="submit" class="btn btn-outline-danger">🚪 Se déconnecter</button>
