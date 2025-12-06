@@ -181,3 +181,38 @@ class ClientChangePasswordView(LoginRequiredMixin, PasswordChangeView):
         context = super().get_context_data(**kwargs)
         context['title'] = "Changer mon mot de passe"
         return context
+
+
+# === Gestion du profil pour COMMERCIAL ===
+
+class CommercialProfileUpdateView(RoleRequiredMixin, LoginRequiredMixin, UpdateView):
+    """Permet au commercial de modifier son profil personnel"""
+    required_roles = ["COMMERCIAL"]
+    model = User
+    form_class = ClientProfileForm
+    template_name = 'accounts/edit_profile_commercial.html'
+    success_url = reverse_lazy('commercial_dashboard')
+
+    def get_object(self, queryset=None):
+        return self.request.user
+
+    def form_valid(self, form):
+        messages.success(self.request, "✅ Votre profil a été mis à jour avec succès.")
+        return super().form_valid(form)
+
+
+class CommercialChangePasswordView(RoleRequiredMixin, LoginRequiredMixin, PasswordChangeView):
+    """Permet au commercial de changer son mot de passe"""
+    required_roles = ["COMMERCIAL"]
+    form_class = ClientChangePasswordForm
+    template_name = 'accounts/change_password_commercial.html'
+    success_url = reverse_lazy('commercial_dashboard')
+
+    def form_valid(self, form):
+        messages.success(self.request, "✅ Votre mot de passe a été changé avec succès.")
+        return super().form_valid(form)
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['title'] = "Changer mon mot de passe"
+        return context

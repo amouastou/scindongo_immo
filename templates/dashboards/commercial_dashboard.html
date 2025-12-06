@@ -289,6 +289,11 @@
       🏗️ Programmes
     </button>
   </li>
+  <li class="nav-item" role="presentation">
+    <button class="nav-link" id="profil-tab" data-bs-toggle="tab" data-bs-target="#profil-content" type="button" role="tab">
+      👤 Mon profil
+    </button>
+  </li>
 </ul>
 
 <div class="tab-content">
@@ -572,6 +577,56 @@
       <div class="alert alert-info">Aucun programme.</div>
     {% endif %}
   </div>
+
+  <!-- Onglet Mon profil -->
+  <div class="tab-pane fade" id="profil-content" role="tabpanel">
+    <h3 class="mb-3">Mon profil</h3>
+    <div class="row">
+      <div class="col-md-6">
+        <div class="card shadow-sm border-0">
+          <div class="card-body">
+            <h5 class="card-title mb-3">Informations personnelles</h5>
+            <dl class="row mb-0">
+              <dt class="col-sm-4">Prénom :</dt>
+              <dd class="col-sm-8">{{ user.first_name|default:"Non renseigné" }}</dd>
+
+              <dt class="col-sm-4">Nom :</dt>
+              <dd class="col-sm-8">{{ user.last_name|default:"Non renseigné" }}</dd>
+
+              <dt class="col-sm-4">Email :</dt>
+              <dd class="col-sm-8">{% if user and user.email %}{{ user.email }}{% else %}<span class="text-muted">Non renseigné</span>{% endif %}</dd>
+
+              <dt class="col-sm-4">Téléphone :</dt>
+              <dd class="col-sm-8">
+                {% if user.telephone %}
+                  {{ user.telephone }}
+                {% else %}
+                  <span class="text-muted">Non renseigné</span>
+                {% endif %}
+              </dd>
+            </dl>
+          </div>
+        </div>
+      </div>
+      <div class="col-md-6">
+        <div class="card shadow-sm border-0">
+          <div class="card-body">
+            <h5 class="card-title mb-3">Actions</h5>
+            <div class="d-grid gap-2">
+              <a href="{% url 'commercial_edit_profile' %}" class="btn btn-outline-primary">📝 Modifier mon profil</a>
+              <a href="{% url 'commercial_change_password' %}" class="btn btn-outline-secondary">🔐 Changer mon mot de passe</a>
+              <form method="post" action="{% url 'logout' %}" class="d-grid">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-outline-danger">🚪 Se déconnecter</button>
+              </form>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
 
 </div>
 
