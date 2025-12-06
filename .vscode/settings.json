@@ -5,16 +5,33 @@
     }
   ],
   "settings": {
-    "eslint.validate": [
-      "javascript",
-      "javascriptreact"
-    ],
     "files.exclude": {
-      "**/*.html": false
+      "**/*.pyc": true,
+      "**/__pycache__": true,
+      "**/node_modules": true
     },
+    "editor.formatOnSave": false,
+    "editor.defaultFormatter": null,
     "[html]": {
       "editor.defaultFormatter": null,
-      "editor.formatOnSave": false
+      "editor.formatOnSave": false,
+      "editor.suggest.showSnippets": false
+    },
+    "[python]": {
+      "editor.defaultFormatter": "ms-python.python",
+      "editor.formatOnSave": true
+    },
+    "javascript.validate.enable": false,
+    "html.validate.styles": false,
+    "html.validate.scripts": false,
+    "css.validate": false,
+    "js/ts.implicitProjectConfig.checkJs": false,
+    "search.exclude": {
+      "**/node_modules": true,
+      "**/.git": true,
+      "**/media": true,
+      "**/staticfiles": true
     }
   }
 }
+
