@@ -94,6 +94,13 @@ class Reservation(TimeStampedModel):
         
         return True
     
+    def can_delete(self):
+        """
+        Vérifier si la réservation peut être supprimée.
+        Seulement si elle est annulée.
+        """
+        return self.statut == ReservationStatus.ANNULEE
+    
     def cancel(self, user, motif):
         """
         Annuler la réservation et cascader les changements.

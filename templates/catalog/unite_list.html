@@ -35,15 +35,17 @@
               <td><span class="badge bg-secondary">{{ unite.modele_bien.nom_marketing }}</span></td>
               <td>{{ unite.prix_ttc|floatformat:0 }} FCFA</td>
               <td>
-                {% if unite.statut_disponibilite == 'disponible' %}
-                  <span class="badge bg-success">Disponible</span>
-                {% elif unite.statut_disponibilite == 'reserve' %}
-                  <span class="badge bg-warning">Réservé</span>
-                {% elif unite.statut_disponibilite == 'vendu' %}
-                  <span class="badge bg-danger">Vendu</span>
-                {% else %}
-                  <span class="badge bg-info">Livré</span>
-                {% endif %}
+                {% with statut_reel=unite.get_statut_reel %}
+                  {% if statut_reel == 'disponible' %}
+                    <span class="badge bg-success">Disponible</span>
+                  {% elif statut_reel == 'reserve' %}
+                    <span class="badge bg-warning">Réservé</span>
+                  {% elif statut_reel == 'vendu' %}
+                    <span class="badge bg-danger">Vendu</span>
+                  {% else %}
+                    <span class="badge bg-info">Livré</span>
+                  {% endif %}
+                {% endwith %}
               </td>
               <td>
                 <div class="d-flex gap-1">

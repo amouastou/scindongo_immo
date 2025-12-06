@@ -140,6 +140,26 @@ class Unite(TimeStampedModel):
 
     def __str__(self) -> str:
         return f"{self.programme.nom} - {self.reference_lot}"
+    
+    def get_statut_reel(self):
+        """
+        Retourner le statut réel du bien basé sur les réservations.
+        - Si réservation CONFIRMÉE : "vendu" (même si statut_disponibilite dit autre chose)
+        - Si réservation en_cours/reserve : "reserve"
+        - Sinon : retourner statut_disponibilite
+        """
+        from sales.models import Reservation
+        
+        # Vérifier si cette unité a une réservation confirmée
+        if self.reservations.filter(statut='confirmee').exists():
+            return 'vendu'
+        
+        # Vérifier si cette unité a une réservation en cours ou reserve
+        if self.reservations.filter(statut__in=['en_cours', 'reserve']).exclude(statut='annulee').exists():
+            return 'reserve'
+        
+        # Sinon, retourner le statut du modèle
+        return self.statut_disponibilite
 
 
 class EtapeChantier(TimeStampedModel):

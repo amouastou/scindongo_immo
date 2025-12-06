@@ -72,12 +72,30 @@ class BiensListView(ListView):
         context = super().get_context_data(**kwargs)
         context['programmes'] = Programme.objects.all().order_by('nom')
         
-        # Statistiques globales
+        # Statistiques globales - basées sur les réservations confirmées
+        from sales.models import Reservation
+        from django.db.models import Q
+        
         all_biens = Unite.objects.all()
         context['total_biens'] = all_biens.count()
-        context['biens_disponibles'] = all_biens.filter(statut_disponibilite='disponible').count()
-        context['biens_reserves'] = all_biens.filter(statut_disponibilite='reserve').count()
-        context['biens_vendus'] = all_biens.filter(statut_disponibilite__in=['vendu', 'livre']).count()
+        
+        # Biens avec réservation confirmée = "Vendus/Livrés"
+        biens_avec_resa_confirmee = all_biens.filter(
+            reservations__statut='confirmee'
+        ).distinct().count()
+        context['biens_vendus'] = biens_avec_resa_confirmee
+        
+        # Biens avec réservation EN COURS ou non-annulée (mais pas confirmée) = "Réservés"
+        biens_avec_resa_encours = all_biens.filter(
+            Q(reservations__statut='en_cours') | 
+            Q(reservations__statut='reserve')
+        ).exclude(
+            reservations__statut='annulee'
+        ).distinct().count()
+        context['biens_reserves'] = biens_avec_resa_encours
+        
+        # Biens disponibles = biens sans réservation active (ou avec seulement des annulées)
+        context['biens_disponibles'] = context['total_biens'] - context['biens_vendus'] - context['biens_reserves']
         
         return context
 

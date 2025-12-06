@@ -337,6 +337,21 @@
                                 </button>
                             {% endif %}
                         </div>
+
+                        <!-- Supprimer Réservation Annulée -->
+                        <div class="col-md-4 mb-3">
+                            {% if reservation.statut == 'annulee' %}
+                                <button type="button" class="btn btn-lg btn-dark w-100" data-bs-toggle="modal" data-bs-target="#deleteReservationModal">
+                                    <i class="fas fa-trash"></i><br>
+                                    Supprimer
+                                </button>
+                            {% else %}
+                                <button class="btn btn-lg btn-secondary w-100" disabled title="Seules les réservations annulées peuvent être supprimées">
+                                    <i class="fas fa-lock"></i><br>
+                                    Suppression Impossible
+                                </button>
+                            {% endif %}
+                        </div>
                     </div>
                 </div>
             </div>
@@ -380,6 +395,44 @@
                     </button>
                     <button type="button" class="btn btn-danger" id="confirmCancelBtn">
                         <i class="fas fa-check"></i> Confirmer l'Annulation
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Suppression Réservation Annulée -->
+    <div class="modal fade" id="deleteReservationModal" tabindex="-1" role="dialog" aria-labelledby="deleteReservationLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered" role="document">
+            <div class="modal-content">
+                <div class="modal-header bg-dark text-white">
+                    <h5 class="modal-title" id="deleteReservationLabel">
+                        <i class="fas fa-exclamation-triangle"></i> Supprimer la Réservation
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Fermer"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="alert alert-danger">
+                        <strong>⚠️ Danger Zone !</strong><br>
+                        Vous êtes sur le point de <strong>SUPPRIMER DÉFINITIVEMENT</strong> la réservation de <strong>{{ reservation.client.prenom }} {{ reservation.client.nom }}</strong> pour l'unité <strong>{{ reservation.unite.reference_lot }}</strong>.
+                        <br><br>
+                        <span class="text-danger fw-bold">Cette action est IRRÉVERSIBLE.</span> La réservation sera complètement effacée de la base de données.
+                    </div>
+                    <p>
+                        <strong>Statut actuel:</strong> 
+                        <span class="badge bg-danger">{{ reservation.get_statut_display }}</span>
+                    </p>
+                    <p>
+                        <strong>Motif d'annulation:</strong><br>
+                        <code>{{ reservation.motif_annulation }}</code>
+                    </p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                        <i class="fas fa-times"></i> Annuler
+                    </button>
+                    <button type="button" class="btn btn-danger" id="confirmDeleteBtn">
+                        <i class="fas fa-trash"></i> Confirmer la Suppression
                     </button>
                 </div>
             </div>
@@ -542,30 +595,94 @@ document.addEventListener('DOMContentLoaded', function() {
             }
             
             if (confirm('Êtes-vous sûr de vouloir annuler cette réservation? Cette action est irréversible.')) {
+                // Récupérer le CSRF token
+                const csrfTokenElement = document.querySelector('[name=csrfmiddlewaretoken]');
+                const csrfToken = csrfTokenElement ? csrfTokenElement.value : '';
+                
+                // Désactiver le bouton et afficher un loading
+                confirmBtn.disabled = true;
+                confirmBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Annulation en cours...';
+                
                 // Envoyer la requête API
                 fetch(`/api/reservations/{{ reservation.id }}/cancel/`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
-                        'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+                        'X-CSRFToken': csrfToken,
                     },
                     body: JSON.stringify({ motif: motif })
                 })
                 .then(response => {
                     if (response.ok) {
                         return response.json();
-                    } else {
+                    } else if (response.status === 401) {
+                        throw new Error('Vous n\'êtes pas authentifié. Veuillez vous reconnecter.');
+                    } else if (response.status === 403) {
+                        throw new Error('Vous n\'avez pas les permissions pour annuler cette réservation.');
+                    } else if (response.status === 400) {
                         return response.json().then(data => {
-                            throw new Error(data.detail || 'Erreur lors de l\'annulation');
+                            throw new Error(data.detail || data.motif || 'Erreur de validation');
                         });
+                    } else {
+                        throw new Error('Erreur serveur: ' + response.status);
                     }
                 })
                 .then(data => {
-                    alert('Réservation annulée avec succès!');
+                    alert('✅ Réservation annulée avec succès!');
                     location.reload();
                 })
                 .catch(error => {
-                    alert('Erreur: ' + error.message);
+                    console.error('Erreur:', error);
+                    alert('❌ Erreur: ' + error.message);
+                    confirmBtn.disabled = false;
+                    confirmBtn.innerHTML = '<i class="fas fa-check"></i> Confirmer l\'Annulation';
+                });
+            }
+        });
+    }
+    
+    // Gestion suppression réservation annulée
+    const deleteBtn = document.getElementById('confirmDeleteBtn');
+    if (deleteBtn) {
+        deleteBtn.addEventListener('click', function() {
+            if (confirm('⚠️ Êtes-vous ABSOLUMENT sûr? Cette action est IRRÉVERSIBLE et supprimera complètement la réservation.')) {
+                // Récupérer le CSRF token
+                const csrfTokenElement = document.querySelector('[name=csrfmiddlewaretoken]');
+                const csrfToken = csrfTokenElement ? csrfTokenElement.value : '';
+                
+                // Désactiver le bouton
+                deleteBtn.disabled = true;
+                deleteBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Suppression en cours...';
+                
+                // Envoyer la requête API
+                fetch(`/api/reservations/{{ reservation.id }}/delete-cancelled/`, {
+                    method: 'DELETE',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': csrfToken,
+                    }
+                })
+                .then(response => {
+                    if (response.status === 204 || response.ok) {
+                        alert('✅ Réservation supprimée avec succès!');
+                        window.location.href = '{% url "commercial_reservation_list" %}';
+                    } else if (response.status === 401) {
+                        throw new Error('Vous n\'êtes pas authentifié. Veuillez vous reconnecter.');
+                    } else if (response.status === 403) {
+                        throw new Error('Vous n\'avez pas les permissions pour supprimer cette réservation.');
+                    } else if (response.status === 400) {
+                        return response.json().then(data => {
+                            throw new Error(data.detail || 'Erreur de validation');
+                        });
+                    } else {
+                        throw new Error('Erreur serveur: ' + response.status);
+                    }
+                })
+                .catch(error => {
+                    console.error('Erreur:', error);
+                    alert('❌ Erreur: ' + error.message);
+                    deleteBtn.disabled = false;
+                    deleteBtn.innerHTML = '<i class="fas fa-trash"></i> Confirmer la Suppression';
                 });
             }
         });
@@ -573,4 +690,5 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 </script>
 {% endblock %}
+
 

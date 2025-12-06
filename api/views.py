@@ -373,10 +373,6 @@ class ReservationViewSet(viewsets.ModelViewSet):
         Restreint à COMMERCIAL ou ADMIN.
         Payload: { "motif": "Raison de l'annulation" }
         """
-        from accounts.permissions import IsCommercialOrAdmin
-        from rest_framework.response import Response
-        from rest_framework import status
-        
         reservation = self.get_object()
         
         # Vérifier les permissions : seul COMMERCIAL ou ADMIN peut annuler
@@ -427,6 +423,69 @@ class ReservationViewSet(viewsets.ModelViewSet):
                 "reservation": ReservationSerializer(reservation).data
             },
             status=status.HTTP_200_OK
+        )
+    
+    @action(detail=True, methods=["delete"], url_path="delete-cancelled")
+    def delete_cancelled(self, request, pk=None):
+        """
+        Endpoint pour supprimer une réservation ANNULÉE seulement.
+        Restreint à COMMERCIAL ou ADMIN.
+        Supprime aussi les contrats, paiements, et financements liés.
+        """
+        reservation = self.get_object()
+        
+        # Vérifier les permissions : seul COMMERCIAL ou ADMIN peut supprimer
+        is_admin = getattr(request.user, "is_admin_scindongo", False) or request.user.is_staff
+        is_commercial = getattr(request.user, "is_commercial", False)
+        
+        if not (is_admin or is_commercial):
+            return Response(
+                {"detail": "Seul un commercial ou admin peut supprimer une réservation."},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        
+        # Vérifier que la réservation est annulée
+        if not reservation.can_delete():
+            return Response(
+                {
+                    "detail": "Seules les réservations annulées peuvent être supprimées."
+                },
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Audit log avant suppression
+        from core.utils import audit_log
+        audit_log(request.user, reservation, "reservation_deleted",
+                 {"motif_annulation": reservation.motif_annulation}, request)
+        
+        # Supprimer les relations liées d'abord (pour contourner les PROTECT ForeignKeys)
+        reservation_id = reservation.id
+        
+        # Supprimer les documents liés à la réservation
+        reservation.documents.all().delete()
+        
+        # Supprimer les contrats liés
+        if hasattr(reservation, 'contrat'):
+            reservation.contrat.delete()
+        
+        # Supprimer les paiements liés
+        reservation.paiements.all().delete()
+        
+        # Supprimer le financement lié
+        if hasattr(reservation, 'financement'):
+            # Supprimer les échéances du financement (CASCADE auto-gérée mais on peut être explicite)
+            reservation.financement.echeances.all().delete()
+            reservation.financement.delete()
+        
+        # Maintenant supprimer la réservation elle-même
+        reservation.delete()
+        
+        return Response(
+            {
+                "detail": f"Réservation {reservation_id} et tous ses éléments liés ont été supprimés avec succès."
+            },
+            status=status.HTTP_204_NO_CONTENT
+
         )
 
 

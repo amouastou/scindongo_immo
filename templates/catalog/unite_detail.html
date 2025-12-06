@@ -48,15 +48,17 @@
     <!-- Statut -->
     <div class="mb-4">
       <strong>État de l'unité :</strong>
-      {% if unite.statut_disponibilite == 'disponible' %}
-        <span class="badge bg-success fs-6">✓ Disponible à la réservation</span>
-      {% elif unite.statut_disponibilite == 'reserve' %}
-        <span class="badge bg-warning text-dark fs-6">⏳ Réservée</span>
-      {% elif unite.statut_disponibilite == 'vendu' %}
-        <span class="badge bg-danger fs-6">✕ Vendue</span>
-      {% else %}
-        <span class="badge bg-secondary fs-6">📦 {{ unite.get_statut_disponibilite_display }}</span>
-      {% endif %}
+      {% with statut_reel=unite.get_statut_reel %}
+        {% if statut_reel == 'disponible' %}
+          <span class="badge bg-success fs-6">✓ Disponible à la réservation</span>
+        {% elif statut_reel == 'reserve' %}
+          <span class="badge bg-warning text-dark fs-6">⏳ Réservée</span>
+        {% elif statut_reel == 'vendu' %}
+          <span class="badge bg-danger fs-6">✕ Vendue</span>
+        {% else %}
+          <span class="badge bg-secondary fs-6">📦 {{ unite.get_statut_disponibilite_display }}</span>
+        {% endif %}
+      {% endwith %}
     </div>
 
     <!-- Caractéristiques -->
