@@ -365,6 +365,69 @@ class ReservationViewSet(viewsets.ModelViewSet):
             return qs.filter(client=client_profile)
         
         return qs.none()
+    
+    @action(detail=True, methods=["post"], url_path="cancel")
+    def cancel(self, request, pk=None):
+        """
+        Endpoint pour annuler une réservation.
+        Restreint à COMMERCIAL ou ADMIN.
+        Payload: { "motif": "Raison de l'annulation" }
+        """
+        from accounts.permissions import IsCommercialOrAdmin
+        from rest_framework.response import Response
+        from rest_framework import status
+        
+        reservation = self.get_object()
+        
+        # Vérifier les permissions : seul COMMERCIAL ou ADMIN peut annuler
+        is_admin = getattr(request.user, "is_admin_scindongo", False) or request.user.is_staff
+        is_commercial = getattr(request.user, "is_commercial", False)
+        
+        if not (is_admin or is_commercial):
+            return Response(
+                {"detail": "Seul un commercial ou admin peut annuler une réservation."},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        
+        # Vérifier si la réservation peut être annulée
+        if not reservation.can_cancel():
+            return Response(
+                {
+                    "detail": "Cette réservation ne peut pas être annulée. "
+                              "(Statut déjà annulé/expiré ou contrat signé)"
+                },
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Récupérer le motif
+        motif = request.data.get("motif", "").strip()
+        if not motif:
+            return Response(
+                {"motif": "Le motif d'annulation est obligatoire."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Annuler la réservation
+        try:
+            reservation.cancel(request.user, motif)
+        except ValueError as e:
+            return Response(
+                {"detail": str(e)},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Audit log manuel
+        from core.utils import audit_log
+        audit_log(request.user, reservation, "reservation_cancelled",
+                 {"motif": motif}, request)
+        
+        return Response(
+            {
+                "detail": "Réservation annulée avec succès.",
+                "reservation": ReservationSerializer(reservation).data
+            },
+            status=status.HTTP_200_OK
+        )
 
 
 # ============================

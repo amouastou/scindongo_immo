@@ -7,6 +7,47 @@ from django.dispatch import receiver
 from core.utils import audit_log
 from sales.models import Reservation, Contrat, Paiement, Financement, Echeance
 from catalog.models import Programme, Unite
+from core.choices import ReservationStatus, ContratStatus, PaiementStatus, FinancementStatus, UniteStatus
+
+
+@receiver(post_save, sender=Reservation)
+def cascade_reservation_cancellation(sender, instance, created, **kwargs):
+    """
+    Gérer la cascade lors de l'annulation d'une réservation :
+    - Libérer l'unité
+    - Marquer paiements comme annulés
+    - Annuler contrat et financement (sauf s'ils sont déjà signés/acceptés)
+    """
+    # Ne traiter que les annulations (transition vers annulee)
+    if instance.statut != ReservationStatus.ANNULEE:
+        return
+    
+    # Ne traiter qu'une fois (éviter les boucles de signal)
+    if instance.annulee_le is None:
+        return
+    
+    # Libérer l'unité (la rendre disponible)
+    if instance.unite.statut_disponibilite != UniteStatus.DISPONIBLE:
+        instance.unite.statut_disponibilite = UniteStatus.DISPONIBLE
+        instance.unite.save(update_fields=['statut_disponibilite'])
+    
+    # Annuler tous les paiements liés (sauf s'ils sont déjà validés)
+    for paiement in instance.paiements.all():
+        if paiement.statut != PaiementStatus.VALIDE:
+            paiement.statut = PaiementStatus.REJETE
+            paiement.save(update_fields=['statut'])
+    
+    # Annuler le contrat s'il existe et n'est pas signé
+    if hasattr(instance, 'contrat'):
+        if instance.contrat.statut != ContratStatus.SIGNE:
+            instance.contrat.statut = ContratStatus.ANNULE
+            instance.contrat.save(update_fields=['statut'])
+    
+    # Annuler le financement s'il existe et n'est pas accepté/clos
+    if hasattr(instance, 'financement'):
+        if instance.financement.statut not in [FinancementStatus.ACCEPTE, FinancementStatus.CLOS]:
+            instance.financement.statut = FinancementStatus.ANNULE
+            instance.financement.save(update_fields=['statut'])
 
 
 @receiver(post_save, sender=Reservation)

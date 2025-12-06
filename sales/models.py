@@ -39,6 +39,18 @@ class Reservation(TimeStampedModel):
         choices=ReservationStatus.choices,
         default=ReservationStatus.EN_COURS,
     )
+    
+    # Champs pour l'annulation
+    motif_annulation = models.TextField(blank=True, null=True, help_text="Motif de l'annulation par le commercial")
+    annulee_par = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='reservations_annulees',
+        help_text="Utilisateur qui a annulé la réservation"
+    )
+    annulee_le = models.DateTimeField(null=True, blank=True, help_text="Date/heure d'annulation")
 
     class Meta:
         verbose_name = "Réservation"
@@ -66,6 +78,40 @@ class Reservation(TimeStampedModel):
         if not hasattr(self, 'contrat'):
             return False
         return self.contrat.statut == ContratStatus.SIGNE
+    
+    def can_cancel(self):
+        """
+        Vérifier si la réservation peut être annulée.
+        Ne pas annuler si : statut=annulee|expiree OU contrat est signé
+        """
+        # Ne pas annuler si déjà annulée ou expirée
+        if self.statut in [ReservationStatus.ANNULEE, ReservationStatus.EXPIREE]:
+            return False
+        
+        # Ne pas annuler si contrat est signé (révocation légale complexe)
+        if hasattr(self, 'contrat') and self.contrat.statut == ContratStatus.SIGNE:
+            return False
+        
+        return True
+    
+    def cancel(self, user, motif):
+        """
+        Annuler la réservation et cascader les changements.
+        Appelé par les views/API après validation.
+        """
+        from django.utils import timezone
+        
+        if not self.can_cancel():
+            raise ValueError("Cette réservation ne peut pas être annulée.")
+        
+        # Marquer la réservation comme annulée
+        self.statut = ReservationStatus.ANNULEE
+        self.motif_annulation = motif
+        self.annulee_par = user
+        self.annulee_le = timezone.now()
+        self.save()
+        
+        # La cascade sera gérée par le signal post_save
 
 
 class Contrat(TimeStampedModel):
