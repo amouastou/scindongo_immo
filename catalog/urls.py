@@ -3,6 +3,7 @@ from .views import (
     ProgrammeListView, 
     ProgrammeDetailView, 
     UniteDetailView,
+    BiensListView,
     ProgrammeCreateView,
     ProgrammeUpdateView,
     ProgrammeDeleteView,
@@ -21,6 +22,9 @@ from .views import (
 )
 
 urlpatterns = [
+    # Biens disponibles (page publique)
+    path('biens/', BiensListView.as_view(), name='biens_list'),
+    
     # Programmes
     path('programmes/', ProgrammeListView.as_view(), name='programme_list'),
     path('programmes/nouveau/', ProgrammeCreateView.as_view(), name='programme_create'),

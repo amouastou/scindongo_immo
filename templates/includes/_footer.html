@@ -1,30 +1,142 @@
-<footer class="bg-dark text-light border-top py-4 mt-5">
-  <div class="container">
-    <div class="row mb-3">
-      <div class="col-md-4">
-        <h6 class="fw-bold mb-2">SCINDONGO Immo</h6>
-        <p class="small text-muted mb-0">Plateforme immobilière moderne pour la gestion de vos projets au Sénégal.</p>
+<footer class="bg-dark text-light border-top mt-5">
+  {% load static %}
+  <!-- Main Footer Content -->
+  <div class="container py-5">
+    <div class="row g-4 mb-4">
+      <!-- Logo & Présentation -->
+      <div class="col-lg-3 col-md-6">
+        <div class="mb-4">
+          <div class="d-flex align-items-center gap-2 mb-3">
+            <img src="{% static 'logo.png' %}" alt="SCINDONGO Immo Logo" style="max-height: 50px;">
+            <h5 class="fw-bold mb-0">SCINDONGO Immo</h5>
+          </div>
+          <p class="small text-muted mb-0">
+            Plateforme immobilière innovante dédiée à faciliter l'accès au logement et aux investissements immobiliers au Sénégal.
+          </p>
+        </div>
       </div>
-      <div class="col-md-4">
-        <h6 class="fw-bold mb-2">Liens rapides</h6>
+
+      <!-- Navigation Rapide -->
+      <div class="col-lg-3 col-md-6">
+        <h6 class="fw-bold mb-3 text-uppercase" style="font-size: 0.9rem;">🔗 Accès Rapide</h6>
         <ul class="list-unstyled small">
-          <li><a href="{% url 'home' %}" class="text-decoration-none text-light">Accueil</a></li>
-          <li><a href="{% url 'programme_list' %}" class="text-decoration-none text-light">Programmes</a></li>
-          <li><a href="{% url 'contact' %}" class="text-decoration-none text-light">Contact</a></li>
+          <li class="mb-2">
+            <a href="{% url 'home' %}" class="text-decoration-none text-light">
+              → Accueil
+            </a>
+          </li>
+          <li class="mb-2">
+            <a href="{% url 'programme_list' %}" class="text-decoration-none text-light">
+              → Nos Programmes
+            </a>
+          </li>
+          {% if user.is_authenticated %}
+            <li class="mb-2">
+              <a href="{% url 'client_dashboard' %}" class="text-decoration-none text-light">
+                → Mon Espace
+              </a>
+            </li>
+          {% else %}
+            <li class="mb-2">
+              <a href="{% url 'login' %}" class="text-decoration-none text-light">
+                → Se Connecter
+              </a>
+            </li>
+            <li class="mb-2">
+              <a href="{% url 'register' %}" class="text-decoration-none text-light">
+                → S'Inscrire
+              </a>
+            </li>
+          {% endif %}
+          <li class="mb-2">
+            <a href="{% url 'contact' %}" class="text-decoration-none text-light">
+              → Contact
+            </a>
+          </li>
         </ul>
       </div>
-      <div class="col-md-4">
-        <h6 class="fw-bold mb-2">Nous contacter</h6>
-        <p class="small text-muted mb-0">
-          📧 contact@scindongo-immo.sn<br>
-          📱 +221 XX XXX XX XX<br>
-          📍 Dakar, Sénégal
-        </p>
+
+      <!-- Coordonnées -->
+      <div class="col-lg-3 col-md-6">
+        <h6 class="fw-bold mb-3 text-uppercase" style="font-size: 0.9rem;">📞 Contactez-Nous</h6>
+        <div class="small text-light">
+          <p class="mb-2">
+            <strong>📍 Adresse :</strong><br>
+            Sacré Cœur 1, Immeuble D TRANSVEES 5 et 6, Dakar, Sénégal
+          </p>
+          <p class="mb-2">
+            <strong>📧 Email :</strong><br>
+            <a href="mailto:scindongoimmo@gmail.com" class="text-decoration-none text-light">
+              scindongoimmo@gmail.com
+            </a>
+          </p>
+          <p class="mb-2">
+            <strong>⏰ Horaires :</strong><br>
+            Lun-Ven: 8h-18h<br>
+            Sam: 9h-14h
+          </p>
+        </div>
+      </div>
+
+      <!-- Notre Équipe -->
+      <div class="col-lg-3 col-md-6">
+        <h6 class="fw-bold mb-3 text-uppercase" style="font-size: 0.9rem;">👥 Notre Équipe</h6>
+        <div class="small text-muted">
+          <p class="mb-2">
+            <strong class="text-light">👤 Mame Fatou NDAO</strong><br>
+            <a href="tel:+221776584265" class="text-decoration-none text-light">
+              📱 +221 77 658 42 65
+            </a>
+          </p>
+          <p class="mb-2">
+            <strong class="text-light">👤 Fatima NDONGO</strong><br>
+            <a href="tel:+221771262840" class="text-decoration-none text-light">
+              📱 +221 77 126 28 40
+            </a>
+          </p>
+          <p class="mb-0">
+            <strong class="text-light">👤 Salimata CISSE</strong><br>
+            <a href="tel:+221777870905" class="text-decoration-none text-light">
+              📱 +221 77 787 09 05
+            </a>
+          </p>
+        </div>
       </div>
     </div>
-    <hr class="bg-secondary">
-    <div class="small text-muted text-center">
-      République du Sénégal — Un Peuple, Un But, Une Foi · SCINDONGO Immo © 2025 · {{ now|date:"Y" }}
+
+    <!-- Divider -->
+    <hr class="bg-secondary-subtle my-4">
+
+    <!-- Bottom Footer -->
+    <div class="row align-items-center">
+      <div class="col-md-6 text-center text-md-start">
+        <p class="small text-muted mb-0">
+          © 2025 SCINDONGO Immo. Tous droits réservés.<br>
+          <span class="text-secondary">République du Sénégal — Un Peuple, Un But, Une Foi</span>
+        </p>
+      </div>
+      <div class="col-md-6 text-center text-md-end">
+        <div class="d-flex gap-3 justify-content-center justify-content-md-end">
+          <a href="#" class="text-decoration-none text-muted hover-text-light" title="Facebook">
+            <i class="fab fa-facebook"></i> Facebook
+          </a>
+          <a href="#" class="text-decoration-none text-muted hover-text-light" title="LinkedIn">
+            <i class="fab fa-linkedin"></i> LinkedIn
+          </a>
+          <a href="#" class="text-decoration-none text-muted hover-text-light" title="WhatsApp">
+            <i class="fab fa-whatsapp"></i> WhatsApp
+          </a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Top Scroll Button -->
+  <div class="bg-dark py-2" style="border-top: 1px solid rgba(255,255,255,0.1);">
+    <div class="container text-center">
+      <a href="#top" class="text-decoration-none text-muted small">
+        ⬆️ Retour au début
+      </a>
     </div>
   </div>
 </footer>

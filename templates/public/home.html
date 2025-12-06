@@ -1,36 +1,232 @@
 {% extends 'base.html' %}
+{% load static %}
+
 {% block content %}
-<div class="row align-items-center mb-5">
-  <div class="col-md-7">
-    <h1 class="display-5 fw-bold mb-3">Plateforme immobilière SCINDONGO Immo</h1>
-    <p class="lead">
-      Parcourez nos programmes, réservez votre bien, suivez vos paiements et l'avancement du chantier
-      depuis un espace client moderne, sécurisé et accessible partout.
-    </p>
-    <div class="d-flex gap-2 mt-3">
-      <a href="{% url 'programme_list' %}" class="btn btn-light btn-lg text-primary fw-semibold">Voir les programmes</a>
-      {% if not user.is_authenticated %}
-        <a href="{% url 'register' %}" class="btn btn-outline-light btn-lg">Créer un compte</a>
-      {% endif %}
-    </div>
-  </div>
-  <div class="col-md-5">
-    <div class="card shadow-sm">
-      <div class="card-body">
-        <h5 class="card-title">Pourquoi SCINDONGO Immo ?</h5>
-        <ul class="mb-3">
-          <li>Processus digitalisé de la réservation à la livraison</li>
-          <li>Suivi en temps réel de vos paiements et de l'avancement du chantier</li>
-          <li>Partenariats bancaires pour faciliter le financement</li>
-        </ul>
-        <p class="text-muted small mb-0">
-          République du Sénégal — Un Peuple, Un But, Une Foi<br>
-          Chef de projet : Mamoudou Diallo<br>
-          Responsable fonctionnel : Amadou Bousso<br>
-          Développeur Full Stack : Ahmed Ly
-        </p>
+
+<!-- Hero Section avec image d'accueil -->
+<section class="hero-section mb-5" style="position: relative; overflow: hidden; border-radius: 15px;">
+  <img src="{% static 'ecrant acceuil.png' %}" alt="SCINDONGO Immo - Plateforme immobilière" style="width: 100%; height: auto; object-fit: cover; display: block;">
+  
+  <!-- Overlay texte -->
+  <div style="position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.4); display: flex; align-items: center; justify-content: center; border-radius: 15px;">
+    <div class="text-center text-white">
+      <h1 class="display-4 fw-bold mb-3">🏘️ SCINDONGO Immo</h1>
+      <p class="lead mb-4">Plateforme immobilière moderne pour vos projets au Sénégal</p>
+      <div class="d-flex gap-3 justify-content-center flex-wrap">
+        <a href="{% url 'programme_list' %}" class="btn btn-light btn-lg fw-semibold">
+          📋 Voir nos programmes
+        </a>
+        {% if not user.is_authenticated %}
+          <a href="{% url 'register' %}" class="btn btn-warning btn-lg fw-semibold">
+            ✍️ Créer un compte
+          </a>
+        {% endif %}
       </div>
     </div>
   </div>
-</div>
+</section>
+
+<!-- Section Avantages -->
+<section class="mb-5">
+  <div class="container">
+    <div class="text-center mb-4">
+      <h2 class="display-6 fw-bold">💼 Nos Avantages</h2>
+      <p class="lead text-muted">Pourquoi choisir SCINDONGO Immo ?</p>
+    </div>
+    
+    <div class="row g-4">
+      <div class="col-md-6 col-lg-3">
+        <div class="card border-0 shadow-sm h-100 text-center">
+          <div class="card-body">
+            <div class="display-5 mb-3">🔐</div>
+            <h5 class="card-title fw-bold">Sécurisé</h5>
+            <p class="card-text text-muted small">
+              Plateforme sécurisée avec authentification robuste et protection de vos données
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <div class="col-md-6 col-lg-3">
+        <div class="card border-0 shadow-sm h-100 text-center">
+          <div class="card-body">
+            <div class="display-5 mb-3">📊</div>
+            <h5 class="card-title fw-bold">Suivi en Temps Réel</h5>
+            <p class="card-text text-muted small">
+              Suivez vos paiements, réservations et l'avancement des chantiers instantanément
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <div class="col-md-6 col-lg-3">
+        <div class="card border-0 shadow-sm h-100 text-center">
+          <div class="card-body">
+            <div class="display-5 mb-3">🏦</div>
+            <h5 class="card-title fw-bold">Financement Bancaire</h5>
+            <p class="card-text text-muted small">
+              Partenariats avec les meilleures banques pour faciliter votre financement
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <div class="col-md-6 col-lg-3">
+        <div class="card border-0 shadow-sm h-100 text-center">
+          <div class="card-body">
+            <div class="display-5 mb-3">📱</div>
+            <h5 class="card-title fw-bold">Accessible Partout</h5>
+            <p class="card-text text-muted small">
+              Plateforme responsive et accessible sur desktop, tablette et mobile
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Section Pourquoi Investir -->
+<section class="mb-5">
+  <div class="container">
+    <div class="row align-items-center gap-5">
+      <div class="col-lg-6">
+        <img src="{% static 'pourquoi investir.png' %}" alt="Pourquoi investir dans SCINDONGO" class="img-fluid rounded shadow-sm">
+      </div>
+      <div class="col-lg-6">
+        <h2 class="display-6 fw-bold mb-4">💰 Pourquoi Investir ?</h2>
+        <ul class="list-unstyled">
+          <li class="mb-3">
+            <div class="d-flex gap-3">
+              <div class="text-primary fw-bold" style="font-size: 1.5rem;">✓</div>
+              <div>
+                <h6 class="fw-bold">Rentabilité Attractive</h6>
+                <p class="text-muted small mb-0">Projets immobiliers à forte rentabilité avec ROI garanti</p>
+              </div>
+            </div>
+          </li>
+          <li class="mb-3">
+            <div class="d-flex gap-3">
+              <div class="text-primary fw-bold" style="font-size: 1.5rem;">✓</div>
+              <div>
+                <h6 class="fw-bold">Localisation Stratégique</h6>
+                <p class="text-muted small mb-0">Projets situés dans les zones les plus demandées de Dakar</p>
+              </div>
+            </div>
+          </li>
+          <li class="mb-3">
+            <div class="d-flex gap-3">
+              <div class="text-primary fw-bold" style="font-size: 1.5rem;">✓</div>
+              <div>
+                <h6 class="fw-bold">Transparence Totale</h6>
+                <p class="text-muted small mb-0">Suivi détaillé de chaque étape du projet et des paiements</p>
+              </div>
+            </div>
+          </li>
+          <li class="mb-3">
+            <div class="d-flex gap-3">
+              <div class="text-primary fw-bold" style="font-size: 1.5rem;">✓</div>
+              <div>
+                <h6 class="fw-bold">Équipe Expérimentée</h6>
+                <p class="text-muted small mb-0">Équipe professionnelle avec plus de 20 ans d'expérience</p>
+              </div>
+            </div>
+          </li>
+          <li class="mb-3">
+            <div class="d-flex gap-3">
+              <div class="text-primary fw-bold" style="font-size: 1.5rem;">✓</div>
+              <div>
+                <h6 class="fw-bold">Support Client 24/7</h6>
+                <p class="text-muted small mb-0">Assistance disponible pour répondre à toutes vos questions</p>
+              </div>
+            </div>
+          </li>
+        </ul>
+        <a href="{% url 'programme_list' %}" class="btn btn-primary btn-lg mt-4">
+          🚀 Explorer nos projets
+        </a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Section CTA - Appel à Action -->
+<section class="bg-primary text-white py-5 mb-5 rounded">
+  <div class="container text-center">
+    <h2 class="display-6 fw-bold mb-3">🌟 Prêt à Investir ?</h2>
+    <p class="lead mb-4">
+      Rejoignez des milliers de clients satisfaits qui ont confiance en SCINDONGO Immo
+    </p>
+    <div class="d-flex gap-3 justify-content-center flex-wrap">
+      {% if user.is_authenticated %}
+        <a href="{% url 'programme_list' %}" class="btn btn-light btn-lg fw-semibold">
+          Voir nos programmes
+        </a>
+        <a href="{% url 'client_dashboard' %}" class="btn btn-outline-light btn-lg fw-semibold">
+          Mon espace
+        </a>
+      {% else %}
+        <a href="{% url 'register' %}" class="btn btn-light btn-lg fw-semibold">
+          S'inscrire maintenant
+        </a>
+        <a href="{% url 'login' %}" class="btn btn-outline-light btn-lg fw-semibold">
+          Se connecter
+        </a>
+      {% endif %}
+    </div>
+  </div>
+</section>
+
+<!-- Section Info Entreprise -->
+<section class="mb-5">
+  <div class="container">
+    <div class="row g-4">
+      <!-- Coordonnées -->
+      <div class="col-lg-4">
+        <div class="card border-0 shadow-sm h-100">
+          <div class="card-body text-center">
+            <div class="display-5 mb-3 text-primary">📍</div>
+            <h5 class="card-title fw-bold">Nos Coordonnées</h5>
+            <img src="{% static 'coordonee.png' %}" alt="Coordonnées SCINDONGO" class="img-fluid my-3" style="max-height: 150px;">
+            <p class="card-text text-muted small mb-0">
+              Dakar, Sénégal<br>
+              <strong>Horaires :</strong> Lun-Ven: 8h-18h<br>
+              Sam: 9h-14h
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <!-- À Propos -->
+      <div class="col-lg-4">
+        <div class="card border-0 shadow-sm h-100">
+          <div class="card-body text-center">
+            <div class="display-5 mb-3">ℹ️</div>
+            <h5 class="card-title fw-bold">À Propos de Nous</h5>
+            <p class="card-text text-muted small mb-0">
+              SCINDONGO Immo est une plateforme immobilière innovante dédiée à faciliter l'accès au logement et aux investissements immobiliers au Sénégal. Notre mission : transparence, qualité et satisfaction client.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Équipe -->
+      <div class="col-lg-4">
+        <div class="card border-0 shadow-sm h-100">
+          <div class="card-body text-center">
+            <div class="display-5 mb-3">👥</div>
+            <h5 class="card-title fw-bold">Notre Équipe</h5>
+            <p class="card-text text-muted small mb-0">
+              <strong>Mame Fatou NDAO</strong><br>
+              <strong>Fatima NDONGO</strong><br>
+              <strong>Salimata CISSE</strong><br>
+              <em>Ensemble pour votre succès immobilier</em>
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
 {% endblock %}
