@@ -487,10 +487,14 @@
             </div>
         </div>
 
+        <!-- OTP Timer Data -->
+        <div id="otp-data" data-remaining="{% if otp_remaining %}{{ otp_remaining }}{% else %}300{% endif %}" style="display:none;"></div>
+        
         <script>
             document.addEventListener('DOMContentLoaded', function() {
                 // OTP Timer
-                const otpRemaining = {% if otp_remaining %}{{ otp_remaining }}{% else %}300{% endif %};
+                const otpData = document.getElementById('otp-data');
+                const otpRemaining = parseInt(otpData.dataset.remaining) || 300;
                 let timeLeft = otpRemaining;
                 const timerElement = document.getElementById('otp-timer');
                 

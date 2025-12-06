@@ -125,15 +125,30 @@
   {% if unite.gps_lat and unite.gps_lng %}
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <div id="unite-map" 
+         data-lat="{{ unite.gps_lat }}" 
+         data-lng="{{ unite.gps_lng }}" 
+         data-lot="{{ unite.reference_lot }}" 
+         data-program="{{ unite.programme.nom }}"></div>
     <script>
-      const map2 = L.map('unite-map').setView([{{ unite.gps_lat }}, {{ unite.gps_lng }}], 17);
-      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        maxZoom: 19,
-        attribution: '&copy; OpenStreetMap'
-      }).addTo(map2);
-      L.marker([{{ unite.gps_lat }}, {{ unite.gps_lng }}]).addTo(map2)
-        .bindPopup('<strong>Lot {{ unite.reference_lot|escapejs }}</strong><br>{{ unite.programme.nom|escapejs }}')
-        .openPopup();
+      document.addEventListener('DOMContentLoaded', function() {
+        const mapElement = document.getElementById('unite-map');
+        if (mapElement && typeof L !== 'undefined') {
+          const lat = parseFloat(mapElement.dataset.lat);
+          const lng = parseFloat(mapElement.dataset.lng);
+          const lotRef = mapElement.dataset.lot;
+          const programName = mapElement.dataset.program;
+          
+          const map2 = L.map('unite-map').setView([lat, lng], 17);
+          L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            maxZoom: 19,
+            attribution: '&copy; OpenStreetMap'
+          }).addTo(map2);
+          L.marker([lat, lng]).addTo(map2)
+            .bindPopup('<strong>Lot ' + lotRef + '</strong><br>' + programName)
+            .openPopup();
+        }
+      });
     </script>
   {% endif %}
 {% endblock %}

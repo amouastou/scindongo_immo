@@ -106,9 +106,14 @@
                     </div>
                 </div>
 
+
+                <!-- OTP Timer Data -->
+                <div id="otp-config" data-seconds="{{ otp_remaining_seconds }}" style="display:none;"></div>
+
                 <script>
                     // Timer pour l'OTP
-                    let otpSecondsLeft = {{ otp_remaining_seconds }};
+                    const otpConfig = document.getElementById('otp-config');
+                    let otpSecondsLeft = parseInt(otpConfig.dataset.seconds) || 0;
                     const timerElement = document.getElementById('otp-timer');
                     
                     setInterval(() => {

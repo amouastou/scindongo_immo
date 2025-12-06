@@ -45,7 +45,13 @@
         <span class="text-muted">🏢 Pas d'image disponible</span>
       </div>
     {% endif %}
-    <div id="programme-map" style="height: 250px;" class="rounded border shadow-sm"></div>
+    <div id="programme-map" 
+         data-lat="{{ programme.gps_lat }}" 
+         data-lng="{{ programme.gps_lng }}" 
+         data-name="{{ programme.nom|escapejs }}" 
+         data-address="{{ programme.adresse|escapejs }}"
+         style="height: 250px;" 
+         class="rounded border shadow-sm"></div>
   </div>
 </div>
 
@@ -125,13 +131,18 @@
   document.addEventListener('DOMContentLoaded', function() {
     const mapElement = document.getElementById('programme-map');
     if (mapElement && typeof L !== 'undefined') {
-      const map = L.map('programme-map').setView([{{ programme.gps_lat }}, {{ programme.gps_lng }}], 15);
+      const lat = parseFloat(mapElement.dataset.lat);
+      const lng = parseFloat(mapElement.dataset.lng);
+      const programName = mapElement.dataset.name;
+      const programAddress = mapElement.dataset.address;
+      
+      const map = L.map('programme-map').setView([lat, lng], 15);
       L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         maxZoom: 19,
         attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
       }).addTo(map);
-      L.marker([{{ programme.gps_lat }}, {{ programme.gps_lng }}]).addTo(map)
-        .bindPopup('<strong>{{ programme.nom|escapejs }}</strong><br>{{ programme.adresse|escapejs }}')
+      L.marker([lat, lng]).addTo(map)
+        .bindPopup('<strong>' + programName + '</strong><br>' + programAddress)
         .openPopup();
     }
   });
