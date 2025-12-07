@@ -45,13 +45,31 @@
         <span class="text-muted">🏢 Pas d'image disponible</span>
       </div>
     {% endif %}
-    <div id="programme-map" 
-         data-lat="{{ programme.gps_lat }}" 
-         data-lng="{{ programme.gps_lng }}" 
-         data-name="{{ programme.nom|escapejs }}" 
-         data-address="{{ programme.adresse|escapejs }}"
-         style="height: 250px;" 
-         class="rounded border shadow-sm"></div>
+    {% if programme.gps_lat and programme.gps_lng %}
+      <!-- Carte de localisation du programme -->
+      <div class="card border-0 shadow-sm mt-3">
+        <div class="card-header bg-primary text-white">
+          <h6 class="mb-0">📍 Localisation du Programme</h6>
+        </div>
+        <div class="card-body p-0">
+          <div id="programme-map" style="height: 400px; width: 100%;"></div>
+        </div>
+        <div class="card-footer bg-light">
+          <small class="text-muted">
+            📌 {{ programme.gps_lat }}, {{ programme.gps_lng }}
+          </small>
+          <a href="https://www.google.com/maps/search/?api=1&query={{ programme.gps_lat|stringformat:"f" }},{{ programme.gps_lng|stringformat:"f" }}" 
+             target="_blank" 
+             class="btn btn-sm btn-outline-primary float-end">
+            🗺️ Ouvrir dans Google Maps
+          </a>
+        </div>
+      </div>
+    {% else %}
+      <div class="alert alert-info">
+        <i class="bi bi-info-circle"></i> Coordonnées GPS non renseignées
+      </div>
+    {% endif %}
   </div>
 </div>
 
@@ -131,21 +149,68 @@
 <script>
   // Initialiser la carte après le chargement de la page
   document.addEventListener('DOMContentLoaded', function() {
-    const mapElement = document.getElementById('programme-map');
-    if (mapElement && typeof L !== 'undefined') {
-      const lat = parseFloat(mapElement.dataset.lat);
-      const lng = parseFloat(mapElement.dataset.lng);
-      const programName = mapElement.dataset.name;
-      const programAddress = mapElement.dataset.address;
-      
+    // S'assurer que les coordonnées sont bien des nombres avec point décimal
+    const lat = parseFloat("{{ programme.gps_lat|stringformat:'f' }}".replace(',', '.'));
+    const lng = parseFloat("{{ programme.gps_lng|stringformat:'f' }}".replace(',', '.'));
+    const programName = "{{ programme.nom|escapejs }}";
+    const programAddress = "{{ programme.adresse|escapejs }}";
+    
+    console.log("Coordonnées programme:", lat, lng); // Debug
+    
+    // Vérifier que les coordonnées sont valides
+    if (isNaN(lat) || isNaN(lng)) {
+      console.error("Coordonnées GPS invalides:", lat, lng);
+      document.getElementById('programme-map').innerHTML = '<div class="alert alert-warning m-3">Coordonnées GPS invalides</div>';
+      return;
+    }
+    
+    try {
+      // Initialiser la carte avec meilleur zoom
       const map = L.map('programme-map').setView([lat, lng], 15);
-      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        maxZoom: 19,
-        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+      
+      // Tuiles OpenStreetMap français
+      L.tileLayer('https://{s}.tile.openstreetmap.fr/osmfr/{z}/{x}/{y}.png', {
+        maxZoom: 20,
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
       }).addTo(map);
-      L.marker([lat, lng]).addTo(map)
-        .bindPopup('<strong>' + programName + '</strong><br>' + programAddress)
-        .openPopup();
+      
+      // Icône personnalisée
+      const customIcon = L.icon({
+        iconUrl: 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI0MCIgaGVpZ2h0PSI1MCIgdmlld0JveD0iMCAwIDQwIDUwIj48cGF0aCBmaWxsPSIjMjU2M0VCIiBkPSJNMjAgMEMxMi4yNyAwIDYgNi4yNyA2IDE0YzAgMTAuNSAxNCAxNiAxNCAxNnMxNC01LjUgMTQtMTZjMC03LjczLTYuMjctMTQtMTQtMTR6bTAgMTljLTIuNzYgMC01LTIuMjQtNS01czIuMjQtNSA1LTUgNSAyLjI0IDUgNS0yLjI0IDUtNSA1eiIvPjwvc3ZnPg==',
+        iconSize: [40, 50],
+        iconAnchor: [20, 50],
+        popupAnchor: [0, -50]
+      });
+      
+      // Marker avec popup enrichi
+      const marker = L.marker([lat, lng], { icon: customIcon }).addTo(map);
+      marker.bindPopup(`
+        <div style="text-align: center; min-width: 250px;">
+          <h5 class="mb-2"><strong>🏘️ ${programName}</strong></h5>
+          <p class="mb-2"><small>📍 ${programAddress}</small></p>
+          <a href="https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}" 
+             target="_blank" 
+             class="btn btn-sm btn-primary">
+            🧭 Obtenir l'itinéraire
+          </a>
+        </div>
+      `).openPopup();
+      
+      // Cercle de rayon 1km pour montrer la zone d'influence
+      L.circle([lat, lng], {
+        color: '#2563EB',
+        fillColor: '#2563EB',
+        fillOpacity: 0.1,
+        radius: 1000
+      }).addTo(map).bindTooltip('Zone 1km', { permanent: false, direction: 'top' });
+      
+      // Ajouter échelle
+      L.control.scale({ imperial: false, metric: true }).addTo(map);
+      
+      console.log("Carte programme initialisée avec succès");
+    } catch (error) {
+      console.error("Erreur initialisation carte:", error);
+      document.getElementById('programme-map').innerHTML = '<div class="alert alert-danger m-3">Erreur de chargement de la carte</div>';
     }
   });
 </script>

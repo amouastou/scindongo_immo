@@ -16,8 +16,8 @@ class Programme(TimeStampedModel):
 
     # Localisation
     adresse = models.CharField(max_length=255, blank=True)
-    gps_lat = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True)
-    gps_lng = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True)
+    gps_lat = models.DecimalField(max_digits=11, decimal_places=8, null=True, blank=True)
+    gps_lng = models.DecimalField(max_digits=11, decimal_places=8, null=True, blank=True)
 
     # Notaire / contact
     notaire_nom = models.CharField(max_length=255, blank=True)
@@ -126,8 +126,8 @@ class Unite(TimeStampedModel):
     )
 
     # Caractéristiques techniques / commerciales dynamiques
-    gps_lat = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True)
-    gps_lng = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True)
+    gps_lat = models.DecimalField(max_digits=11, decimal_places=8, null=True, blank=True)
+    gps_lng = models.DecimalField(max_digits=11, decimal_places=8, null=True, blank=True)
     caracteristiques = models.JSONField(default=dict, blank=True)
 
     image = models.ImageField(upload_to="unites/", null=True, blank=True)
@@ -220,8 +220,8 @@ class PhotoChantier(TimeStampedModel):
         related_name="photos",
     )
     image = models.ImageField(upload_to="chantiers/")
-    gps_lat = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True)
-    gps_lng = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True)
+    gps_lat = models.DecimalField(max_digits=11, decimal_places=8, null=True, blank=True)
+    gps_lng = models.DecimalField(max_digits=11, decimal_places=8, null=True, blank=True)
     pris_le = models.DateTimeField()
 
     class Meta:
@@ -285,8 +285,8 @@ class PhotoChantierUnite(TimeStampedModel):
         related_name="photos",
     )
     image = models.ImageField(upload_to="chantiers/unites/")
-    gps_lat = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True)
-    gps_lng = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True)
+    gps_lat = models.DecimalField(max_digits=11, decimal_places=8, null=True, blank=True)
+    gps_lng = models.DecimalField(max_digits=11, decimal_places=8, null=True, blank=True)
     pris_le = models.DateTimeField()
     description = models.TextField(blank=True, help_text="Description de la photo")
 

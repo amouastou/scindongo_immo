@@ -102,7 +102,25 @@
     {% endif %}
     
     {% if unite.gps_lat and unite.gps_lng %}
-      <div id="unite-map" style="height: 300px;" class="rounded shadow-sm border"></div>
+      <!-- Carte de localisation -->
+      <div class="card border-0 shadow-sm">
+        <div class="card-header bg-primary text-white">
+          <h6 class="mb-0">📍 Localisation GPS</h6>
+        </div>
+        <div class="card-body p-0">
+          <div id="unite-map" style="height: 400px; width: 100%;"></div>
+        </div>
+        <div class="card-footer bg-light">
+          <small class="text-muted">
+            📌 {{ unite.gps_lat }}, {{ unite.gps_lng }}
+          </small>
+          <a href="https://www.google.com/maps/search/?api=1&query={{ unite.gps_lat|stringformat:"f" }},{{ unite.gps_lng|stringformat:"f" }}" 
+             target="_blank" 
+             class="btn btn-sm btn-outline-primary float-end">
+            🗺️ Ouvrir dans Google Maps
+          </a>
+        </div>
+      </div>
     {% endif %}
   </div>
 </div>
@@ -127,28 +145,72 @@
   {% if unite.gps_lat and unite.gps_lng %}
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    <div id="unite-map" 
-         data-lat="{{ unite.gps_lat }}" 
-         data-lng="{{ unite.gps_lng }}" 
-         data-lot="{{ unite.reference_lot }}" 
-         data-program="{{ unite.programme.nom }}"></div>
     <script>
       document.addEventListener('DOMContentLoaded', function() {
-        const mapElement = document.getElementById('unite-map');
-        if (mapElement && typeof L !== 'undefined') {
-          const lat = parseFloat(mapElement.dataset.lat);
-          const lng = parseFloat(mapElement.dataset.lng);
-          const lotRef = mapElement.dataset.lot;
-          const programName = mapElement.dataset.program;
+        // S'assurer que les coordonnées sont bien des nombres avec point décimal
+        const lat = parseFloat("{{ unite.gps_lat|stringformat:'f' }}".replace(',', '.'));
+        const lng = parseFloat("{{ unite.gps_lng|stringformat:'f' }}".replace(',', '.'));
+        const lotRef = "{{ unite.reference_lot }}";
+        const programName = "{{ unite.programme.nom }}";
+        const prix = "{{ unite.prix_ttc|floatformat:0 }} FCFA";
+        
+        console.log("Coordonnées unité:", lat, lng); // Debug
+        
+        // Vérifier que les coordonnées sont valides
+        if (isNaN(lat) || isNaN(lng)) {
+          console.error("Coordonnées GPS invalides:", lat, lng);
+          document.getElementById('unite-map').innerHTML = '<div class="alert alert-warning m-3">Coordonnées GPS invalides</div>';
+          return;
+        }
+        
+        try {
+          // Initialiser la carte avec meilleur zoom
+          const map = L.map('unite-map').setView([lat, lng], 16);
           
-          const map2 = L.map('unite-map').setView([lat, lng], 17);
-          L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            maxZoom: 19,
-            attribution: '&copy; OpenStreetMap'
-          }).addTo(map2);
-          L.marker([lat, lng]).addTo(map2)
-            .bindPopup('<strong>Lot ' + lotRef + '</strong><br>' + programName)
-            .openPopup();
+          // Tuiles OpenStreetMap avec labels français
+          L.tileLayer('https://{s}.tile.openstreetmap.fr/osmfr/{z}/{x}/{y}.png', {
+            maxZoom: 20,
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+          }).addTo(map);
+          
+          // Icône personnalisée pour le marker
+          const customIcon = L.icon({
+            iconUrl: 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIzMiIgaGVpZ2h0PSI0MCIgdmlld0JveD0iMCAwIDMyIDQwIj48cGF0aCBmaWxsPSIjREMyNjI2IiBkPSJNMTYgMEMxMC4wNiAwIDUuMjUgNC44MSA1LjI1IDEwLjc1YzAgOC4wNiAxMC43NSAyOS4yNSAxMC43NSAyOS4yNXMxMC43NS0yMS4xOSAxMC43NS0yOS4yNUMyNi43NSA0LjgxIDIxLjk0IDAgMTYgMHptMCAxNWMtMi4zNCAwLTQuMjUtMS45MS00LjI1LTQuMjVTMTMuNjYgNi41IDE2IDYuNXM0LjI1IDEuOTEgNC4yNSA0LjI1UzE4LjM0IDE1IDE2IDE1eiIvPjwvc3ZnPg==',
+            iconSize: [32, 40],
+            iconAnchor: [16, 40],
+            popupAnchor: [0, -40]
+          });
+          
+          // Ajouter marker avec popup enrichi
+          const marker = L.marker([lat, lng], { icon: customIcon }).addTo(map);
+          marker.bindPopup(`
+            <div style="text-align: center; min-width: 200px;">
+              <h6 class="mb-2"><strong>🏠 ${lotRef}</strong></h6>
+              <p class="mb-1"><small>${programName}</small></p>
+              <p class="mb-2"><strong class="text-success">${prix}</strong></p>
+              <a href="https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}" 
+                 target="_blank" 
+                 class="btn btn-sm btn-primary">
+                🧭 Itinéraire
+              </a>
+            </div>
+          `).openPopup();
+          
+          // Ajouter cercle de rayon 500m pour montrer la zone
+          L.circle([lat, lng], {
+            color: '#DC2626',
+            fillColor: '#DC2626',
+            fillOpacity: 0.1,
+            radius: 500
+          }).addTo(map).bindTooltip('Rayon 500m', { permanent: false, direction: 'top' });
+          
+          // Ajouter contrôle de zoom
+          L.control.scale({ imperial: false, metric: true }).addTo(map);
+          
+          console.log("Carte unité initialisée avec succès");
+        } catch (error) {
+          console.error("Erreur initialisation carte:", error);
+          document.getElementById('unite-map').innerHTML = '<div class="alert alert-danger m-3">Erreur de chargement de la carte</div>';
         }
       });
     </script>

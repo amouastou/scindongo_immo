@@ -57,15 +57,15 @@
           <div class="row">
             <div class="col-md-6 mb-3">
               <label for="id_gps_lat" class="form-label fw-bold">Latitude GPS</label>
-              <input type="number" step="0.000001" name="gps_lat" value="{{ form.gps_lat.value|default:'' }}" class="form-control" id="id_gps_lat" placeholder="Ex: 14.7674957">
+              <input type="number" step="0.00000001" name="gps_lat" value="{{ form.gps_lat.value|default:'' }}" class="form-control" id="id_gps_lat" placeholder="Ex: 14.76749571">
               {% if form.gps_lat.errors %}
                 <div class="text-danger small">{{ form.gps_lat.errors }}</div>
               {% endif %}
-              <small class="text-muted">Format: 14.7674957</small>
+              <small class="text-muted">Format: 14.76749571 (8 décimales max)</small>
             </div>
             <div class="col-md-6 mb-3">
               <label for="id_gps_lng" class="form-label fw-bold">Longitude GPS</label>
-              <input type="number" step="0.000001" name="gps_lng" value="{{ form.gps_lng.value|default:'' }}" class="form-control" id="id_gps_lng" placeholder="Ex: -17.310068">
+              <input type="number" step="0.00000001" name="gps_lng" value="{{ form.gps_lng.value|default:'' }}" class="form-control" id="id_gps_lng" placeholder="Ex: -17.31006812">
               {% if form.gps_lng.errors %}
                 <div class="text-danger small">{{ form.gps_lng.errors }}</div>
               {% endif %}
