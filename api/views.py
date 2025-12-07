@@ -67,7 +67,7 @@ from sales.models import (
 
 
 class ProgrammeViewSet(viewsets.ModelViewSet):
-    queryset = Programme.objects.all()
+    queryset = Programme.objects.prefetch_related('unites', 'unites__reservations').all()
     serializer_class = ProgrammeSerializer
     permission_classes = [IsAuthenticatedOrReadOnly, IsAdminOrCommercial]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
@@ -78,7 +78,7 @@ class ProgrammeViewSet(viewsets.ModelViewSet):
 
 
 class UniteViewSet(viewsets.ModelViewSet):
-    queryset = Unite.objects.all()
+    queryset = Unite.objects.select_related('programme', 'modele_bien', 'modele_bien__type_bien').prefetch_related('reservations').all()
     serializer_class = UniteSerializer
     permission_classes = [IsAuthenticatedOrReadOnly]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
@@ -95,13 +95,13 @@ class TypeBienViewSet(viewsets.ModelViewSet):
 
 
 class ModeleBienViewSet(viewsets.ModelViewSet):
-    queryset = ModeleBien.objects.all()
+    queryset = ModeleBien.objects.select_related('type_bien', 'programme').all()
     serializer_class = ModeleBienSerializer
     permission_classes = [IsAuthenticated]
 
 
 class EtapeChantierViewSet(viewsets.ModelViewSet):
-    queryset = EtapeChantier.objects.all()
+    queryset = EtapeChantier.objects.select_related('programme').all()
     serializer_class = EtapeChantierSerializer
     permission_classes = [IsAdminOrCommercial]
 
@@ -281,7 +281,7 @@ class PhotoChantierUniteViewSet(viewsets.ModelViewSet):
 
 
 class ClientViewSet(viewsets.ModelViewSet):
-    queryset = Client.objects.all()
+    queryset = Client.objects.select_related('user').prefetch_related('reservations').all()
     serializer_class = ClientSerializer
     permission_classes = [IsAuthenticated, IsAdminOrCommercial]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter]
@@ -311,7 +311,7 @@ class ClientViewSet(viewsets.ModelViewSet):
 
 class ReservationDocumentViewSet(viewsets.ModelViewSet):
     """ViewSet pour uploader et gérer documents de réservation"""
-    queryset = ReservationDocument.objects.all()
+    queryset = ReservationDocument.objects.select_related('reservation', 'reservation__client').all()
     serializer_class = ReservationDocumentSerializer
     permission_classes = [IsAuthenticated, IsClientOwnerOrAdminOrCommercial]
     filter_backends = [DjangoFilterBackend, filters.OrderingFilter]
@@ -343,7 +343,7 @@ class ReservationDocumentViewSet(viewsets.ModelViewSet):
 
 
 class ReservationViewSet(viewsets.ModelViewSet):
-    queryset = Reservation.objects.all()
+    queryset = Reservation.objects.select_related('client', 'unite', 'unite__programme', 'unite__modele_bien').prefetch_related('paiements', 'documents').all()
     serializer_class = ReservationSerializer
     permission_classes = [IsAuthenticated, IsReservationOwnerOrAdminOrCommercial]
     filter_backends = [DjangoFilterBackend, filters.OrderingFilter]
@@ -503,7 +503,7 @@ class BanquePartenaireViewSet(viewsets.ModelViewSet):
 
 
 class FinancementViewSet(viewsets.ModelViewSet):
-    queryset = Financement.objects.all()
+    queryset = Financement.objects.select_related('reservation', 'reservation__client', 'reservation__unite', 'banque').prefetch_related('echeances').all()
     serializer_class = FinancementSerializer
     permission_classes = [IsAuthenticated, IsAdminOrCommercial]
     filter_backends = [DjangoFilterBackend, filters.OrderingFilter]
@@ -578,7 +578,7 @@ class FinancementViewSet(viewsets.ModelViewSet):
 
 
 class EcheanceViewSet(viewsets.ModelViewSet):
-    queryset = Echeance.objects.all()
+    queryset = Echeance.objects.select_related('financement', 'financement__reservation', 'financement__reservation__client').all()
     serializer_class = EcheanceSerializer
     permission_classes = [IsAuthenticated, IsAdminOrCommercial]
     filter_backends = [DjangoFilterBackend, filters.OrderingFilter]
@@ -607,7 +607,7 @@ class EcheanceViewSet(viewsets.ModelViewSet):
 
 
 class ContratViewSet(viewsets.ModelViewSet):
-    queryset = Contrat.objects.all()
+    queryset = Contrat.objects.select_related('reservation', 'reservation__client', 'reservation__unite').prefetch_related('documents').all()
     serializer_class = ContratSerializer
     permission_classes = [IsAuthenticated, IsAdminOrCommercial]
     filter_backends = [DjangoFilterBackend, filters.OrderingFilter]
@@ -631,7 +631,7 @@ class ContratViewSet(viewsets.ModelViewSet):
 
 
 class PaiementViewSet(viewsets.ModelViewSet):
-    queryset = Paiement.objects.all()
+    queryset = Paiement.objects.select_related('reservation', 'reservation__client', 'reservation__unite').all()
     serializer_class = PaiementSerializer
     permission_classes = [IsAuthenticated, IsAdminOrCommercial]
     filter_backends = [DjangoFilterBackend, filters.OrderingFilter]

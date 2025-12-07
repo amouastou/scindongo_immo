@@ -88,4 +88,5 @@ fi
 echo "🔥 Starting Gunicorn with DJANGO_SETTINGS_MODULE=$DJANGO_SETTINGS_MODULE"
 exec gunicorn scindongo_immo.wsgi:application \
     --bind 0.0.0.0:8000 \
-    --workers 3
+    --workers 3 \
+    --timeout 120

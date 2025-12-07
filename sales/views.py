@@ -526,10 +526,10 @@ class ClientDashboardView(RoleRequiredMixin, TemplateView):
         ctx = super().get_context_data(**kwargs)
         client = getattr(self.request.user, "client_profile", None)
         if client:
-            ctx["reservations"] = client.reservations.select_related("unite", "unite__programme")
-            ctx["paiements"] = Paiement.objects.filter(reservation__client=client)
-            ctx["contrats"] = Contrat.objects.filter(reservation__client=client)
-            ctx["financements"] = Financement.objects.filter(reservation__client=client)
+            ctx["reservations"] = client.reservations.select_related("unite", "unite__programme").prefetch_related("paiements", "documents")
+            ctx["paiements"] = Paiement.objects.filter(reservation__client=client).select_related("reservation")
+            ctx["contrats"] = Contrat.objects.filter(reservation__client=client).select_related("reservation")
+            ctx["financements"] = Financement.objects.filter(reservation__client=client).select_related("reservation", "banque").prefetch_related("echeances")
         else:
             ctx["reservations"] = []
             ctx["paiements"] = []
@@ -558,7 +558,7 @@ class CommercialDashboardView(RoleRequiredMixin, TemplateView):
         # ÉTAPE 3: Réservations en attente (en_cours) en priorité
         ctx["pending_reservations"] = Reservation.objects.filter(
             statut="en_cours"
-        ).select_related("client", "unite", "unite__programme").order_by('-created_at')
+        ).select_related("client", "unite", "unite__programme").prefetch_related("paiements", "documents").order_by('-created_at')
         ctx["pending_count"] = ctx["pending_reservations"].count()
         
         # ÉTAPE 8: Paiements en attente de validation
@@ -568,11 +568,11 @@ class CommercialDashboardView(RoleRequiredMixin, TemplateView):
         ctx["pending_payments_count"] = ctx["pending_payments"].count()
         
         # Listes détaillées
-        ctx["reservations"] = Reservation.objects.select_related("client", "unite", "unite__programme").all()[:20]
+        ctx["reservations"] = Reservation.objects.select_related("client", "unite", "unite__programme").prefetch_related("paiements", "documents")[:20]
         ctx["clients"] = Client.objects.select_related("user").all()[:20]
         ctx["paiements"] = Paiement.objects.select_related("reservation", "reservation__client").all()[:20]
-        ctx["financements"] = Financement.objects.select_related("banque", "reservation", "reservation__client").all()[:20]
-        ctx["programmes"] = Programme.objects.filter(statut="actif").all()
+        ctx["financements"] = Financement.objects.select_related("banque", "reservation", "reservation__client").prefetch_related("echeances")[:20]
+        ctx["programmes"] = Programme.objects.filter(statut="actif").prefetch_related("unites").all()
         
         # Unités en chantier (réservées ou vendues)
         from core.choices import UniteStatus
@@ -623,10 +623,10 @@ class AdminDashboardView(RoleRequiredMixin, TemplateView):
         ctx["contrats_signes"] = Contrat.objects.filter(statut="signe").count()
         ctx["banques_count"] = BanquePartenaire.objects.count()
         
-        # Listes détaillées
-        ctx["programmes"] = Programme.objects.all().order_by("-created_at")[:10]
+        # Listes détaillées avec select_related/prefetch_related
+        ctx["programmes"] = Programme.objects.prefetch_related("unites").order_by("-created_at")[:10]
         ctx["derniers_paiements"] = Paiement.objects.select_related("reservation", "reservation__client").order_by("-date_paiement")[:10]
-        ctx["dernieres_reservations"] = Reservation.objects.select_related("client", "unite", "unite__programme").order_by("-created_at")[:10]
+        ctx["dernieres_reservations"] = Reservation.objects.select_related("client", "unite", "unite__programme").prefetch_related("paiements", "documents").order_by("-created_at")[:10]
         
         return ctx
 

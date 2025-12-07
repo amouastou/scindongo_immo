@@ -20,8 +20,8 @@ class ProgrammeListView(ListView):
     context_object_name = 'programmes'
 
     def get_queryset(self):
-        # Affiche tous les programmes sans filtre caché
-        return Programme.objects.all().order_by("nom")
+        # Prefetch unités pour éviter N+1 queries
+        return Programme.objects.prefetch_related('unites').order_by("nom")
 
 
 class ProgrammeDetailView(DetailView):
@@ -29,11 +29,21 @@ class ProgrammeDetailView(DetailView):
     template_name = 'catalog/programme_detail.html'
     context_object_name = 'programme'
 
+    def get_queryset(self):
+        # Prefetch unités + réservations pour éviter N+1
+        return Programme.objects.prefetch_related('unites', 'unites__reservations')
+
 
 class UniteDetailView(DetailView):
     model = Unite
     template_name = 'catalog/unite_detail.html'
     context_object_name = 'unite'
+
+    def get_queryset(self):
+        # Select related programme + modele_bien, prefetch réservations
+        return Unite.objects.select_related(
+            'programme', 'modele_bien', 'modele_bien__type_bien'
+        ).prefetch_related('reservations')
 
 
 class BiensListView(ListView):
@@ -72,29 +82,25 @@ class BiensListView(ListView):
         context = super().get_context_data(**kwargs)
         context['programmes'] = Programme.objects.all().order_by('nom')
         
-        # Statistiques globales - basées sur les réservations confirmées
-        from sales.models import Reservation
-        from django.db.models import Q
+        # Statistiques globales - optimisées avec raw SQL pour performance
+        from django.db import connection
         
-        all_biens = Unite.objects.all()
-        context['total_biens'] = all_biens.count()
+        cursor = connection.cursor()
         
-        # Biens avec réservation confirmée = "Vendus/Livrés"
-        biens_avec_resa_confirmee = all_biens.filter(
-            reservations__statut='confirmee'
-        ).distinct().count()
-        context['biens_vendus'] = biens_avec_resa_confirmee
+        # Une seule requête SQL pour tout
+        cursor.execute("""
+            SELECT 
+                COUNT(DISTINCT u.id) as total,
+                COUNT(DISTINCT CASE WHEN r.statut = 'confirmee' THEN u.id END) as vendus,
+                COUNT(DISTINCT CASE WHEN r.statut IN ('en_cours', 'reserve') AND r.statut != 'annulee' THEN u.id END) as reserves
+            FROM catalog_unite u
+            LEFT JOIN sales_reservation r ON u.id = r.unite_id
+        """)
         
-        # Biens avec réservation EN COURS ou non-annulée (mais pas confirmée) = "Réservés"
-        biens_avec_resa_encours = all_biens.filter(
-            Q(reservations__statut='en_cours') | 
-            Q(reservations__statut='reserve')
-        ).exclude(
-            reservations__statut='annulee'
-        ).distinct().count()
-        context['biens_reserves'] = biens_avec_resa_encours
-        
-        # Biens disponibles = biens sans réservation active (ou avec seulement des annulées)
+        row = cursor.fetchone()
+        context['total_biens'] = row[0] if row[0] else 0
+        context['biens_vendus'] = row[1] if row[1] else 0
+        context['biens_reserves'] = row[2] if row[2] else 0
         context['biens_disponibles'] = context['total_biens'] - context['biens_vendus'] - context['biens_reserves']
         
         return context
