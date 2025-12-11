@@ -718,6 +718,7 @@
                                             <th>Moyen</th>
                                             <th>Source</th>
                                             <th>Statut</th>
+                                            <th>Reçu</th>
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -731,6 +732,17 @@
                                                     <span class="badge bg-{% if paiement.statut == 'valide' %}success{% elif paiement.statut == 'rejete' %}danger{% else %}warning{% endif %}">
                                                         {{ paiement.get_statut_display }}
                                                     </span>
+                                                </td>
+                                                <td>
+                                                    {% if paiement.statut == 'valide' and paiement.recu_pdf %}
+                                                        <a href="{% url 'payment_receipt_download' paiement.id %}" class="btn btn-sm btn-outline-success">
+                                                            📄 Reçu
+                                                        </a>
+                                                    {% elif paiement.statut == 'valide' %}
+                                                        <span class="text-muted small">En cours</span>
+                                                    {% else %}
+                                                        <span class="text-muted small">Disponible après validation</span>
+                                                    {% endif %}
                                                 </td>
                                         </tr>
                                     {% endfor %}

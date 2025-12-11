@@ -5,10 +5,13 @@ from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
 from django.contrib.auth.decorators import login_required
 from django.utils.decorators import method_decorator
 from django.utils import timezone
+from django.utils.formats import number_format
 from django.contrib import messages
-from django.http import Http404, HttpResponse
+from django.http import Http404, HttpResponse, FileResponse
 from django.core.exceptions import PermissionDenied
+from django.conf import settings
 import csv
+import logging
 from datetime import datetime
 
 from accounts.mixins import RoleRequiredMixin
@@ -28,14 +31,20 @@ from .forms import (
     FinancingRequestForm,
     EcheancePaiementForm,
 )
-from .utils import set_pending_unite, calculer_montant_caution
+from .utils import set_pending_unite, calculer_montant_caution, get_next_echeances_a_payer
 from .document_services import ReservationDocumentService
 from .financing_document_service import FinancementDocumentService
 from .mixins import ReservationRequiredMixin, FinancementFormMixin, ContratFormMixin, PaiementFormMixin
 from .services.signature_service import SignatureService
+from .services.payment_receipt_service import generate_payment_receipt
+from .services.contract_pdf_service import generate_contract_pdf
 from core.utils import audit_log
 from core.choices import PaiementStatus, PaiementType, UniteStatus, OperationType, ContratStatus
 from django.db.models import Sum, Count, Q
+from dateutil.relativedelta import relativedelta
+
+
+logger = logging.getLogger(__name__)
 
 
 def restrict_queryset(qs, user, relation_path):
@@ -596,10 +605,7 @@ class ClientDashboardView(RoleRequiredMixin, TemplateView):
             ctx["financements"] = Financement.objects.filter(reservation__client=client).select_related("reservation", "banque").prefetch_related("echeances")
             
             # 🏘️ NOUVEAU : Échéances en attente de paiement (locations)
-            ctx["echeances_en_attente"] = EcheanceLoyer.objects.filter(
-                reservation__client=client,
-                statut_paiement=PaiementStatus.ENREGISTRE
-            ).select_related('reservation__unite', 'reservation__unite__programme').order_by('date_echeance')[:20]
+            ctx["echeances_en_attente"] = get_next_echeances_a_payer(client)[:20]
 
             # 🔐 Cautions obligatoires non encore payées
             reservations_location = client.reservations.filter(
@@ -681,14 +687,37 @@ class CommercialDashboardView(RoleRequiredMixin, TemplateView):
         ).prefetch_related("paiements", "documents").order_by('-created_at')
         ctx["pending_count"] = ctx["pending_reservations"].count()
         
-        # ÉTAPE 8: Paiements en attente de validation
-        payments_qs = Paiement.objects.filter(statut="enregistre")
+        # ÉTAPE 8: Distinguer paiements VENTE vs cautions LOCATION en attente
+        pending_vente_qs = Paiement.objects.filter(
+            statut=PaiementStatus.ENREGISTRE,
+            type_paiement__in=[PaiementType.ACOMPTE, PaiementType.SOLDE]
+        )
+        pending_caution_qs = Paiement.objects.filter(
+            statut=PaiementStatus.ENREGISTRE,
+            type_paiement=PaiementType.CAUTION
+        )
         if not is_admin:
-            payments_qs = payments_qs.filter(reservation__unite__programme__contact_commercial=user)
-        ctx["pending_payments"] = payments_qs.select_related(
+            pending_vente_qs = pending_vente_qs.filter(reservation__unite__programme__contact_commercial=user)
+            pending_caution_qs = pending_caution_qs.filter(reservation__unite__programme__contact_commercial=user)
+
+        pending_vente_qs = pending_vente_qs.select_related(
             "reservation", "reservation__client", "reservation__unite"
         ).order_by('-created_at')
-        ctx["pending_payments_count"] = ctx["pending_payments"].count()
+        pending_caution_qs = pending_caution_qs.select_related(
+            "reservation", "reservation__client", "reservation__unite"
+        ).order_by('-created_at')
+
+        ctx["pending_vente_payments"] = pending_vente_qs
+        ctx["pending_caution_payments"] = pending_caution_qs
+        ctx["pending_vente_payments_count"] = pending_vente_qs.count()
+        ctx["pending_caution_payments_count"] = pending_caution_qs.count()
+        ctx["pending_payments_total_count"] = (
+            ctx["pending_vente_payments_count"] + ctx["pending_caution_payments_count"]
+        )
+
+        preview_payments = list(pending_vente_qs[:10]) + list(pending_caution_qs[:10])
+        preview_payments.sort(key=lambda p: p.created_at, reverse=True)
+        ctx["pending_payments_preview"] = preview_payments
         
         # Listes détaillées (filtrées par commercial)
         reservations_qs = Reservation.objects.select_related("client", "unite", "unite__programme").prefetch_related("paiements", "documents")
@@ -706,7 +735,8 @@ class CommercialDashboardView(RoleRequiredMixin, TemplateView):
         
         ctx["reservations"] = reservations_qs[:20]
         ctx["clients"] = clients_qs[:20]
-        ctx["paiements"] = paiements_qs[:20]
+        ctx["paiements_vente"] = pending_vente_qs[:20]
+        ctx["paiements_caution"] = pending_caution_qs[:20]
         ctx["financements"] = financements_qs[:20]
         ctx["programmes"] = programmes_qs.all()
         
@@ -826,6 +856,14 @@ class CommercialSearchUniteView(RoleRequiredMixin, TemplateView):
                 # Échéances
                 echeances = reservation.echeances_loyer.all().order_by('numero_mois')
                 ctx['echeances'] = echeances
+                prochaines_echeances = []
+                if ctx['has_caution']:
+                    prochaines_client = get_next_echeances_a_payer(reservation.client)
+                    prochaines_echeances = [
+                        echeance for echeance in prochaines_client
+                        if echeance.reservation_id == reservation.id
+                    ]
+                ctx['next_echeances'] = prochaines_echeances
                 # Payées: statut_paiement == 'valide'
                 ctx['echeances_payees'] = echeances.filter(statut_paiement=PaiementStatus.VALIDE)
                 # En attente de validation: paiement enregistré mais statut 'enregistre'
@@ -1348,11 +1386,14 @@ class ClientReservationDetailView(RoleRequiredMixin, TemplateView):
         ctx['total_payes'] = sum(p.montant for p in ctx['paiements'] if p.statut == 'valide')
         ctx['montant_restant'] = reservation.unite.prix_ttc - ctx['total_payes']
         
-        # Échéances de loyer pour LOCATION - Afficher seulement les échéances NON PAYÉES
-        # (celles qui sont en cours ou en retard)
-        ctx['echéances'] = reservation.echeances_loyer.filter(
-            paiement__isnull=True  # Pas encore payées
-        ).order_by('numero_mois')
+        # Échéances de loyer : n'afficher que la prochaine (et éventuellement la suivante après le 27)
+        ctx['echéances'] = []
+        if reservation.is_location() and reservation.has_caution_payment():
+            prochaine_echeances = get_next_echeances_a_payer(client)
+            ctx['echéances'] = [
+                echeance for echeance in prochaine_echeances
+                if echeance.reservation_id == reservation.id
+            ]
         
         # Date du jour pour vérifier les retards
         from datetime import date
@@ -1723,10 +1764,88 @@ class CommercialContratCreateView(RoleRequiredMixin, CommercialReservationAccess
     template_name = 'sales/commercial_contrat_form.html'
     required_roles = ["COMMERCIAL"]
     
+    def _default_conditions_generales(self, reservation):
+        programme_nom = reservation.unite.programme.nom
+        unite_ref = reservation.unite.reference_lot
+        return (
+            "Le présent contrat formalise la réservation du bien indiqué ci-dessous au sein du programme "
+            f"{programme_nom}. Le client reconnaît avoir pris connaissance des descriptifs techniques du lot {unite_ref} "
+            "et s'engage à respecter le calendrier de paiement convenu avec SCINDONGO Immo. Toute modification ou avenant "
+            "doit être validé par écrit par les deux parties."
+        )
+
+    def _default_conditions_particulieres(self, reservation, end_date):
+        duree = reservation.duree_bail_mois or 12
+        montant = number_format(reservation.unite.prix_ttc, decimal_pos=0, force_grouping=True)
+        date_fin_str = end_date.strftime("%d/%m/%Y") if end_date else "-"
+        return (
+            f"• Durée contractuelle : {duree} mois, renouvelable d'un commun accord.\n"
+            f"• Montant total TTC : {montant} FCFA (hors frais de dossier et taxes).\n"
+            f"• Mise à disposition et livraison prévues au plus tard le {date_fin_str}, sous réserve de l'avancement du chantier.\n"
+            "• Les charges de copropriété, taxes et assurances restent à la charge du client."
+        )
+
+    def _build_initial_payload(self, reservation):
+        client = reservation.client
+        unite = reservation.unite
+        programme = unite.programme
+        commercial = programme.contact_commercial
+        today = timezone.localdate()
+        duree = reservation.duree_bail_mois or 12
+        end_date = today + relativedelta(months=duree)
+
+        return {
+            'client_nom': f"{client.prenom} {client.nom}".strip(),
+            'client_email': client.email,
+            'client_telephone': client.telephone,
+            'client_adresse': '',
+            'programme_nom': programme.nom,
+            'unite_reference': unite.reference_lot,
+            'unite_description': unite.modele_bien.nom_marketing,
+            'montant_total': unite.prix_ttc,
+            'date_signature': today,
+            'date_fin': end_date,
+            'lieu_signature': getattr(settings, 'COMPANY_CITY', 'Dakar'),
+            'commercial_nom': (commercial.get_full_name() if commercial else '') or (commercial.email if commercial else ''),
+            'commercial_email': commercial.email if commercial else '',
+            'conditions_generales': self._default_conditions_generales(reservation),
+            'conditions_particulieres': self._default_conditions_particulieres(reservation, end_date),
+            'statut': ContratStatus.BROUILLON,
+        }
+
+    def get_initial(self):
+        initial = super().get_initial()
+        reservation = self.get_reservation()
+        initial.update(self._build_initial_payload(reservation))
+        return initial
+
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
         reservation = self.get_reservation()
+        initial_payload = self._build_initial_payload(reservation)
         ctx['reservation'] = reservation
+        ctx['contrat'] = None
+        ctx['is_update'] = False
+        programme = reservation.unite.programme
+        ctx['operation_type_code'] = programme.type_operation
+        ctx['operation_type_label'] = programme.get_type_operation_display()
+        ctx['is_location_operation'] = reservation.is_location()
+        ctx['caution_amount'] = (
+            calculer_montant_caution(reservation)
+            if ctx['is_location_operation'] else None
+        )
+        ctx['contrat_preview'] = {
+            'numero': f"CTR-{reservation.id}-{timezone.localdate().strftime('%Y%m%d')}",
+            'statut': ContratStatus.BROUILLON.label,
+            'date_signature': initial_payload.get('date_signature'),
+            'date_fin': initial_payload.get('date_fin'),
+        }
+        ctx['contrat_display'] = {
+            'numero': ctx['contrat_preview']['numero'],
+            'statut': ctx['contrat_preview']['statut'],
+            'date_signature': ctx['contrat_preview']['date_signature'],
+        }
+        ctx['initial_payload'] = initial_payload
         return ctx
     
     def form_valid(self, form):
@@ -1737,39 +1856,107 @@ class CommercialContratCreateView(RoleRequiredMixin, CommercialReservationAccess
             messages.error(self.request, "Un contrat existe déjà pour cette réservation")
             return self.form_invalid(form)
         
+        action = self.request.POST.get('action', 'generate')
         contrat = form.save(commit=False)
         contrat.reservation = reservation
-        contrat.numero = f"CTR-{reservation.id}-{reservation.created_at.strftime('%Y%m%d')}"
-        contrat.statut = "brouillon"
+        contrat.numero = f"CTR-{reservation.id}-{timezone.localdate().strftime('%Y%m%d')}"
+        contrat.statut = ContratStatus.BROUILLON
+        contrat.duree_mois = reservation.duree_bail_mois or contrat.duree_mois or 12
+        if not contrat.date_signature:
+            contrat.date_signature = timezone.localdate()
+        if not contrat.date_fin and contrat.date_signature and contrat.duree_mois:
+            contrat.date_fin = contrat.date_signature + relativedelta(months=contrat.duree_mois)
+        contrat.generated_pdf = False
         contrat.save()
-        
-        messages.success(self.request, f"Contrat {contrat.numero} créé. À signer via OTP")
-        audit_log(self.request.user, contrat, "contrat_create", 
-                 {"numero": contrat.numero}, self.request)
+
+        pdf_uploaded = bool(form.cleaned_data.get('pdf'))
+        if not pdf_uploaded or action == 'generate':
+            generate_contract_pdf(contrat, self.request.user)
+            messages.success(
+                self.request,
+                f"Contrat {contrat.numero} créé et PDF généré automatiquement. L'OTP peut être envoyé.",
+            )
+        else:
+            messages.success(
+                self.request,
+                f"Contrat {contrat.numero} créé avec votre document PDF.",
+            )
+
+        audit_log(
+            self.request.user,
+            contrat,
+            "contrat_create",
+            {"numero": contrat.numero, "auto_pdf": (not pdf_uploaded or action == 'generate')},
+            self.request,
+        )
         
         return redirect('commercial_reservation_detail', reservation_id=reservation.id)
 
 
 class CommercialContratUpdateView(RoleRequiredMixin, CommercialReservationAccessMixin, UpdateView):
-    """Mettre à jour le statut d'un contrat"""
+    """Mettre à jour ou régénérer un contrat"""
     model = Contrat
-    fields = ['pdf', 'statut']
-    template_name = 'sales/commercial_contrat_update.html'
+    form_class = ContratForm
+    template_name = 'sales/commercial_contrat_form.html'
     required_roles = ["COMMERCIAL"]
     
     def get_object(self):
         reservation = self.get_reservation()
         return get_object_or_404(Contrat, reservation=reservation)
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        reservation = self.get_reservation()
+        ctx['reservation'] = reservation
+        ctx['contrat'] = self.object
+        ctx['is_update'] = True
+        programme = reservation.unite.programme
+        ctx['operation_type_code'] = programme.type_operation
+        ctx['operation_type_label'] = programme.get_type_operation_display()
+        ctx['is_location_operation'] = reservation.is_location()
+        ctx['caution_amount'] = (
+            calculer_montant_caution(reservation)
+            if ctx['is_location_operation'] else None
+        )
+        ctx['contrat_preview'] = None
+        ctx['contrat_display'] = {
+            'numero': self.object.numero,
+            'statut': self.object.get_statut_display(),
+            'date_signature': self.object.date_signature,
+        }
+        return ctx
     
     def get_success_url(self):
         return reverse_lazy('commercial_reservation_detail', kwargs={'reservation_id': self.object.reservation.id})
     
     def form_valid(self, form):
-        response = super().form_valid(form)
-        messages.success(self.request, f"Contrat mis à jour: {self.object.get_statut_display()}")
-        audit_log(self.request.user, self.object, "contrat_update", 
-                 {"statut": self.object.statut}, self.request)
-        return response
+        action = self.request.POST.get('action', 'save')
+        uploaded_pdf = bool(form.cleaned_data.get('pdf'))
+        self.object = form.save()
+
+        regenerate = action == 'regenerate' or (not uploaded_pdf and not self.object.pdf)
+        if uploaded_pdf and action != 'regenerate':
+            self.object.generated_pdf = False
+            self.object.save(update_fields=['generated_pdf'])
+
+        if regenerate:
+            generate_contract_pdf(self.object, self.request.user)
+            regen_msg = " et le PDF a été régénéré automatiquement"
+        else:
+            regen_msg = ""
+
+        messages.success(
+            self.request,
+            f"Contrat mis à jour{regen_msg}. Statut actuel : {self.object.get_statut_display()}"
+        )
+        audit_log(
+            self.request.user,
+            self.object,
+            "contrat_update",
+            {"statut": self.object.statut, "regenerated": regenerate},
+            self.request,
+        )
+        return redirect(self.get_success_url())
 
 
 class CommercialPaiementCreateView(RoleRequiredMixin, CommercialReservationAccessMixin, CreateView):
@@ -1901,23 +2088,17 @@ class ClientPaymentModeChoiceView(RoleRequiredMixin, TemplateView):
     required_roles = ["CLIENT"]
     template_name = 'sales/client_payment_mode_choice.html'
     
-    def get(self, request, *args, **kwargs):
-        """Override get() pour gérer les redirects correctement"""
+    def dispatch(self, request, *args, **kwargs):
+        """Valider que VENTE avant tout traitement"""
         reservation_id = self.kwargs.get('reservation_id')
         
-        # Chercher le Client de l'utilisateur actuel
         try:
             client = Client.objects.get(user=request.user)
-        except Client.DoesNotExist:
-            raise Http404(f"Pas de profil Client trouvé pour l'utilisateur {request.user.email}")
-        
-        # Chercher la réservation
-        try:
             reservation = Reservation.objects.get(id=reservation_id, client=client)
-        except Reservation.DoesNotExist:
-            raise Http404(f"Réservation {reservation_id} introuvable")
+        except (Client.DoesNotExist, Reservation.DoesNotExist):
+            raise Http404("Réservation non trouvée")
         
-        # 🔴 LOCATION : Pas de choix de mode de paiement (pas de financement bancaire)
+        # 🔴 LOCATION: Rediriger
         if reservation.is_location():
             if not reservation.has_caution_payment():
                 messages.info(
@@ -1928,47 +2109,62 @@ class ClientPaymentModeChoiceView(RoleRequiredMixin, TemplateView):
             else:
                 messages.info(
                     request,
-                    "ℹ️ Pour une location, les paiements se font directement (pas de financement bancaire). "
-                    "Consultez vos échéances de loyer dans votre tableau de bord."
+                    "ℹ️ Pour une location, les paiements se font directement. "
+                    "Consultez vos échéances dans votre tableau de bord."
                 )
                 return redirect('client_dashboard')
         
-        # VENTE : Afficher normalement la page de choix
-        return super().get(request, *args, **kwargs)
+        return super().dispatch(request, *args, **kwargs)
     
     def get_context_data(self, **kwargs):
+        """GET: Contexte pour le formulaire de choix"""
         ctx = super().get_context_data(**kwargs)
         reservation_id = self.kwargs.get('reservation_id')
         
-        # Chercher le Client de l'utilisateur actuel
         try:
             client = Client.objects.get(user=self.request.user)
-        except Client.DoesNotExist:
-            raise Http404(f"Pas de profil Client trouvé pour l'utilisateur {self.request.user.email}")
-        
-        # Chercher la réservation (sans imposer le statut 'confirmee')
-        try:
             reservation = Reservation.objects.get(id=reservation_id, client=client)
-        except Reservation.DoesNotExist:
-            raise Http404(f"Réservation {reservation_id} introuvable pour le client {client.id}")
+        except (Client.DoesNotExist, Reservation.DoesNotExist):
+            raise Http404("Réservation non trouvée")
         
-        # VENTE : Choix normal entre paiement direct et financement
         ctx['reservation'] = reservation
         ctx['unite'] = reservation.unite
         ctx['remaining_amount'] = reservation.unite.prix_ttc - reservation.acompte
         ctx['form'] = PaymentModeForm()
+        ctx['is_vente'] = reservation.is_vente()
+        
+        # Pour LOCATION: ajouter le montant de caution
+        if reservation.is_location():
+            from .utils import calculer_montant_caution
+            ctx['caution_amount'] = calculer_montant_caution(reservation)
+        
         return ctx
+    
+    def post(self, request, *args, **kwargs):
+        """POST: Traiter le choix de mode de paiement"""
+        reservation_id = self.kwargs.get('reservation_id')
+        
+        try:
+            client = Client.objects.get(user=request.user)
+            reservation = Reservation.objects.get(id=reservation_id, client=client)
+        except (Client.DoesNotExist, Reservation.DoesNotExist):
+            raise Http404("Réservation non trouvée")
+        
+        # 🔴 Vérification supplémentaire: VENTE uniquement
+        if not reservation.is_vente():
+            messages.error(request, "Choix de paiement réservé aux ventes.")
+            return redirect('client_dashboard')
+        
         form = PaymentModeForm(request.POST)
         if not form.is_valid():
-            return self.get(request, reservation_id=reservation_id)
+            messages.error(request, "Formulaire invalide. Veuillez réessayer.")
+            return self.get(request, *args, **kwargs)
         
         payment_mode = form.cleaned_data['payment_mode']
         
         if payment_mode == 'direct':
-            # Redirect to direct payment
             return redirect('client_direct_payment', reservation_id=reservation_id)
         else:  # financing
-            # Redirect to financing request
             return redirect('client_financing_request', reservation_id=reservation_id)
 
 
@@ -1978,28 +2174,35 @@ class ClientDirectPaymentView(RoleRequiredMixin, TemplateView):
     required_roles = ["CLIENT"]
     template_name = 'sales/client_direct_payment.html'
     
+    def dispatch(self, request, *args, **kwargs):
+        """Vérifier que VENTE avant le traitement"""
+        reservation_id = self.kwargs.get('reservation_id')
+        
+        try:
+            client = Client.objects.get(user=request.user)
+            reservation = Reservation.objects.get(id=reservation_id, client=client)
+        except (Client.DoesNotExist, Reservation.DoesNotExist):
+            raise Http404("Réservation non trouvée")
+        
+        # 🔴 LOCATION: Bloquer
+        if not reservation.is_vente():
+            messages.error(
+                request,
+                "⚠️ Le paiement direct n'est disponible que pour les ventes."
+            )
+            return redirect('client_dashboard')
+        
+        return super().dispatch(request, *args, **kwargs)
+    
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
         reservation_id = self.kwargs.get('reservation_id')
         
         try:
             client = Client.objects.get(user=self.request.user)
-        except Client.DoesNotExist:
-            raise Http404("Pas de profil Client trouvé")
-        
-        try:
             reservation = Reservation.objects.get(id=reservation_id, client=client)
-        except Reservation.DoesNotExist:
+        except (Client.DoesNotExist, Reservation.DoesNotExist):
             raise Http404("Réservation introuvable")
-        
-        # 🔴 LOCATION : Pas de paiement direct ici (seulement caution + échéances)
-        if reservation.is_location():
-            messages.warning(
-                self.request,
-                "⚠️ Pour une location, utilisez le système de paiement de caution et d'échéances. "
-                "Le paiement direct est réservé aux ventes."
-            )
-            return redirect('client_dashboard')
         
         ctx['reservation'] = reservation
         ctx['unite'] = reservation.unite
@@ -2072,9 +2275,29 @@ class ClientDirectPaymentView(RoleRequiredMixin, TemplateView):
 
 # ÉTAPE 7: Financing Request View
 class ClientFinancingRequestView(RoleRequiredMixin, TemplateView):
-    """ÉTAPE 7: Client demande un financement bancaire"""
+    """ÉTAPE 7: Client demande un financement bancaire (VENTE UNIQUEMENT)"""
     required_roles = ["CLIENT"]
     template_name = 'sales/client_financing_request.html'
+    
+    def dispatch(self, request, *args, **kwargs):
+        """Vérifier que VENTE avant le traitement"""
+        reservation_id = self.kwargs.get('reservation_id')
+        
+        try:
+            client = Client.objects.get(user=request.user)
+            reservation = Reservation.objects.get(id=reservation_id, client=client)
+        except (Client.DoesNotExist, Reservation.DoesNotExist):
+            raise Http404("Réservation non trouvée")
+        
+        # 🔴 LOCATION: Bloquer
+        if not reservation.is_vente():
+            messages.error(
+                request,
+                "⚠️ Le financement bancaire n'est disponible que pour les ventes."
+            )
+            return redirect('client_dashboard')
+        
+        return super().dispatch(request, *args, **kwargs)
     
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
@@ -2188,8 +2411,10 @@ class CommercialPaymentValidationListView(RoleRequiredMixin, ListView):
     paginate_by = 20
     
     def get_queryset(self):
+        # 🔧 FIX: Afficher SEULEMENT les paiements en attente (enregistre)
+        # Les validés doivent disparaître de cette vue
         queryset = Paiement.objects.filter(
-            statut='enregistre'  # Only pending payments
+            statut=PaiementStatus.ENREGISTRE  # Only pending payments, not validated
         ).select_related('reservation', 'reservation__client', 'reservation__unite').order_by('-created_at')
         
         # Filtrer par réservation si spécifié dans l'URL
@@ -2224,15 +2449,48 @@ class CommercialPaymentValidateView(RoleRequiredMixin, View):
         paiement = get_object_or_404(Paiement, id=paiement_id, statut='enregistre')
         
         # Change status to validated
-        paiement.statut = 'valide'
-        paiement.save(update_fields=['statut'])
+        paiement.statut = PaiementStatus.VALIDE
+        paiement.valide_par = request.user
+        paiement.save(update_fields=['statut', 'valide_par'])
+        
+        # 🔧 FIX: Synchroniser EcheanceLoyer si c'est une échéance loyer
+        if paiement.type_paiement == PaiementType.ECHÉANCE_LOYER:
+            # Mettre à jour l'échéance associée
+            echeance = paiement.echeance_loyer
+            if echeance:
+                echeance.statut_paiement = PaiementStatus.VALIDE
+                echeance.paiement = paiement  # Assurer la liaison
+                echeance.save(update_fields=['statut_paiement', 'paiement'])
+        
+        # 🔧 FIX: Synchroniser caution si c'est une caution
+        elif paiement.type_paiement == PaiementType.CAUTION:
+            # Cautions: pas d'EcheanceLoyer, juste marquer comme validée
+            # Quand caution est validée, générer les échéances mensuelles
+            reservation = paiement.reservation
+            if reservation.is_location():
+                try:
+                    from .utils import generer_echeances_loyer
+                    from datetime import date
+                    # Générer échéances depuis la date du bail
+                    generer_echeances_loyer(reservation, date.today())
+                except Exception as e:
+                    # Log mais ne pas bloquer
+                    import logging
+                    logger = logging.getLogger(__name__)
+                    logger.error(f"Erreur création échéances: {e}")
+        
+        # Génération du reçu PDF (non bloquant)
+        try:
+            generate_payment_receipt(paiement, request.user)
+        except Exception as exc:
+            logger.error("Erreur lors de la génération du reçu pour le paiement %s: %s", paiement.id, exc)
         
         # Audit log
         audit_log(
             request.user,
             paiement,
             'payment_validated',
-            {'previous_status': 'enregistre', 'new_status': 'valide'},
+            {'previous_status': 'enregistre', 'new_status': 'valide', 'type': paiement.type_paiement},
             request
         )
         
@@ -2243,6 +2501,42 @@ class CommercialPaymentValidateView(RoleRequiredMixin, View):
         )
         
         return redirect('commercial_payment_validation_list')
+
+
+class PaymentReceiptDownloadView(LoginRequiredMixin, View):
+    """Permet au client ou au commercial de télécharger le reçu PDF."""
+
+    def get(self, request, paiement_id):
+        paiement = get_object_or_404(Paiement, id=paiement_id)
+
+        if not self._has_access(request.user, paiement):
+            raise PermissionDenied("Vous n'avez pas accès à ce reçu.")
+
+        if not paiement.recu_pdf:
+            messages.error(request, "Aucun reçu n'est disponible pour ce paiement.")
+            referer = request.META.get('HTTP_REFERER')
+            if referer:
+                return redirect(referer)
+            redirect_name = 'commercial_dashboard' if getattr(request.user, 'is_commercial', False) or is_admin_user(request.user) else 'client_dashboard'
+            return redirect(redirect_name)
+
+        receipt_name = paiement.recu_meta.get('receipt_number') or paiement.recu_pdf.name.split('/')[-1]
+        if not receipt_name.lower().endswith('.pdf'):
+            receipt_name = f"{receipt_name}.pdf"
+
+        return FileResponse(
+            paiement.recu_pdf.open('rb'),
+            as_attachment=True,
+            filename=receipt_name,
+            content_type='application/pdf'
+        )
+
+    @staticmethod
+    def _has_access(user, paiement):
+        if is_admin_user(user) or getattr(user, 'is_commercial', False):
+            return True
+        client_profile = getattr(user, 'client_profile', None)
+        return bool(client_profile and paiement.reservation.client_id == client_profile.id)
 
 
 # --- VUES BANQUE PARTENAIRE ---

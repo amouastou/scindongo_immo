@@ -169,7 +169,7 @@
 {% endif %}
 
 <!-- ÉTAPE 8: Paiements en attente de validation -->
-{% if pending_payments_count > 0 %}
+{% if pending_payments_total_count > 0 %}
 <div class="alert alert-warning alert-dismissible fade show mb-5" role="alert">
   <div class="d-flex align-items-center">
     <div class="me-3">
@@ -177,7 +177,7 @@
     </div>
     <div>
       <h4 class="alert-heading">⚠️ Paiements En Attente de Validation</h4>
-      <p class="mb-0">Vous avez <strong>{{ pending_payments_count }} paiement(s)</strong> à valider.</p>
+      <p class="mb-0">Vous avez <strong>{{ pending_payments_total_count }} paiement(s)</strong> à valider (VENTE + cautions).</p>
       <p class="mb-0 mt-2">Les clients attendent la confirmation de leurs paiements avant de générer les contrats.</p>
     </div>
     <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
@@ -187,10 +187,10 @@
 <!-- Tableau des paiements en attente -->
 <div class="card mb-5 border-warning">
   <div class="card-header bg-warning text-dark">
-    <h5 class="mb-0">💳 Paiements En Attente ({{ pending_payments_count }})</h5>
+    <h5 class="mb-0">💳 Paiements En Attente ({{ pending_payments_total_count }})</h5>
   </div>
   <div class="card-body">
-    {% if pending_payments %}
+    {% if pending_payments_preview %}
       <div class="table-responsive">
         <table class="table table-hover table-sm table-striped">
           <thead class="table-light">
@@ -198,13 +198,14 @@
               <th>Date</th>
               <th>Client</th>
               <th>Unité</th>
+              <th>Type</th>
               <th>Montant</th>
               <th>Moyen</th>
               <th>Actions</th>
             </tr>
           </thead>
           <tbody>
-            {% for payment in pending_payments %}
+            {% for payment in pending_payments_preview %}
               <tr class="border-start border-warning border-5">
                 <td>
                   <strong>{{ payment.created_at|date:"d/m/Y" }}</strong><br>
@@ -217,6 +218,13 @@
                 <td>
                   <strong>{{ payment.reservation.unite.reference }}</strong><br>
                   <small class="text-muted">{{ payment.reservation.unite.programme.nom }}</small>
+                </td>
+                <td>
+                  {% if payment.type_paiement == 'caution' %}
+                    <span class="badge bg-danger">Caution</span>
+                  {% else %}
+                    <span class="badge bg-secondary">{{ payment.get_type_paiement_display }}</span>
+                  {% endif %}
                 </td>
                 <td class="fw-bold text-success">{{ payment.montant|floatformat:0 }} FCFA</td>
                 <td>
@@ -303,8 +311,8 @@
   <li class="nav-item" role="presentation">
     <button class="nav-link" id="validations-tab" data-bs-toggle="tab" data-bs-target="#validations-content" type="button" role="tab">
       ⏳ Validations en Attente
-      {% if pending_payments_count or pending_echeances_count %}
-        <span class="badge bg-danger">{{ pending_payments_count|add:pending_echeances_count }}</span>
+      {% if pending_payments_total_count or pending_echeances_count %}
+        <span class="badge bg-danger">{{ pending_payments_total_count|add:pending_echeances_count }}</span>
       {% endif %}
     </button>
   </li>
@@ -452,13 +460,13 @@
       <div class="card-header bg-primary text-white">
         <h5 class="mb-0">
           <i class="fas fa-home"></i> Paiements VENTE à Valider
-          {% if pending_payments_count %}
-            <span class="badge bg-danger float-end">{{ pending_payments_count }}</span>
+          {% if pending_vente_payments_count %}
+            <span class="badge bg-danger float-end">{{ pending_vente_payments_count }}</span>
           {% endif %}
         </h5>
       </div>
       <div class="card-body">
-        {% if paiements %}
+        {% if paiements_vente %}
           <div class="table-responsive">
             <table class="table table-hover table-sm">
               <thead class="table-light">
@@ -474,7 +482,7 @@
                 </tr>
               </thead>
               <tbody>
-                {% for p in paiements %}
+                {% for p in paiements_vente %}
                   <tr>
                     <td>{{ p.date_paiement|date:"d/m/Y" }}</td>
                     <td>
@@ -539,6 +547,99 @@
         {% else %}
           <div class="alert alert-info">
             <i class="fas fa-check-circle"></i> Aucun paiement VENTE en attente de validation.
+          </div>
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- Section 1bis: Cautions LOCATION en attente -->
+    <div class="card mb-4">
+      <div class="card-header bg-danger text-white">
+        <h5 class="mb-0">
+          <i class="fas fa-shield-alt"></i> Cautions LOCATION à Valider
+          {% if pending_caution_payments_count %}
+            <span class="badge bg-light text-danger float-end">{{ pending_caution_payments_count }}</span>
+          {% endif %}
+        </h5>
+      </div>
+      <div class="card-body">
+        {% if paiements_caution %}
+          <div class="table-responsive">
+            <table class="table table-hover table-sm">
+              <thead class="table-light">
+                <tr>
+                  <th>Date</th>
+                  <th>Client</th>
+                  <th>Bien</th>
+                  <th>Montant</th>
+                  <th>Moyen</th>
+                  <th>Statut</th>
+                  <th>Action</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for p in paiements_caution %}
+                  <tr>
+                    <td>{{ p.date_paiement|date:"d/m/Y" }}</td>
+                    <td>
+                      {% if p.reservation and p.reservation.client and p.reservation.client.user %}
+                        {% if p.reservation.client.user.get_full_name %}
+                          {{ p.reservation.client.user.get_full_name }}
+                        {% else %}
+                          {{ p.reservation.client.user.email }}
+                        {% endif %}
+                      {% else %}
+                        N/A
+                      {% endif %}
+                    </td>
+                    <td>
+                      <strong>{{ p.reservation.unite.reference_lot }}</strong><br>
+                      <small class="text-muted">{{ p.reservation.unite.programme.nom }}</small>
+                    </td>
+                    <td class="fw-bold text-danger">{{ p.montant|floatformat:0 }} FCFA</td>
+                    <td>
+                      {% if p.moyen == 'virement' %}
+                        🏦 Virement
+                      {% elif p.moyen == 'cheque' %}
+                        📋 Chèque
+                      {% elif p.moyen == 'espece' %}
+                        💵 Espèce
+                      {% else %}
+                        {{ p.get_moyen_display }}
+                      {% endif %}
+                    </td>
+                    <td>
+                      {% if p.statut == 'enregistre' %}
+                        <span class="badge bg-warning text-dark">⏳ En Attente</span>
+                      {% elif p.statut == 'valide' %}
+                        <span class="badge bg-success">✓ Validé</span>
+                      {% elif p.statut == 'rejete' %}
+                        <span class="badge bg-danger">✕ Rejeté</span>
+                      {% else %}
+                        <span class="badge bg-secondary">{{ p.get_statut_display }}</span>
+                      {% endif %}
+                    </td>
+                    <td>
+                      {% if p.statut == 'enregistre' %}
+                        <form method="post" 
+                              action="{% url 'commercial_payment_validate' p.id %}" 
+                              style="display:inline;"
+                              onsubmit="return confirm('Valider cette caution de {{ p.montant|floatformat:0 }} FCFA ?');">
+                          {% csrf_token %}
+                          <button type="submit" class="btn btn-light btn-sm text-danger border border-danger">
+                            <i class="fas fa-check"></i> Valider
+                          </button>
+                        </form>
+                      {% endif %}
+                    </td>
+                  </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        {% else %}
+          <div class="alert alert-info">
+            <i class="fas fa-check-circle"></i> Aucune caution en attente de validation.
           </div>
         {% endif %}
       </div>

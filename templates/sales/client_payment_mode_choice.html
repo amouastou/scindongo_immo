@@ -56,7 +56,8 @@
                 </div>
             </div>
 
-            <!-- Formulaire de sélection -->
+            <!-- Formulaire de sélection (VENTE UNIQUEMENT) -->
+            {% if reservation.is_vente %}
             <form method="post" class="mb-4">
                 {% csrf_token %}
                 
@@ -95,7 +96,6 @@
                         </div>
 
                         <!-- Option 2: Financing (VENTE UNIQUEMENT) -->
-                        {% if reservation.is_vente %}
                         <div class="card border-left border-5" style="border-left-color: #007bff;">
                             <div class="card-body">
                                 <div class="form-check mb-0">
@@ -123,11 +123,23 @@
                                 </p>
                             </div>
                         </div>
-                        {% endif %}
                     </div>
                 </div>
+            
+            {% else %}
+            <!-- Message pour LOCATION (pas de choix de paiement - caution automatique) -->
+            <div class="alert alert-warning mb-4">
+                <i class="fas fa-info-circle"></i>
+                <strong>Réservation en Location :</strong>
+                <p class="mb-0 mt-2">
+                    Pour les locations, le paiement de la caution ({{ caution_amount|floatformat:0 }} FCFA) 
+                    sera effectué directement. Vous serez redirigé vers l'écran de paiement de caution.
+                </p>
+            </div>
+            {% endif %}
 
-                <!-- Info importante -->
+                <!-- Info importante (VENTE UNIQUEMENT) -->
+                {% if reservation.is_vente %}
                 <div class="alert alert-info mb-4">
                     <i class="fas fa-info-circle"></i>
                     <strong>Important :</strong>
@@ -138,7 +150,7 @@
                     </ul>
                 </div>
 
-                <!-- Boutons -->
+                <!-- Boutons (VENTE UNIQUEMENT) -->
                 <div class="d-grid gap-2">
                     <button type="submit" class="btn btn-primary btn-lg">
                         <i class="fas fa-arrow-right"></i> Continuer
@@ -147,22 +159,49 @@
                         Retour aux détails
                     </a>
                 </div>
+                {% else %}
+                <!-- Boutons de redirection (LOCATION) -->
+                <div class="alert alert-info mb-4">
+                    <i class="fas fa-info-circle"></i>
+                    <strong>Prochaine étape :</strong>
+                    <p class="mb-0 mt-2">
+                        Procédez au paiement de la caution pour finaliser votre réservation.
+                    </p>
+                </div>
+                <div class="d-grid gap-2">
+                    <a href="{% url 'client_caution_paiement' reservation.id %}" class="btn btn-primary btn-lg">
+                        <i class="fas fa-money-bill"></i> Payer la Caution
+                    </a>
+                    <a href="{% url 'client_reservation_detail' reservation.id %}" class="btn btn-outline-secondary">
+                        Retour aux détails
+                    </a>
+                </div>
+                {% endif %}
             </form>
 
-            <!-- Aide -->
+            <!-- Aide (VENTE UNIQUEMENT) -->
+            {% if reservation.is_vente %}
             <div class="alert alert-light border mt-4">
                 <h6 class="mb-3">❓ Besoin d'aide ?</h6>
                 <p class="mb-2">
                     <strong>Paiement Direct :</strong> 
                     Idéal si vous disposez des fonds immédiatement.
                 </p>
-                {% if reservation.is_vente %}
                 <p class="mb-0">
                     <strong>Financement Bancaire :</strong> 
                     Contactez nos banques partenaires pour étudier votre dossier.
                 </p>
-                {% endif %}
             </div>
+            {% else %}
+            <!-- Aide (LOCATION) -->
+            <div class="alert alert-light border mt-4">
+                <h6 class="mb-3">❓ Besoin d'aide ?</h6>
+                <p class="mb-0">
+                    <strong>Caution :</strong> 
+                    La caution équivaut à 2 mois de loyer et vous sera remboursée à la fin de la location.
+                </p>
+            </div>
+            {% endif %}
         </div>
     </div>
 </div>

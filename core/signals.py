@@ -123,7 +123,7 @@ def generer_echeances_apres_caution_validee(sender, instance, created, **kwargs)
         date_echeance_mois_1 = date_echeance_mois_1.replace(day=10)
         
         # Montant mensuel
-        montant_mensuel = reservation.unite.modele_bien.prix_base_ttc
+        montant_mensuel = reservation.unite.prix_ttc
         
         # Créer SEULEMENT la première échéance
         echeance = EcheanceLoyer.objects.create(
@@ -176,7 +176,7 @@ def generer_echeance_suivante_apres_paiement(sender, instance, created, **kwargs
         date_echeance_suivante = echeance_payee.date_echeance + relativedelta(months=1)
         
         # Montant mensuel
-        montant_mensuel = reservation.unite.modele_bien.prix_base_ttc
+        montant_mensuel = reservation.unite.prix_ttc
         
         # Créer l'échéance suivante
         nouvelle_echeance = EcheanceLoyer.objects.create(

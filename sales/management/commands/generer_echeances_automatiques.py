@@ -75,7 +75,7 @@ class Command(BaseCommand):
                 date_echeance_suivante = derniere_echeance.date_echeance + relativedelta(months=1)
                 
                 # Montant mensuel
-                montant_mensuel = reservation.unite.modele_bien.prix_base_ttc
+                montant_mensuel = reservation.unite.prix_ttc
                 
                 # Créer l'échéance
                 nouvelle_echeance = EcheanceLoyer.objects.create(

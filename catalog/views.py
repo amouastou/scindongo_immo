@@ -295,7 +295,7 @@ class ModeleBienCreateView(RoleRequiredMixin, CreateView):
     """Créer un modèle de bien (ADMIN/COMMERCIAL)"""
     model = ModeleBien
     template_name = 'catalog/modelebien_form.html'
-    fields = ['type_bien', 'nom_marketing', 'surface_hab_m2', 'prix_base_ttc', 'description']
+    fields = ['type_bien', 'nom_marketing', 'surface_hab_m2', 'description']
     required_roles = ["ADMIN", "COMMERCIAL"]
     success_url = reverse_lazy('modelebien_list')
 
@@ -304,7 +304,7 @@ class ModeleBienUpdateView(RoleRequiredMixin, UpdateView):
     """Modifier un modèle de bien (ADMIN/COMMERCIAL)"""
     model = ModeleBien
     template_name = 'catalog/modelebien_form.html'
-    fields = ['type_bien', 'nom_marketing', 'surface_hab_m2', 'prix_base_ttc', 'description']
+    fields = ['type_bien', 'nom_marketing', 'surface_hab_m2', 'description']
     required_roles = ["ADMIN", "COMMERCIAL"]
     success_url = reverse_lazy('modelebien_list')
 

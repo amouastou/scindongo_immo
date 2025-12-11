@@ -3,11 +3,15 @@ Tests automatisés pour la fusion - SCINDONGO Immo
 Exécutez avec: python manage.py test tests.test_suite
 """
 
-from django.test import TestCase, Client
+import os
+import shutil
+import tempfile
+from datetime import datetime, date, timedelta
+
+from django.test import TestCase, Client as DjangoClient, override_settings
 from django.urls import reverse
 from django.contrib.auth.models import User
 from django.utils import timezone
-from datetime import datetime, date, timedelta
 from dateutil.relativedelta import relativedelta
 
 from accounts.models import User as CustomUser, Role
@@ -16,6 +20,9 @@ from sales.models import (
     Client, Reservation, Paiement, EcheanceLoyer, 
     Contrat, Financement, BanquePartenaire
 )
+from sales.utils import get_next_echeances_a_payer
+from sales.services.payment_receipt_service import generate_payment_receipt
+from sales.services.contract_pdf_service import generate_contract_pdf
 from core.choices import (
     PaiementStatus, PaiementType, UniteStatus, 
     OperationType, ReservationStatus, ContratStatus
@@ -29,6 +36,7 @@ class TestDataFactory:
     def create_test_user(email, password='test123', role_code='CLIENT'):
         """Créer un utilisateur avec rôle"""
         user = CustomUser.objects.create_user(
+            username=email,
             email=email,
             password=password,
             first_name='Test',
@@ -42,6 +50,7 @@ class TestDataFactory:
     def create_programme(nom, type_operation='LOCATION'):
         """Créer un programme test"""
         user = CustomUser.objects.create_user(
+            username=f'commercial_{type_operation}@test.com',
             email=f'commercial_{type_operation}@test.com',
             password='test123'
         )
@@ -56,11 +65,13 @@ class TestDataFactory:
     @staticmethod
     def create_unite(programme, reference_lot='TEST-LOT-01', prix_ttc=1000000):
         """Créer une unité"""
-        type_bien = TypeBien.objects.get_or_create(nom='F3')[0]
+        type_bien, _ = TypeBien.objects.get_or_create(
+            code='F3',
+            defaults={'libelle': 'F3'}
+        )
         modele = ModeleBien.objects.create(
             type_bien=type_bien,
-            nom_marketing='Modèle Test',
-            prix_base_ttc=prix_ttc
+            nom_marketing='Modèle Test'
         )
         return Unite.objects.create(
             programme=programme,
@@ -194,6 +205,61 @@ class EcheanceModelTest(TestCase):
         self.assertTrue(echeance.is_en_retard())
 
 
+class ClientDashboardEcheanceLogicTest(TestCase):
+    """Tests unitaires pour la logique d'affichage des échéances client."""
+
+    def setUp(self):
+        programme = TestDataFactory.create_programme('Programme Loc', 'LOCATION')
+        unite = TestDataFactory.create_unite(programme, 'LOC-777')
+        user = TestDataFactory.create_test_user('logic@test.com', role_code='CLIENT')
+        self.client_profile = TestDataFactory.create_client(user)
+        self.reservation = TestDataFactory.create_reservation(self.client_profile, unite)
+
+        base_date = date(2026, 1, 10)
+        self.e1 = EcheanceLoyer.objects.create(
+            reservation=self.reservation,
+            numero_mois=1,
+            montant=1000000,
+            date_echeance=base_date,
+            statut_paiement=PaiementStatus.ENREGISTRE,
+        )
+        self.e2 = EcheanceLoyer.objects.create(
+            reservation=self.reservation,
+            numero_mois=2,
+            montant=1000000,
+            date_echeance=base_date + relativedelta(months=1),
+            statut_paiement=PaiementStatus.ENREGISTRE,
+        )
+        self.e3 = EcheanceLoyer.objects.create(
+            reservation=self.reservation,
+            numero_mois=3,
+            montant=1000000,
+            date_echeance=base_date + relativedelta(months=2),
+            statut_paiement=PaiementStatus.ENREGISTRE,
+        )
+
+    def test_only_next_echeance_before_27(self):
+        """Avant le 27, une seule échéance doit être affichée."""
+        result = get_next_echeances_a_payer(self.client_profile, reference_date=date(2026, 1, 15))
+        self.assertEqual(len(result), 1)
+        self.assertEqual(result[0].id, self.e1.id)
+
+    def test_next_after_payment(self):
+        """Une fois la première échéance payée, la suivante remonte automatiquement."""
+        self.e1.statut_paiement = PaiementStatus.VALIDE
+        self.e1.save(update_fields=['statut_paiement'])
+
+        result = get_next_echeances_a_payer(self.client_profile, reference_date=date(2026, 1, 15))
+        self.assertEqual(len(result), 1)
+        self.assertEqual(result[0].id, self.e2.id)
+
+    def test_show_second_after_27(self):
+        """Le 27 du mois ou après, on montre l'échéance suivante en plus de la courante."""
+        result = get_next_echeances_a_payer(self.client_profile, reference_date=date(2026, 1, 27))
+        self.assertEqual(len(result), 2)
+        self.assertEqual([e.id for e in result], [self.e1.id, self.e2.id])
+
+
 # =============================================================================
 # TESTS VUES - COMMERCIAL PAYMENT VALIDATE
 # =============================================================================
@@ -202,7 +268,7 @@ class CommercialPaymentValidateViewTest(TestCase):
     """Tests pour la validation de paiement par le commercial"""
     
     def setUp(self):
-        self.client = Client()
+        self.client_http = DjangoClient()
         
         # Créer commercial
         self.commercial_user = TestDataFactory.create_test_user(
@@ -232,10 +298,10 @@ class CommercialPaymentValidateViewTest(TestCase):
     
     def test_payment_validation_success(self):
         """Commercial valide un paiement enregistré"""
-        self.client.login(email='commercial@test.com', password='test123')
+        self.client_http.login(email='commercial@test.com', password='test123')
         
         url = reverse('commercial_payment_validate', args=[self.paiement.id])
-        response = self.client.post(url)
+        response = self.client_http.post(url)
         
         # Vérifier redirection
         self.assertEqual(response.status_code, 302)
@@ -244,28 +310,81 @@ class CommercialPaymentValidateViewTest(TestCase):
         self.paiement.refresh_from_db()
         self.assertEqual(self.paiement.statut, PaiementStatus.VALIDE)
     
+    def test_receipt_generated_after_validation(self):
+        """Un reçu PDF est généré après validation."""
+        self.client_http.login(email='commercial@test.com', password='test123')
+
+        url = reverse('commercial_payment_validate', args=[self.paiement.id])
+        self.client_http.post(url)
+
+        self.paiement.refresh_from_db()
+        self.assertIsNotNone(self.paiement.recu_pdf)
+        self.assertTrue(self.paiement.recu_pdf.name.endswith('.pdf'))
+        self.assertIsNotNone(self.paiement.recu_meta.get('receipt_number'))
+        self.assertEqual(self.paiement.valide_par, self.commercial_user)
+
     def test_payment_validation_404_if_already_validated(self):
         """Tentative de valider 2 fois retourne 404"""
         self.paiement.statut = PaiementStatus.VALIDE
         self.paiement.save()
         
-        self.client.login(email='commercial@test.com', password='test123')
+        self.client_http.login(email='commercial@test.com', password='test123')
         
         url = reverse('commercial_payment_validate', args=[self.paiement.id])
-        response = self.client.post(url)
+        response = self.client_http.post(url)
         
         # Doit retourner 404 car paiement n'est plus 'enregistre'
         self.assertEqual(response.status_code, 404)
     
     def test_permission_denied_for_client(self):
         """Client ne peut pas valider les paiements"""
-        self.client.login(email='client@test.com', password='test123')
+        self.client_http.login(email='client@test.com', password='test123')
         
         url = reverse('commercial_payment_validate', args=[self.paiement.id])
-        response = self.client.post(url)
+        response = self.client_http.post(url)
         
         # Doit rediriger ou retourner 403
         self.assertIn(response.status_code, [302, 403])
+
+
+class PaymentReceiptDownloadViewTest(TestCase):
+    """Tests pour le téléchargement sécurisé des reçus."""
+
+    def setUp(self):
+        self.client_http = DjangoClient()
+        self.commercial_user = TestDataFactory.create_test_user('commercial@test.com', role_code='COMMERCIAL')
+        programme = TestDataFactory.create_programme('Loc', 'LOCATION')
+        unite = TestDataFactory.create_unite(programme, reference_lot='LOC-101')
+
+        self.client_user = TestDataFactory.create_test_user('client@test.com', role_code='CLIENT')
+        self.client_profile = TestDataFactory.create_client(self.client_user)
+        self.reservation = TestDataFactory.create_reservation(self.client_profile, unite)
+
+        self.paiement = Paiement.objects.create(
+            reservation=self.reservation,
+            montant=250000,
+            moyen='virement',
+            source='ref',
+            type_paiement=PaiementType.ACOMPTE,
+            statut=PaiementStatus.VALIDE,
+            valide_par=self.commercial_user,
+        )
+        generate_payment_receipt(self.paiement, self.commercial_user)
+
+    def test_client_can_download_receipt(self):
+        self.client_http.login(email='client@test.com', password='test123')
+        url = reverse('payment_receipt_download', args=[self.paiement.id])
+        response = self.client_http.get(url)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response['Content-Type'], 'application/pdf')
+
+    def test_other_client_forbidden(self):
+        other = TestDataFactory.create_test_user('other@test.com', role_code='CLIENT')
+        TestDataFactory.create_client(other)
+        self.client_http.login(email='other@test.com', password='test123')
+        url = reverse('payment_receipt_download', args=[self.paiement.id])
+        response = self.client_http.get(url)
+        self.assertEqual(response.status_code, 403)
 
 
 # =============================================================================
@@ -363,7 +482,7 @@ class CommercialDashboardTest(TestCase):
     """Tests pour le dashboard commercial"""
     
     def setUp(self):
-        self.client_http = Client()
+        self.client_http = DjangoClient()
         
         self.commercial_user = TestDataFactory.create_test_user(
             'commercial@test.com',
@@ -378,7 +497,7 @@ class CommercialDashboardTest(TestCase):
         self.reservation = TestDataFactory.create_reservation(self.client_profile, self.unite)
     
     def test_dashboard_counts_consistency(self):
-        """Compteur pending_payments_count = nombre réel de paiements en attente"""
+        """Les compteurs pending_* reflètent bien les paiements en attente"""
         # Créer quelques paiements en attente
         for i in range(3):
             Paiement.objects.create(
@@ -396,7 +515,9 @@ class CommercialDashboardTest(TestCase):
         response = self.client_http.get(url)
         
         # Vérifier contexte
-        self.assertEqual(response.context['pending_payments_count'], 3)
+        self.assertEqual(response.context['pending_vente_payments_count'], 3)
+        self.assertEqual(response.context['pending_caution_payments_count'], 0)
+        self.assertEqual(response.context['pending_payments_total_count'], 3)
 
 
 # =============================================================================

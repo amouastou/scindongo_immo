@@ -553,10 +553,14 @@ class PaiementSerializer(serializers.ModelSerializer):
             "moyen",
             "source",
             "statut",
+            "valide_par",
+            "recu_pdf",
+            "recu_meta",
+            "recu_emis_le",
             "created_at",
             "updated_at",
         ]
-        read_only_fields = ("id", "date_paiement", "created_at", "updated_at")
+        read_only_fields = ("id", "date_paiement", "valide_par", "recu_pdf", "recu_meta", "recu_emis_le", "created_at", "updated_at")
 
     def validate(self, attrs):
         instance = self.instance

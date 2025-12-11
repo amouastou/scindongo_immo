@@ -187,6 +187,22 @@ class Contrat(TimeStampedModel):
         default=12,
         help_text="Durée du bail en mois au moment de la signature"
     )
+    client_nom = models.CharField(max_length=255, blank=True)
+    client_email = models.EmailField(blank=True)
+    client_telephone = models.CharField(max_length=50, blank=True)
+    client_adresse = models.CharField(max_length=255, blank=True)
+    programme_nom = models.CharField(max_length=255, blank=True)
+    unite_reference = models.CharField(max_length=100, blank=True)
+    unite_description = models.CharField(max_length=255, blank=True)
+    montant_total = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
+    date_signature = models.DateField(null=True, blank=True)
+    date_fin = models.DateField(null=True, blank=True)
+    lieu_signature = models.CharField(max_length=255, blank=True)
+    conditions_generales = models.TextField(blank=True)
+    conditions_particulieres = models.TextField(blank=True)
+    commercial_nom = models.CharField(max_length=255, blank=True)
+    commercial_email = models.EmailField(blank=True)
+    generated_pdf = models.BooleanField(default=False)
 
     class Meta:
         verbose_name = "Contrat"
@@ -212,13 +228,39 @@ class Paiement(TimeStampedModel):
         null=True,
         help_text="Remarques supplémentaires sur le paiement"
     )
-    
+
     # Type de paiement (acompte, solde, échéance loyer, caution)
     type_paiement = models.CharField(
         max_length=50,
         choices=PaiementType.choices,
         default=PaiementType.ACOMPTE,
         help_text="Acompte, Solde, Échéance loyer ou Caution"
+    )
+
+    # Traçabilité validation/reçu
+    valide_par = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        related_name='paiements_valides',
+        null=True,
+        blank=True,
+        help_text="Utilisateur ayant validé le paiement"
+    )
+    recu_pdf = models.FileField(
+        upload_to='paiements/recus/%Y/%m/',
+        blank=True,
+        null=True,
+        help_text="Reçu généré automatiquement au format PDF"
+    )
+    recu_meta = models.JSONField(
+        default=dict,
+        blank=True,
+        help_text="Métadonnées du reçu (numéro, info client, etc.)"
+    )
+    recu_emis_le = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text="Date et heure de génération du reçu"
     )
 
     class Meta:

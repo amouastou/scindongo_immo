@@ -22,6 +22,7 @@ from .views import (
     ClientFinancingDetailView,
     CommercialPaymentValidationListView,
     CommercialPaymentValidateView,
+    PaymentReceiptDownloadView,
     start_reservation_or_auth,
     # Commercial views
     CommercialReservationConfirmView,
@@ -120,6 +121,7 @@ urlpatterns = [
     path('commercial/reservations/<uuid:reservation_id>/paiement/creer/', CommercialPaiementCreateView.as_view(), name='commercial_paiement_create'),
     path('commercial/paiements/validation/', CommercialPaymentValidationListView.as_view(), name='commercial_payment_validation_list'),
     path('commercial/paiements/<uuid:paiement_id>/valider/', CommercialPaymentValidateView.as_view(), name='commercial_payment_validate'),
+    path('paiements/<uuid:paiement_id>/recu/', PaymentReceiptDownloadView.as_view(), name='payment_receipt_download'),
     
     # Échéances de loyer - Paiements
     path('client/reservations/<uuid:reservation_id>/caution/paiement/', ClientCautionPaiementView.as_view(), name='client_caution_paiement'),

@@ -73,13 +73,12 @@ modele_f3, _ = ModeleBien.objects.get_or_create(
     nom_marketing="F3 Standard Location",
     defaults={
         'surface_hab_m2': Decimal('75.00'),
-        'prix_base_ttc': Decimal('200000.00'),  # Prix de base (loyer calculé à partir de ce prix)
         'description': 'Appartement F3 pour location'
     }
 )
 print(f"✓ ModeleBien créé: {modele_f3.nom_marketing}")
 print(f"  - Surface: {modele_f3.surface_hab_m2} m²")
-print(f"  - Prix base: {modele_f3.prix_base_ttc:,.0f} FCFA")
+print(f"  - Tarif indicatif basé sur prix unitaire des lots")
 
 print("\n" + "="*80)
 print("  ÉTAPE 3: Création de 2 Unités LOCATION")
@@ -412,7 +411,7 @@ WORKFLOW TESTÉ:
 MODÈLES VALIDÉS:
   ✓ Programme (type_operation=LOCATION)
   ✓ TypeBien (code, libelle)
-  ✓ ModeleBien (type_bien, nom_marketing, surface_hab_m2, prix_base_ttc)
+    ✓ ModeleBien (type_bien, nom_marketing, surface_hab_m2, description)
   ✓ Unite (programme, modele_bien, reference_lot, prix_ttc, caracteristiques)
   ✓ Client (user, nom, prenom, telephone, email, kyc_statut)
   ✓ Reservation (client, unite, duree_bail_mois, statut)

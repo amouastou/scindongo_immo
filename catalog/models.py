@@ -94,7 +94,6 @@ class ModeleBien(TimeStampedModel):
     )
     nom_marketing = models.CharField(max_length=255)
     surface_hab_m2 = models.DecimalField(max_digits=8, decimal_places=2, null=True, blank=True)
-    prix_base_ttc = models.DecimalField(max_digits=12, decimal_places=2)
 
     description = models.TextField(blank=True)
 

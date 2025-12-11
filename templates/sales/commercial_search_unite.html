@@ -184,7 +184,7 @@
                                 <div class="row mb-4">
                                     <div class="col-12">
                                         <h4 class="border-bottom pb-2 mb-3">
-                                            <i class="fas fa-calendar-alt text-warning"></i> Échéances de Loyer
+                                            <i class="fas fa-calendar-alt text-warning"></i> Prochaines Échéances de Loyer
                                         </h4>
 
                                         {% if echeances %}
@@ -215,63 +215,69 @@
                                                 </div>
                                             </div>
 
-                                            <!-- Tableau des échéances -->
+                                            <!-- Tableau des prochaines échéances -->
                                             <div class="table-responsive mt-3">
-                                                <table class="table table-hover">
-                                                    <thead class="table-light">
-                                                        <tr>
-                                                            <th>Mois</th>
-                                                            <th>Montant</th>
-                                                            <th>Date Limite</th>
-                                                            <th>Statut</th>
-                                                            <th>Action</th>
-                                                        </tr>
-                                                    </thead>
-                                                    <tbody>
-                                                        {% for echeance in echeances %}
+                                                {% if next_echeances %}
+                                                    <table class="table table-hover">
+                                                        <thead class="table-light">
                                                             <tr>
-                                                                <td><strong>Mois {{ echeance.numero_mois }}</strong></td>
-                                                                <td>{{ echeance.montant|floatformat:0 }} FCFA</td>
-                                                                <td>{{ echeance.date_echeance|date:"d/m/Y" }}</td>
-                                                                <td>
-                                                                    {% if echeance.paiement %}
-                                                                        {% if echeance.statut_paiement == 'valide' %}
-                                                                            <span class="badge bg-success">✓ Payée</span>
-                                                                        {% else %}
-                                                                            <span class="badge bg-warning">⏳ En attente validation</span>
-                                                                        {% endif %}
-                                                                    {% else %}
-                                                                        {% if echeance.is_en_retard %}
-                                                                            <span class="badge bg-danger">⚠️ En Retard</span>
-                                                                        {% else %}
-                                                                            <span class="badge bg-secondary">À Payer</span>
-                                                                        {% endif %}
-                                                                    {% endif %}
-                                                                </td>
-                                                                <td>
-                                                                    {% if not echeance.paiement %}
-                                                                        <a href="{% url 'commercial_echeance_paiement' echeance.id %}" 
-                                                                           class="btn btn-success btn-sm">
-                                                                            <i class="fas fa-money-bill-wave"></i> Enregistrer Paiement
-                                                                        </a>
-                                                                    {% elif echeance.statut_paiement == 'enregistre' %}
-                                                                        <form method="post" 
-                                                                              action="{% url 'commercial_payment_validate' echeance.paiement.id %}" 
-                                                                              style="display:inline;"
-                                                                              onsubmit="return confirm('Valider ce paiement ?');">
-                                                                            {% csrf_token %}
-                                                                            <button type="submit" class="btn btn-primary btn-sm">
-                                                                                <i class="fas fa-check"></i> Valider
-                                                                            </button>
-                                                                        </form>
-                                                                    {% else %}
-                                                                        <span class="text-success">✓</span>
-                                                                    {% endif %}
-                                                                </td>
+                                                                <th>Mois</th>
+                                                                <th>Montant</th>
+                                                                <th>Date Limite</th>
+                                                                <th>Statut</th>
+                                                                <th>Action</th>
                                                             </tr>
-                                                        {% endfor %}
-                                                    </tbody>
-                                                </table>
+                                                        </thead>
+                                                        <tbody>
+                                                            {% for echeance in next_echeances %}
+                                                                <tr>
+                                                                    <td><strong>Mois {{ echeance.numero_mois }}</strong></td>
+                                                                    <td>{{ echeance.montant|floatformat:0 }} FCFA</td>
+                                                                    <td>{{ echeance.date_echeance|date:"d/m/Y" }}</td>
+                                                                    <td>
+                                                                        {% if echeance.paiement %}
+                                                                            {% if echeance.statut_paiement == 'valide' %}
+                                                                                <span class="badge bg-success">✓ Payée</span>
+                                                                            {% else %}
+                                                                                <span class="badge bg-warning">⏳ En attente validation</span>
+                                                                            {% endif %}
+                                                                        {% else %}
+                                                                            {% if echeance.is_en_retard %}
+                                                                                <span class="badge bg-danger">⚠️ En Retard</span>
+                                                                            {% else %}
+                                                                                <span class="badge bg-secondary">À Payer</span>
+                                                                            {% endif %}
+                                                                        {% endif %}
+                                                                    </td>
+                                                                    <td>
+                                                                        {% if not echeance.paiement %}
+                                                                            <a href="{% url 'commercial_echeance_paiement' echeance.id %}" 
+                                                                               class="btn btn-success btn-sm">
+                                                                                <i class="fas fa-money-bill-wave"></i> Enregistrer Paiement
+                                                                            </a>
+                                                                        {% elif echeance.statut_paiement == 'enregistre' %}
+                                                                            <form method="post" 
+                                                                                  action="{% url 'commercial_payment_validate' echeance.paiement.id %}" 
+                                                                                  style="display:inline;"
+                                                                                  onsubmit="return confirm('Valider ce paiement ?');">
+                                                                                {% csrf_token %}
+                                                                                <button type="submit" class="btn btn-primary btn-sm">
+                                                                                    <i class="fas fa-check"></i> Valider
+                                                                                </button>
+                                                                            </form>
+                                                                        {% else %}
+                                                                            <span class="text-success">✓</span>
+                                                                        {% endif %}
+                                                                    </td>
+                                                                </tr>
+                                                            {% endfor %}
+                                                        </tbody>
+                                                    </table>
+                                                {% else %}
+                                                    <div class="alert alert-info mb-0">
+                                                        <i class="fas fa-info-circle"></i> Aucune échéance à afficher pour le moment.
+                                                    </div>
+                                                {% endif %}
                                             </div>
                                         {% else %}
                                             <div class="alert alert-info">
@@ -385,7 +391,11 @@
                                                                 {% endif %}
                                                             </td>
                                                             <td>
-                                                                {% if paiement.statut == 'enregistre' %}
+                                                                {% if paiement.statut == 'valide' and paiement.recu_pdf %}
+                                                                    <a href="{% url 'payment_receipt_download' paiement.id %}" class="btn btn-outline-success btn-sm">
+                                                                        <i class="fas fa-file-pdf"></i> Voir le reçu
+                                                                    </a>
+                                                                {% elif paiement.statut == 'enregistre' %}
                                                                     <form method="post" 
                                                                           action="{% url 'commercial_payment_validate' paiement.id %}" 
                                                                           style="display:inline;"
@@ -395,6 +405,8 @@
                                                                             <i class="fas fa-check"></i> Valider
                                                                         </button>
                                                                     </form>
+                                                                {% else %}
+                                                                    <span class="text-muted">—</span>
                                                                 {% endif %}
                                                             </td>
                                                         </tr>

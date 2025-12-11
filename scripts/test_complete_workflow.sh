@@ -145,7 +145,6 @@ modele_location = ModeleBien.objects.create(
     type_bien=type_bien,
     nom='F3 Location',
     surface_hab_m2=Decimal('75.00'),
-    prix_base_ttc=Decimal('15000000.00'),  # 15M FCFA (prix achat si applicable)
     loyer_mensuel=Decimal('150000.00')     # 150K FCFA/mois
 )
 
@@ -155,7 +154,6 @@ modele_vente = ModeleBien.objects.create(
     type_bien=type_bien,
     nom='F3 Vente',
     surface_hab_m2=Decimal('80.00'),
-    prix_base_ttc=Decimal('25000000.00'),  # 25M FCFA
     loyer_mensuel=None
 )
 
