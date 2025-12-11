@@ -147,7 +147,11 @@
                         <strong>Après confirmation :</strong>
                         <ul class="mb-0 mt-2">
                             <li>Le client recevra une notification</li>
+                            {% if reservation.is_vente %}
                             <li>Le client pourra choisir entre paiement direct ou financement bancaire</li>
+                            {% else %}
+                            <li>Le client pourra effectuer le paiement direct (échéances mensuelles)</li>
+                            {% endif %}
                             <li>Vous devrez générer le contrat ensuite</li>
                         </ul>
                     </div>

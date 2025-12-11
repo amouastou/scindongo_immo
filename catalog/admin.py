@@ -41,7 +41,7 @@ class TypeBienAdmin(admin.ModelAdmin):
 
 @admin.register(ModeleBien)
 class ModeleBienAdmin(admin.ModelAdmin):
-    list_display = ("nom_marketing", "type_bien", "surface_hab_m2", "prix_base_ttc", "created_at")
+    list_display = ("nom_marketing", "type_bien", "surface_hab_m2", "created_at")
     list_filter = ("type_bien",)
     search_fields = ("nom_marketing",)
 

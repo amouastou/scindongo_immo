@@ -37,8 +37,7 @@
             <h5 class="card-title fw-bold text-primary">{{ prog.nom }}</h5>
             <p class="card-text text-muted small">📍 {{ prog.adresse }}</p>
             <p class="card-text">{{ prog.description|truncatewords:20 }}</p>
-            
-            <!-- Info statut -->
+                        <!-- Info statut -->
             <div class="mb-3">
               {% if prog.statut == 'actif' %}
                 <span class="badge bg-success">✓ Actif</span>
@@ -46,6 +45,12 @@
                 <span class="badge bg-warning text-dark">⏳ Brouillon</span>
               {% else %}
                 <span class="badge bg-secondary">📦 Archivé</span>
+              {% endif %}
+              
+              {% if prog.type_operation == 'location' %}
+                <span class="badge bg-info">🏘️ Location</span>
+              {% else %}
+                <span class="badge bg-primary">🏠 Vente</span>
               {% endif %}
             </div>
 

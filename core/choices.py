@@ -6,6 +6,12 @@ Utiliser TextChoices plutôt que tuples pour une meilleure typage et maintenabil
 from django.db import models
 
 
+# ========== TYPE D'OPÉRATION ==========
+class OperationType(models.TextChoices):
+    VENTE = "vente", "Vente"
+    LOCATION = "location", "Location"
+
+
 # ========== PROGRAMMES ==========
 class ProgrammeStatus(models.TextChoices):
     BROUILLON = "brouillon", "Brouillon"
@@ -49,6 +55,14 @@ class PaiementStatus(models.TextChoices):
     ENREGISTRE = "enregistre", "Enregistré"
     VALIDE = "valide", "Validé"
     REJETE = "rejete", "Rejeté"
+
+
+class PaiementType(models.TextChoices):
+    ACOMPTE = "acompte", "Acompte"
+    SOLDE = "solde", "Solde"
+    ECHÉANCE_LOYER = "echéance_loyer", "Échéance de loyer"
+    CAUTION = "caution", "Caution"
+
 
 
 # ========== FINANCEMENT ==========

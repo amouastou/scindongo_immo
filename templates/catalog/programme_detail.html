@@ -35,6 +35,13 @@
           <span class="badge bg-secondary">📦 Archivé</span>
         {% endif %}
       </div>
+      <div class="col-auto">
+        {% if programme.type_operation == 'location' %}
+          <span class="badge bg-info">🏘️ Location (Bail mensuel)</span>
+        {% else %}
+          <span class="badge bg-primary">🏠 Vente</span>
+        {% endif %}
+      </div>
     </div>
   </div>
   <div class="col-md-5">

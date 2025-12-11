@@ -2,6 +2,7 @@ from django.urls import path
 from .views import (
     ClientDashboardView,
     CommercialDashboardView,
+    CommercialSearchUniteView,
     AdminDashboardView,
     ReservationDocumentsUploadView,
     ReservationDocumentModifyView,
@@ -21,6 +22,7 @@ from .views import (
     ClientFinancingDetailView,
     CommercialPaymentValidationListView,
     CommercialPaymentValidateView,
+    PaymentReceiptDownloadView,
     start_reservation_or_auth,
     # Commercial views
     CommercialReservationConfirmView,
@@ -34,6 +36,9 @@ from .views import (
     CommercialContratCreateView,
     CommercialContratUpdateView,
     CommercialPaiementCreateView,
+    ClientEchancePaiementView,
+    ClientCautionPaiementView,
+    CommercialEchancePaiementView,
     # Banque Partenaire views
     BanquePartenaireCreateView,
     BanquePartenaireUpdateView,
@@ -69,6 +74,7 @@ from .reports_views import (
 urlpatterns = [
     path('client/dashboard/', ClientDashboardView.as_view(), name='client_dashboard'),
     path('commercial/dashboard/', CommercialDashboardView.as_view(), name='commercial_dashboard'),
+    path('commercial/recherche/', CommercialSearchUniteView.as_view(), name='commercial_search_unite'),
     path('admin/dashboard/', AdminDashboardView.as_view(), name='admin_dashboard'),
     
     # Documents réservation
@@ -115,6 +121,12 @@ urlpatterns = [
     path('commercial/reservations/<uuid:reservation_id>/paiement/creer/', CommercialPaiementCreateView.as_view(), name='commercial_paiement_create'),
     path('commercial/paiements/validation/', CommercialPaymentValidationListView.as_view(), name='commercial_payment_validation_list'),
     path('commercial/paiements/<uuid:paiement_id>/valider/', CommercialPaymentValidateView.as_view(), name='commercial_payment_validate'),
+    path('paiements/<uuid:paiement_id>/recu/', PaymentReceiptDownloadView.as_view(), name='payment_receipt_download'),
+    
+    # Échéances de loyer - Paiements
+    path('client/reservations/<uuid:reservation_id>/caution/paiement/', ClientCautionPaiementView.as_view(), name='client_caution_paiement'),
+    path('client/echances/<uuid:echeance_id>/paiement/', ClientEchancePaiementView.as_view(), name='client_echeance_paiement'),
+    path('commercial/echances/<uuid:echeance_id>/paiement/', CommercialEchancePaiementView.as_view(), name='commercial_echeance_paiement'),
     
     # OTP Contract Signature
     path('contrats/<uuid:contrat_id>/generate-otp/', CommercialGenerateOTPView.as_view(), name='commercial_generate_otp'),

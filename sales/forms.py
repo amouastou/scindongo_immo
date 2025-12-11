@@ -1,12 +1,13 @@
 from django import forms
 from .models import Reservation, Paiement, Client, Financement, Contrat, ReservationDocument, FinancementDocument
+from .models import EcheanceLoyer
 
 
 class ReservationForm(forms.ModelForm):
     """Formulaire simple de réservation - SEULEMENT acompte"""
     class Meta:
         model = Reservation
-        fields = ['acompte']
+        fields = ['acompte', 'duree_bail_mois']
         widgets = {
             'acompte': forms.NumberInput(attrs={
                 'class': 'form-control',
@@ -14,9 +15,16 @@ class ReservationForm(forms.ModelForm):
                 'step': '0.01',
                 'min': '0'
             }),
+            'duree_bail_mois': forms.NumberInput(attrs={
+                'class': 'form-control',
+                'placeholder': 'Durée du bail en mois (12, 24, 36...)',
+                'min': '1',
+                'value': '12'
+            }),
         }
         labels = {
-            'acompte': 'Acompte à verser (FCFA)'
+            'acompte': 'Acompte à verser (FCFA)',
+            'duree_bail_mois': 'Durée du bail (mois)'
         }
 
 
@@ -73,13 +81,61 @@ class FinancementForm(forms.ModelForm):
 
 
 class ContratForm(forms.ModelForm):
-    """Formulaire pour créer/modifier un contrat"""
+    """Formulaire complet pour composer ou modifier un contrat"""
+
     class Meta:
         model = Contrat
-        fields = ['pdf']
+        fields = [
+            'client_nom', 'client_email', 'client_telephone', 'client_adresse',
+            'programme_nom', 'unite_reference', 'unite_description', 'montant_total',
+            'date_signature', 'date_fin', 'lieu_signature',
+            'commercial_nom', 'commercial_email',
+            'conditions_generales', 'conditions_particulieres',
+            'pdf', 'statut',
+        ]
         widgets = {
+            'client_nom': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Nom complet du client'}),
+            'client_email': forms.EmailInput(attrs={'class': 'form-control', 'placeholder': 'email@client.com'}),
+            'client_telephone': forms.TextInput(attrs={'class': 'form-control', 'placeholder': '+221 77 000 00 00'}),
+            'client_adresse': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Adresse postale'}),
+            'programme_nom': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Nom du programme'}),
+            'unite_reference': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Référence lot'}),
+            'unite_description': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Description du bien'}),
+            'montant_total': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01', 'min': '0'}),
+            'date_signature': forms.DateInput(attrs={'class': 'form-control', 'type': 'date'}),
+            'date_fin': forms.DateInput(attrs={'class': 'form-control', 'type': 'date'}),
+            'lieu_signature': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Ville, pays'}),
+            'commercial_nom': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Nom du commercial'}),
+            'commercial_email': forms.EmailInput(attrs={'class': 'form-control', 'placeholder': 'email@scindongo.com'}),
+            'conditions_generales': forms.Textarea(attrs={'class': 'form-control', 'rows': 4}),
+            'conditions_particulieres': forms.Textarea(attrs={'class': 'form-control', 'rows': 4}),
             'pdf': forms.FileInput(attrs={'class': 'form-control', 'accept': 'application/pdf'}),
+            'statut': forms.Select(attrs={'class': 'form-select'}),
         }
+        labels = {
+            'client_nom': 'Nom du client (affichage sur le contrat)',
+            'client_email': 'Email du client',
+            'client_telephone': 'Téléphone',
+            'client_adresse': 'Adresse du client',
+            'programme_nom': 'Programme immobilier',
+            'unite_reference': 'Référence du bien',
+            'unite_description': 'Description / Modèle du bien',
+            'montant_total': 'Montant total TTC',
+            'date_signature': 'Date de signature',
+            'date_fin': 'Date de fin',
+            'lieu_signature': 'Lieu de signature',
+            'commercial_nom': 'Nom du commercial / représentant',
+            'commercial_email': 'Email du commercial',
+            'conditions_generales': 'Conditions générales',
+            'conditions_particulieres': 'Conditions particulières',
+            'pdf': 'Document PDF du contrat (optionnel)',
+            'statut': 'Statut du contrat',
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Rendre le PDF optionnel pour permettre la génération automatique
+        self.fields['pdf'].required = False
 
 
 class FinancingRequestForm(forms.ModelForm):
@@ -252,4 +308,49 @@ class SignContratOTPForm(forms.Form):
             raise forms.ValidationError('Le code doit contenir exactement 6 chiffres')
         
         return otp
+
+
+class EcheancePaiementForm(forms.Form):
+    """Formulaire pour payer une échéance de loyer"""
+    montant = forms.DecimalField(
+        required=True,
+        label='Montant',
+        widget=forms.NumberInput(attrs={
+            'class': 'form-control',
+            'readonly': 'readonly',
+            'step': '0.01',
+            'min': '0'
+        })
+    )
+    moyen = forms.ChoiceField(
+        choices=[
+            ('virement', '🏦 Virement'),
+            ('cheque', '📋 Chèque'),
+            ('espece', '💵 Espèce'),
+            ('carte', '💳 Carte'),
+        ],
+        required=True,
+        label='Moyen de Paiement',
+        widget=forms.Select(attrs={
+            'class': 'form-select'
+        })
+    )
+    source = forms.CharField(
+        required=True,
+        label='Référence de Paiement',
+        max_length=100,
+        widget=forms.TextInput(attrs={
+            'class': 'form-control',
+            'placeholder': 'Numéro de compte, numéro de chèque, etc.'
+        })
+    )
+    notes = forms.CharField(
+        required=False,
+        label='Notes',
+        widget=forms.Textarea(attrs={
+            'class': 'form-control',
+            'rows': 3,
+            'placeholder': 'Remarques supplémentaires...'
+        })
+    )
 

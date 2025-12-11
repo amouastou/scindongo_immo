@@ -1,0 +1,310 @@
+================================================================================
+🚀 SCINDONGO IMMO v1.0 - QUICK START GUIDE
+================================================================================
+
+VERSION: 1.0 | STATUS: ✅ PRODUCTION READY | DATE: December 10, 2025
+
+================================================================================
+📖 DOCUMENTATION MAP (Read in Order)
+================================================================================
+
+1. 👉 THIS FILE (You are here) - 2 min read
+2. INDEX.md - Navigation guide - 3 min read  
+3. README.md - Setup & architecture - 10 min read
+4. PRE_MERGE_NOTES.md - Deployment checklist - 3 min read
+5. RELEASE_NOTES.md - Technical details - 15 min read (optional)
+6. DEPLOYMENT.md - Full deployment guide - 30 min read (if deploying)
+
+TOTAL TIME: ~33 minutes to understand everything
+
+================================================================================
+⚡ ULTRA-QUICK START (5 MINUTES)
+================================================================================
+
+GOAL: Verify everything works locally
+
+STEP 1: Start the application
+  $ cd /home/amanstou/SCINDONGO_IMMO_FINAL_UNIFIE
+  $ docker-compose up --build
+  (Wait 30 seconds for startup)
+  
+EXPECTED: No errors in logs
+
+STEP 2: Open browser
+  → http://localhost:8000/
+  
+EXPECTED: SCINDONGO Immo homepage loads
+
+STEP 3: Run automated tests
+  $ docker-compose exec web python manage.py test tests.test_suite
+  
+EXPECTED: 
+  Ran 14 tests in X.XXs
+  OK
+
+STEP 4: Check deployment readiness
+  $ bash scripts/pre_merge_checks.sh
+  
+EXPECTED:
+  ✅ TOUS LES TESTS PASSENT - PRÊT POUR LA FUSION
+
+If all 4 steps pass → READY FOR PRODUCTION ✅
+
+================================================================================
+🎯 WHAT WAS DONE (CHANGES SUMMARY)
+================================================================================
+
+1. ✅ UNIFIED DASHBOARD
+   Before: 2 tabs ("Paiements" + "Paiements Locations") - confusing
+   After:  1 tab "Validations en Attente" - clear and simple
+
+2. ✅ PROGRESSIVE ECHÉANCES (LOCATION ONLY)
+   Before: All 12 months created at once on caution payment
+   After:  Months auto-generated as needed (Mois 1 → 2 → 3...)
+   Impact: Better cash flow, cleaner UX
+
+3. ✅ SEARCH FUNCTIONALITY
+   NEW: Find unit by reference_lot from dashboard search bar
+   Location: /ventes/commercial/recherche/?q=LOC-F3AM-02
+
+4. ✅ FIXED DASHBOARD COUNTER BUG
+   Before: Badge showed "0", table showed "2" ❌
+   After:  Badge and table always match ✅
+
+5. ✅ FIXED 404 ON PAYMENT VALIDATION
+   Before: Button appeared but returned 404 on click
+   After:  Button only appears if can be validated
+
+================================================================================
+🧪 MANUAL TESTING (5 MINUTES - BEFORE PRODUCTION)
+================================================================================
+
+STEP 1: Create Client Reservation
+  - Open: http://localhost:8000/
+  - Login: client.test@example.com / password
+  - Select: Any LOCATION program → Any unit
+  - Click: "Réserver"
+  - Expected: Reservation created
+
+STEP 2: Client Pays Caution
+  - Dashboard → Paiements
+  - Click: Payer (Caution amount = unit price × 15%)
+  - Expected: Payment recorded (status: enregistre)
+
+STEP 3: Commercial Validates Payment
+  - Login: mame.fatou.ndao@scindongo.sn / password
+  - Dashboard → Onglet "Validations en Attente"
+  - Should see caution payment in Section 1
+  - Click: "Valider"
+  - Expected: Status changes to "✅ Validé"
+
+STEP 4: System Auto-Generates Month 1
+  - Check database (Django admin)
+  - Go to: http://localhost:8000/admin/sales/echeanceloyer/
+  - Should see: New EcheanceLoyer with numero_mois=1
+  - Expected: ✅ Found
+
+STEP 5: Client Pays Month 1
+  - Dashboard → Click "Payer" for Month 1 échéance
+  - Expected: Payment recorded (status: enregistre)
+
+STEP 6: Commercial Validates Échéance
+  - Dashboard → Onglet "Validations en Attente"
+  - Section 2 should show Month 1 échéance
+  - Click: "Valider"
+  - Expected: Status changes to "✅ Validé"
+
+STEP 7: System Auto-Generates Month 2
+  - Check Django admin → EcheanceLoyer
+  - Should see: New EcheanceLoyer with numero_mois=2
+  - Expected: ✅ Found (confirms signal worked!)
+
+SUCCESS CRITERIA:
+  ✅ All steps complete without errors
+  ✅ Echéances auto-generate after validation
+  ✅ No 404 errors anywhere
+  ✅ Dashboard counter matches table
+
+================================================================================
+🚀 DEPLOYMENT STEPS
+================================================================================
+
+STEP 1: Pre-Deployment Checklist
+  Read: PRE_MERGE_NOTES.md (3 min)
+  Verify: All items checked
+
+STEP 2: Create GitHub PR
+  $ git checkout -b feature/unified-dashboard
+  $ git add .
+  $ git commit -m "Unify dashboard and implement progressive echéance generation"
+  $ git push origin feature/unified-dashboard
+  → Go to GitHub → Create PR
+
+STEP 3: Code Review
+  Ask for review from: [Team Lead]
+  Expected: Approved within 24 hours
+
+STEP 4: Deploy to Staging
+  $ docker build -t scindongo-immo:staging .
+  $ docker run -d -p 8001:8000 scindongo-immo:staging
+  Verify: No errors in logs
+
+STEP 5: Staging Testing
+  Run: Full manual testing flow (see above)
+  Duration: 15 minutes
+  Expected: ✅ All pass
+
+STEP 6: Deploy to Production
+  Read: DEPLOYMENT.md [Production Deployment] section
+  Steps: Backup DB → Build image → Run migrations → Verify
+
+STEP 7: Post-Deployment Verification
+  Tasks: See DEPLOYMENT.md [Post-Deployment Verification]
+  Duration: 10 minutes
+
+TOTAL DEPLOYMENT TIME: ~90 minutes
+
+================================================================================
+📁 IMPORTANT FILES
+================================================================================
+
+PRODUCTION CODE (Don't modify without testing):
+  - sales/views.py - Dashboard and search logic
+  - core/signals.py - Automatic échéance generation
+  - templates/dashboards/commercial_dashboard.html - UI
+  - templates/sales/commercial_search_unite.html - Search page
+
+CONFIGURATION:
+  - .env - Environment variables
+  - docker-compose.yml - Docker setup
+  - entrypoint.sh - Startup script
+
+DOCUMENTATION:
+  - INDEX.md - Navigation guide (START HERE)
+  - README.md - Full documentation
+  - RELEASE_NOTES.md - Technical details
+  - DEPLOYMENT.md - Deployment guide
+  - PRE_MERGE_NOTES.md - Pre-deployment checklist
+
+TESTING:
+  - tests/test_suite.py - Automated tests (14 test methods)
+  - scripts/pre_merge_checks.sh - Automated verification
+  - scripts/cleanup_db.sh - Database cleanup
+
+================================================================================
+🔑 DEFAULT CREDENTIALS
+================================================================================
+
+ADMIN (Super User):
+  Email: admin@scindongo.sn
+  Password: admin
+
+CLIENT (Test Account):
+  Email: client.test@example.com
+  Password: password
+
+COMMERCIAL (Test Account):
+  Email: mame.fatou.ndao@scindongo.sn
+  Password: password
+
+(Created automatically in entrypoint.sh - Change in production!)
+
+================================================================================
+🆘 TROUBLESHOOTING
+================================================================================
+
+Problem: Server won't start
+  $ docker-compose logs web | tail -20
+  → Check error messages
+  → Common: Syntax error or migration issue
+  → Fix: docker-compose down -v && docker-compose up --build
+
+Problem: Tests failing
+  $ python manage.py test tests.test_suite --verbosity=2
+  → See detailed error messages
+  → Common: Database connection issue
+  → Fix: docker-compose down -v && docker-compose up --build
+
+Problem: Dashboard shows 0 items
+  → Are you logged in as COMMERCIAL role?
+  → Check: User roles in Django admin
+  → Fix: Add COMMERCIAL role to user
+
+Problem: Can't validate payment (404 error)
+  → Payment status must be 'enregistre' (not 'valide')
+  → Only 'enregistre' items can be validated
+  → This is by design - prevents double-validation
+
+Problem: Échéance not auto-generating
+  → Check: Caution payment status is 'valide'?
+  → Check: Signal log in Django admin → JournalAudit
+  → Verify: CommercialPaymentValidateView was called
+
+All problems? → See DEPLOYMENT.md [Troubleshooting] for more solutions
+
+================================================================================
+✅ SUCCESS CRITERIA
+================================================================================
+
+You're ready to deploy when:
+
+  ✅ Docker starts without errors
+  ✅ Homepage loads at http://localhost:8000/
+  ✅ All 14 automated tests pass
+  ✅ Pre-merge script passes (exit code 0)
+  ✅ Manual testing flow completes without errors
+  ✅ Dashboard counter matches table
+  ✅ Échéances auto-generate correctly
+  ✅ No 404 errors anywhere
+  ✅ Database backup taken
+  ✅ Code review approved
+
+Once all boxes checked → READY FOR PRODUCTION ✅
+
+================================================================================
+📝 NEXT STEPS
+================================================================================
+
+IMMEDIATELY (Now - 5 min):
+  1. Open: INDEX.md
+  2. Read the section for your role (PM / Dev / DevOps / QA)
+  3. Follow the guide provided
+
+SOON (Today - 30 min):
+  1. Read: README.md [Quick Start]
+  2. Run: docker-compose up --build
+  3. Verify: Tests pass
+  4. Check: Pre-merge script passes
+
+BEFORE PRODUCTION (Tomorrow - 60 min):
+  1. Run: Full manual testing flow
+  2. Deploy to staging
+  3. Staging testing
+  4. Create PR
+  5. Get code review
+  6. Deploy to production
+  7. Verify everything works
+
+================================================================================
+🎯 KEY CONTACT POINTS
+================================================================================
+
+Questions about:
+  - Setup/Development → README.md [Quick Start]
+  - Deployment → DEPLOYMENT.md
+  - Technical Details → RELEASE_NOTES.md
+  - Deployment Checklist → PRE_MERGE_NOTES.md
+  - Navigation → INDEX.md
+  - Testing → Manual flow above
+
+Need help?
+  1. Check the relevant .md file (5 min search)
+  2. Check Docker logs: docker-compose logs web
+  3. Ask team lead
+  4. Check Django admin: http://localhost:8000/admin/
+
+================================================================================
+
+✨ READY? Open INDEX.md and follow the guide for your role! ✨
+
+================================================================================

@@ -2,7 +2,7 @@ import uuid
 from django.db import models
 from django.conf import settings
 from core.models import TimeStampedModel
-from core.choices import ProgrammeStatus, UniteStatus, StatutChantier
+from core.choices import ProgrammeStatus, UniteStatus, StatutChantier, OperationType
 
 
 class Programme(TimeStampedModel):
@@ -38,6 +38,14 @@ class Programme(TimeStampedModel):
         default=ProgrammeStatus.BROUILLON,
     )
 
+    # Type d'opération (vente ou location)
+    type_operation = models.CharField(
+        max_length=20,
+        choices=OperationType.choices,
+        default=OperationType.VENTE,
+        help_text="Vente ou Location"
+    )
+
     date_livraison_prevue = models.DateField(null=True, blank=True)
 
     class Meta:
@@ -47,6 +55,14 @@ class Programme(TimeStampedModel):
 
     def __str__(self) -> str:
         return self.nom
+
+    def is_vente(self) -> bool:
+        """Vérifier si le programme est en vente."""
+        return self.type_operation == OperationType.VENTE
+
+    def is_location(self) -> bool:
+        """Vérifier si le programme est en location."""
+        return self.type_operation == OperationType.LOCATION
 
 
 class TypeBien(TimeStampedModel):
@@ -78,7 +94,6 @@ class ModeleBien(TimeStampedModel):
     )
     nom_marketing = models.CharField(max_length=255)
     surface_hab_m2 = models.DecimalField(max_digits=8, decimal_places=2, null=True, blank=True)
-    prix_base_ttc = models.DecimalField(max_digits=12, decimal_places=2)
 
     description = models.TextField(blank=True)
 

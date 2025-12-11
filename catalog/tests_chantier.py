@@ -57,8 +57,7 @@ class AvancementChantierUniteAPITests(APITestCase):
         type_bien = TypeBien.objects.create(code='VILLA', libelle='Villa')
         self.modele = ModeleBien.objects.create(
             type_bien=type_bien,
-            nom_marketing='Villa Test',
-            prix_base_ttc=Decimal('50000000')
+            nom_marketing='Villa Test'
         )
         
         # Créer une unité
@@ -136,7 +135,11 @@ class AvancementChantierUniteAPITests(APITestCase):
         
         response = self.client.get(url)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(len(response.data['results']), 1)
+        data = response.data
+        if isinstance(data, list):
+            self.assertEqual(len(data), 1)
+        else:
+            self.assertEqual(len(data.get('results', [])), 1)
     
     def test_validation_pourcentage(self):
         """Validation du pourcentage (0-100)."""
@@ -172,8 +175,7 @@ class AvancementChantierUniteViewsTests(TestCase):
         programme = Programme.objects.create(nom='Test')
         modele = ModeleBien.objects.create(
             type_bien=type_bien,
-            nom_marketing='Villa',
-            prix_base_ttc=50000000
+            nom_marketing='Villa'
         )
         self.unite = Unite.objects.create(
             programme=programme,

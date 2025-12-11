@@ -1,5 +1,7 @@
 from django.urls import path
 from .views import (
+    PublicProgrammeListView,
+    PublicProgrammeDetailView,
     ProgrammeListView, 
     ProgrammeDetailView, 
     UniteDetailView,
@@ -29,12 +31,14 @@ urlpatterns = [
     # Biens disponibles (page publique)
     path('biens/', BiensListView.as_view(), name='biens_list'),
     
-    # Programmes
-    path('programmes/', ProgrammeListView.as_view(), name='programme_list'),
-    path('programmes/nouveau/', ProgrammeCreateView.as_view(), name='programme_create'),
-    path('programmes/<uuid:pk>/', ProgrammeDetailView.as_view(), name='programme_detail'),
-    path('programmes/<uuid:pk>/modifier/', ProgrammeUpdateView.as_view(), name='programme_edit'),
-    path('programmes/<uuid:pk>/supprimer/', ProgrammeDeleteView.as_view(), name='programme_delete'),
+    # Programmes - PUBLICS (accessibles à tous)
+    path('programmes/', PublicProgrammeListView.as_view(), name='programme_list'),
+    path('programmes/<uuid:pk>/', PublicProgrammeDetailView.as_view(), name='programme_detail'),
+    
+    # Programmes - ADMINISTRATEUR (seulement pour admin/commercial)
+    path('programmes/admin/nouveau/', ProgrammeCreateView.as_view(), name='programme_create'),
+    path('programmes/admin/<uuid:pk>/modifier/', ProgrammeUpdateView.as_view(), name='programme_edit'),
+    path('programmes/admin/<uuid:pk>/supprimer/', ProgrammeDeleteView.as_view(), name='programme_delete'),
     
     # Types de biens
     path('types-biens/', TypeBienListView.as_view(), name='typebien_list'),

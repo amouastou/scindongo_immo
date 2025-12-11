@@ -48,10 +48,10 @@ class ClientDashboardView(RoleRequiredMixin, TemplateView):
 Programme (project)
   ├─ multiple TypeBien (property types: apartment, villa, etc.)
   ├─ multiple ModeleBien (commercial models per type)
-  │   └─ surface_hab_m2, prix_base_ttc
+  │   └─ surface_hab_m2, description (référentiel marketing)
   └─ multiple Unite (physical units/lots)
       ├─ statut: disponible, reserve, vendu, livre
-      └─ related to ModeleBien
+      └─ related to ModeleBien (source unique de prix via `prix_ttc`)
 
 Construction Progress
   ├─ EtapeChantier (construction phases)

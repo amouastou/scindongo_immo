@@ -15,6 +15,7 @@ from sales.models import (
     BanquePartenaire,
     Financement,
     Echeance,
+    EcheanceLoyer,
 )
 from catalog.models import (
     Programme,
@@ -315,6 +316,7 @@ class ReservationSerializer(serializers.ModelSerializer):
             "unite",
             "date_reservation",
             "acompte",
+            "duree_bail_mois",
             "statut",
             "documents",
             "created_at",
@@ -546,14 +548,19 @@ class PaiementSerializer(serializers.ModelSerializer):
             "id",
             "reservation",
             "montant",
+            "type_paiement",
             "date_paiement",
             "moyen",
             "source",
             "statut",
+            "valide_par",
+            "recu_pdf",
+            "recu_meta",
+            "recu_emis_le",
             "created_at",
             "updated_at",
         ]
-        read_only_fields = ("id", "date_paiement", "created_at", "updated_at")
+        read_only_fields = ("id", "date_paiement", "valide_par", "recu_pdf", "recu_meta", "recu_emis_le", "created_at", "updated_at")
 
     def validate(self, attrs):
         instance = self.instance
@@ -584,6 +591,33 @@ class PaiementSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError(errors)
 
         return attrs
+
+
+# ============================
+#       ÉCHÉANCE LOYER
+# ============================
+
+
+class EcheanceLoyerSerializer(serializers.ModelSerializer):
+    """Serializer pour les échéances de loyer (location)."""
+    
+    class Meta:
+        model = EcheanceLoyer
+        fields = [
+            "id",
+            "reservation",
+            "numero_mois",
+            "montant",
+            "date_echeance",
+            "paiement",
+            "statut_paiement",
+            "is_payee",
+            "is_echeue",
+            "is_en_retard",
+            "created_at",
+            "updated_at",
+        ]
+        read_only_fields = ("id", "is_payee", "is_echeue", "is_en_retard", "created_at", "updated_at")
 
 
 # ============================

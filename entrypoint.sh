@@ -36,7 +36,10 @@ PY
 echo "🧩 Applying migrations..."
 python manage.py migrate --noinput
 
-echo "👤 Ensuring superuser exists..."
+echo "� Initialising base roles (CLIENT, COMMERCIAL, ADMIN)..."
+python manage.py init_roles || echo "⚠️ init_roles command failed or not found; proceeding"
+
+echo "�👤 Ensuring superuser exists..."
 python manage.py shell << 'PY'
 from django.contrib.auth import get_user_model
 

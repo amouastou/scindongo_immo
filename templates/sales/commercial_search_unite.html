@@ -1,0 +1,472 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Recherche par Lot{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="row mb-4">
+        <div class="col-12">
+            <h1 class="display-6 fw-bold mb-3">
+                🔍 Recherche par Référence Lot
+            </h1>
+            
+            <!-- Formulaire de recherche -->
+            <div class="card shadow-sm mb-4">
+                <div class="card-body">
+                    <form method="get" class="row g-3">
+                        <div class="col-md-8">
+                            <label for="search" class="form-label">Référence du Lot</label>
+                            <input type="text" 
+                                   class="form-control form-control-lg" 
+                                   id="search" 
+                                   name="q" 
+                                   value="{{ search_query }}"
+                                   placeholder="Ex: LOC-F3AM-02, VILLASA-01, etc."
+                                   autofocus>
+                            <small class="text-muted">Entrez la référence complète ou partielle du bien</small>
+                        </div>
+                        <div class="col-md-4 d-flex align-items-end">
+                            <button type="submit" class="btn btn-primary btn-lg w-100">
+                                <i class="fas fa-search"></i> Rechercher
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Message d'erreur -->
+            {% if error_message %}
+                <div class="alert alert-warning alert-dismissible fade show" role="alert">
+                    <i class="fas fa-exclamation-triangle"></i> {{ error_message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+            {% endif %}
+
+            <!-- Résultats de la recherche -->
+            {% if show_results and unite %}
+                <div class="card shadow-lg border-0">
+                    <!-- En-tête du bien -->
+                    <div class="card-header {% if is_location %}bg-warning{% else %}bg-primary{% endif %} text-white">
+                        <div class="row align-items-center">
+                            <div class="col-md-8">
+                                <h3 class="mb-0">
+                                    🏘️ {{ programme.nom }}
+                                </h3>
+                                <p class="mb-0 mt-1">
+                                    <span class="badge bg-light text-dark">{{ unite.reference_lot }}</span>
+                                    <span class="badge bg-light text-dark">{{ unite.modele_bien.nom_marketing }}</span>
+                                    {% if is_location %}
+                                        <span class="badge bg-danger">LOCATION</span>
+                                    {% else %}
+                                        <span class="badge bg-success">VENTE</span>
+                                    {% endif %}
+                                </p>
+                            </div>
+                            <div class="col-md-4 text-end">
+                                {% if unite.statut_disponibilite == 'disponible' %}
+                                    <span class="badge bg-success fs-6">✓ Disponible</span>
+                                {% elif unite.statut_disponibilite == 'reserve' %}
+                                    <span class="badge bg-warning fs-6">⏳ Réservé</span>
+                                {% elif unite.statut_disponibilite == 'vendu' %}
+                                    <span class="badge bg-danger fs-6">✓ Vendu</span>
+                                {% elif unite.statut_disponibilite == 'livre' %}
+                                    <span class="badge bg-info fs-6">📦 Livré</span>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card-body">
+                        {% if reservation %}
+                            <!-- Informations Client -->
+                            <div class="row mb-4">
+                                <div class="col-12">
+                                    <h4 class="border-bottom pb-2 mb-3">
+                                        <i class="fas fa-user text-primary"></i> Informations Client
+                                    </h4>
+                                    <div class="row">
+                                        <div class="col-md-6">
+                                            <p class="mb-2">
+                                                <strong>Nom Complet:</strong> 
+                                                {{ client.prenom }} {{ client.nom }}
+                                            </p>
+                                            <p class="mb-2">
+                                                <strong>Email:</strong> 
+                                                <a href="mailto:{{ client.email }}">{{ client.email }}</a>
+                                            </p>
+                                            <p class="mb-2">
+                                                <strong>Téléphone:</strong> 
+                                                <a href="tel:{{ client.telephone }}">{{ client.telephone }}</a>
+                                            </p>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <p class="mb-2">
+                                                <strong>Réservation:</strong>
+                                                {% if reservation.statut == 'en_cours' %}
+                                                    <span class="badge bg-warning">En Cours</span>
+                                                {% elif reservation.statut == 'confirmee' %}
+                                                    <span class="badge bg-success">Confirmée</span>
+                                                {% elif reservation.statut == 'annulee' %}
+                                                    <span class="badge bg-danger">Annulée</span>
+                                                {% endif %}
+                                            </p>
+                                            <p class="mb-2">
+                                                <strong>Date Réservation:</strong> 
+                                                {{ reservation.date_reservation|date:"d/m/Y" }}
+                                            </p>
+                                            {% if has_contrat %}
+                                                <p class="mb-2">
+                                                    <strong>Contrat:</strong>
+                                                    {% if contrat.statut == 'signe' %}
+                                                        <span class="badge bg-success">✓ Signé</span>
+                                                    {% elif contrat.statut == 'brouillon' %}
+                                                        <span class="badge bg-warning">Brouillon</span>
+                                                    {% endif %}
+                                                </p>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                    <div class="mt-3">
+                                        <a href="{% url 'commercial_reservation_detail' reservation.id %}" 
+                                           class="btn btn-outline-primary btn-sm">
+                                            <i class="fas fa-eye"></i> Voir Fiche Complète
+                                        </a>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- SECTION LOCATION -->
+                            {% if is_location %}
+                                <div class="row mb-4">
+                                    <div class="col-md-6">
+                                        <div class="card bg-light">
+                                            <div class="card-body">
+                                                <h5 class="card-title">
+                                                    <i class="fas fa-home text-warning"></i> Loyer Mensuel
+                                                </h5>
+                                                <h2 class="text-warning mb-0">
+                                                    {{ loyer_mensuel|floatformat:0 }} FCFA
+                                                </h2>
+                                                <small class="text-muted">par mois</small>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="card bg-light">
+                                            <div class="card-body">
+                                                <h5 class="card-title">
+                                                    <i class="fas fa-lock text-danger"></i> Caution
+                                                </h5>
+                                                {% if has_caution %}
+                                                    <h2 class="text-success mb-0">
+                                                        <i class="fas fa-check-circle"></i> Payée
+                                                    </h2>
+                                                    <small class="text-muted">
+                                                        {{ caution_paiement.montant|floatformat:0 }} FCFA
+                                                        {% if caution_paiement.statut == 'valide' %}
+                                                            (Validée)
+                                                        {% else %}
+                                                            (En attente de validation)
+                                                        {% endif %}
+                                                    </small>
+                                                {% else %}
+                                                    <h2 class="text-danger mb-0">
+                                                        <i class="fas fa-times-circle"></i> Non Payée
+                                                    </h2>
+                                                {% endif %}
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Échéances -->
+                                <div class="row mb-4">
+                                    <div class="col-12">
+                                        <h4 class="border-bottom pb-2 mb-3">
+                                            <i class="fas fa-calendar-alt text-warning"></i> Prochaines Échéances de Loyer
+                                        </h4>
+
+                                        {% if echeances %}
+                                            <div class="row g-3">
+                                                <div class="col-md-4">
+                                                    <div class="card border-success">
+                                                        <div class="card-body text-center">
+                                                            <h6 class="text-success">Payées</h6>
+                                                            <h3 class="mb-0">{{ echeances_payees|length }}</h3>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <div class="col-md-4">
+                                                    <div class="card border-warning">
+                                                        <div class="card-body text-center">
+                                                            <h6 class="text-warning">En Attente</h6>
+                                                            <h3 class="mb-0">{{ echeances_en_attente|length }}</h3>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <div class="col-md-4">
+                                                    <div class="card border-danger">
+                                                        <div class="card-body text-center">
+                                                            <h6 class="text-danger">En Retard</h6>
+                                                            <h3 class="mb-0">{{ echeances_en_retard|length }}</h3>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <!-- Tableau des prochaines échéances -->
+                                            <div class="table-responsive mt-3">
+                                                {% if next_echeances %}
+                                                    <table class="table table-hover">
+                                                        <thead class="table-light">
+                                                            <tr>
+                                                                <th>Mois</th>
+                                                                <th>Montant</th>
+                                                                <th>Date Limite</th>
+                                                                <th>Statut</th>
+                                                                <th>Action</th>
+                                                            </tr>
+                                                        </thead>
+                                                        <tbody>
+                                                            {% for echeance in next_echeances %}
+                                                                <tr>
+                                                                    <td><strong>Mois {{ echeance.numero_mois }}</strong></td>
+                                                                    <td>{{ echeance.montant|floatformat:0 }} FCFA</td>
+                                                                    <td>{{ echeance.date_echeance|date:"d/m/Y" }}</td>
+                                                                    <td>
+                                                                        {% if echeance.paiement %}
+                                                                            {% if echeance.statut_paiement == 'valide' %}
+                                                                                <span class="badge bg-success">✓ Payée</span>
+                                                                            {% else %}
+                                                                                <span class="badge bg-warning">⏳ En attente validation</span>
+                                                                            {% endif %}
+                                                                        {% else %}
+                                                                            {% if echeance.is_en_retard %}
+                                                                                <span class="badge bg-danger">⚠️ En Retard</span>
+                                                                            {% else %}
+                                                                                <span class="badge bg-secondary">À Payer</span>
+                                                                            {% endif %}
+                                                                        {% endif %}
+                                                                    </td>
+                                                                    <td>
+                                                                        {% if not echeance.paiement %}
+                                                                            <a href="{% url 'commercial_echeance_paiement' echeance.id %}" 
+                                                                               class="btn btn-success btn-sm">
+                                                                                <i class="fas fa-money-bill-wave"></i> Enregistrer Paiement
+                                                                            </a>
+                                                                        {% elif echeance.statut_paiement == 'enregistre' %}
+                                                                            <form method="post" 
+                                                                                  action="{% url 'commercial_payment_validate' echeance.paiement.id %}" 
+                                                                                  style="display:inline;"
+                                                                                  onsubmit="return confirm('Valider ce paiement ?');">
+                                                                                {% csrf_token %}
+                                                                                <button type="submit" class="btn btn-primary btn-sm">
+                                                                                    <i class="fas fa-check"></i> Valider
+                                                                                </button>
+                                                                            </form>
+                                                                        {% else %}
+                                                                            <span class="text-success">✓</span>
+                                                                        {% endif %}
+                                                                    </td>
+                                                                </tr>
+                                                            {% endfor %}
+                                                        </tbody>
+                                                    </table>
+                                                {% else %}
+                                                    <div class="alert alert-info mb-0">
+                                                        <i class="fas fa-info-circle"></i> Aucune échéance à afficher pour le moment.
+                                                    </div>
+                                                {% endif %}
+                                            </div>
+                                        {% else %}
+                                            <div class="alert alert-info">
+                                                <i class="fas fa-info-circle"></i> Aucune échéance générée. La caution doit être validée en premier.
+                                            </div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            {% endif %}
+
+                            <!-- SECTION VENTE -->
+                            {% if is_vente %}
+                                <div class="row mb-4">
+                                    <div class="col-md-4">
+                                        <div class="card bg-light">
+                                            <div class="card-body">
+                                                <h5 class="card-title">
+                                                    <i class="fas fa-tag text-primary"></i> Prix Total
+                                                </h5>
+                                                <h2 class="text-primary mb-0">
+                                                    {{ prix_total|floatformat:0 }} FCFA
+                                                </h2>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <div class="card bg-light">
+                                            <div class="card-body">
+                                                <h5 class="card-title">
+                                                    <i class="fas fa-check-circle text-success"></i> Total Payé
+                                                </h5>
+                                                <h2 class="text-success mb-0">
+                                                    {{ total_paye|floatformat:0 }} FCFA
+                                                </h2>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <div class="card bg-light">
+                                            <div class="card-body">
+                                                <h5 class="card-title">
+                                                    <i class="fas fa-hourglass-half text-warning"></i> Restant
+                                                </h5>
+                                                <h2 class="{% if montant_restant > 0 %}text-warning{% else %}text-success{% endif %} mb-0">
+                                                    {{ montant_restant|floatformat:0 }} FCFA
+                                                </h2>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {% if has_financement %}
+                                    <div class="alert alert-info">
+                                        <i class="fas fa-university"></i> 
+                                        <strong>Financement Bancaire:</strong> 
+                                        {{ financement.banque.nom }} - 
+                                        {{ financement.montant|floatformat:0 }} FCFA
+                                        <span class="badge bg-secondary">{{ financement.get_statut_display }}</span>
+                                    </div>
+                                {% endif %}
+                            {% endif %}
+
+                            <!-- Historique des Paiements -->
+                            <div class="row">
+                                <div class="col-12">
+                                    <h4 class="border-bottom pb-2 mb-3">
+                                        <i class="fas fa-history text-info"></i> Historique des Paiements
+                                    </h4>
+
+                                    {% if paiements %}
+                                        <!-- Paiements en attente de validation -->
+                                        {% if paiements_en_attente %}
+                                            <div class="alert alert-warning">
+                                                <i class="fas fa-exclamation-triangle"></i>
+                                                <strong>{{ paiements_en_attente|length }} paiement(s) en attente de validation</strong>
+                                            </div>
+                                        {% endif %}
+
+                                        <div class="table-responsive">
+                                            <table class="table table-hover">
+                                                <thead class="table-light">
+                                                    <tr>
+                                                        <th>Date</th>
+                                                        <th>Type</th>
+                                                        <th>Montant</th>
+                                                        <th>Moyen</th>
+                                                        <th>Référence</th>
+                                                        <th>Statut</th>
+                                                        <th>Action</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    {% for paiement in paiements %}
+                                                        <tr>
+                                                            <td>{{ paiement.date_paiement|date:"d/m/Y" }}</td>
+                                                            <td>
+                                                                <span class="badge bg-secondary">
+                                                                    {{ paiement.get_type_paiement_display }}
+                                                                </span>
+                                                            </td>
+                                                            <td><strong>{{ paiement.montant|floatformat:0 }} FCFA</strong></td>
+                                                            <td>{{ paiement.get_moyen_display }}</td>
+                                                            <td>{{ paiement.source }}</td>
+                                                            <td>
+                                                                {% if paiement.statut == 'valide' %}
+                                                                    <span class="badge bg-success">✓ Validé</span>
+                                                                {% elif paiement.statut == 'rejete' %}
+                                                                    <span class="badge bg-danger">✗ Rejeté</span>
+                                                                {% else %}
+                                                                    <span class="badge bg-warning">⏳ En attente</span>
+                                                                {% endif %}
+                                                            </td>
+                                                            <td>
+                                                                {% if paiement.statut == 'valide' and paiement.recu_pdf %}
+                                                                    <a href="{% url 'payment_receipt_download' paiement.id %}" class="btn btn-outline-success btn-sm">
+                                                                        <i class="fas fa-file-pdf"></i> Voir le reçu
+                                                                    </a>
+                                                                {% elif paiement.statut == 'enregistre' %}
+                                                                    <form method="post" 
+                                                                          action="{% url 'commercial_payment_validate' paiement.id %}" 
+                                                                          style="display:inline;"
+                                                                          onsubmit="return confirm('Valider ce paiement de {{ paiement.montant|floatformat:0 }} FCFA ?');">
+                                                                        {% csrf_token %}
+                                                                        <button type="submit" class="btn btn-success btn-sm">
+                                                                            <i class="fas fa-check"></i> Valider
+                                                                        </button>
+                                                                    </form>
+                                                                {% else %}
+                                                                    <span class="text-muted">—</span>
+                                                                {% endif %}
+                                                            </td>
+                                                        </tr>
+                                                    {% endfor %}
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    {% else %}
+                                        <div class="alert alert-secondary">
+                                            <i class="fas fa-info-circle"></i> Aucun paiement enregistré pour cette réservation.
+                                        </div>
+                                    {% endif %}
+
+                                    <!-- Bouton pour ajouter un paiement -->
+                                    <div class="mt-3">
+                                        <a href="{% url 'commercial_paiement_create' reservation.id %}" 
+                                           class="btn btn-primary">
+                                            <i class="fas fa-plus-circle"></i> Enregistrer un Nouveau Paiement
+                                        </a>
+                                    </div>
+                                </div>
+                            </div>
+
+                        {% else %}
+                            <!-- Pas de réservation active -->
+                            <div class="alert alert-info">
+                                <h5><i class="fas fa-info-circle"></i> Aucune Réservation Active</h5>
+                                <p class="mb-0">
+                                    Ce bien est actuellement {{ unite.get_statut_disponibilite_display|lower }}
+                                    mais n'a pas de réservation en cours ou confirmée.
+                                </p>
+                            </div>
+
+                            <!-- Informations du bien -->
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <h5>Caractéristiques</h5>
+                                    <ul>
+                                        <li><strong>Type:</strong> {{ unite.modele_bien.type_bien.nom }}</li>
+                                        <li><strong>Modèle:</strong> {{ unite.modele_bien.nom_marketing }}</li>
+                                        {% if unite.modele_bien.surface_hab_m2 %}
+                                            <li><strong>Surface:</strong> {{ unite.modele_bien.surface_hab_m2 }} m²</li>
+                                        {% endif %}
+                                    </ul>
+                                </div>
+                                <div class="col-md-6">
+                                    <h5>Prix</h5>
+                                    <h3 class="text-primary">
+                                        {{ unite.prix_ttc|floatformat:0 }} FCFA
+                                        {% if is_location %}
+                                            <small class="text-muted">/mois</small>
+                                        {% endif %}
+                                    </h3>
+                                </div>
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

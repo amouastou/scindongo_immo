@@ -1,20 +1,14 @@
 from rest_framework.permissions import BasePermission, SAFE_METHODS
 
+from .utils import is_admin_user
+
 
 class IsAdminScindongo(BasePermission):
     """Accès réservé aux utilisateurs ayant le rôle ADMIN."""
 
     def has_permission(self, request, view):
         user = request.user
-        return bool(
-            user
-            and user.is_authenticated
-            and (
-                user.is_superuser
-                or user.is_staff
-                or getattr(user, "is_admin_scindongo", False)
-            )
-        )
+        return bool(user and user.is_authenticated and is_admin_user(user))
 
 
 class IsCommercial(BasePermission):
@@ -26,9 +20,8 @@ class IsCommercial(BasePermission):
             user
             and user.is_authenticated
             and (
-                user.is_superuser
-                or user.is_staff
-                or getattr(user, "is_commercial", False)
+                getattr(user, "is_commercial", False)
+                or is_admin_user(user)
             )
         )
 
@@ -42,9 +35,8 @@ class IsClient(BasePermission):
             user
             and user.is_authenticated
             and (
-                user.is_superuser
-                or user.is_staff
-                or getattr(user, "is_client", False)
+                getattr(user, "is_client", False)
+                or is_admin_user(user)
             )
         )
 
@@ -64,9 +56,7 @@ class IsAdminOrCommercial(BasePermission):
             user
             and user.is_authenticated
             and (
-                user.is_superuser
-                or user.is_staff
-                or getattr(user, "is_admin_scindongo", False)
+                is_admin_user(user)
                 or getattr(user, "is_commercial", False)
             )
         )
@@ -78,15 +68,7 @@ class IsAdminScindongoOrDjangoAdmin(BasePermission):
     """
     def has_permission(self, request, view):
         u = request.user
-        return bool(
-            u
-            and u.is_authenticated
-            and (
-                getattr(u, "is_admin_scindongo", False)
-                or u.is_superuser
-                or u.is_staff
-            )
-        )
+        return bool(u and u.is_authenticated and is_admin_user(u))
 
 
 class IsAdminOrCommercialOrDjangoAdmin(BasePermission):
@@ -99,10 +81,8 @@ class IsAdminOrCommercialOrDjangoAdmin(BasePermission):
             u
             and u.is_authenticated
             and (
-                getattr(u, "is_admin_scindongo", False)
+                is_admin_user(u)
                 or getattr(u, "is_commercial", False)
-                or u.is_superuser
-                or u.is_staff
             )
         )
 
@@ -118,7 +98,7 @@ class IsClientOwnerOrAdminOrCommercial(BasePermission):
 
     def has_object_permission(self, request, view, obj):
         # Admin/Commercial ont accès à tout
-        if getattr(request.user, "is_admin_scindongo", False) or getattr(request.user, "is_commercial", False):
+        if is_admin_user(request.user) or getattr(request.user, "is_commercial", False):
             return True
         
         # Client doit être le propriétaire
@@ -140,7 +120,7 @@ class IsReservationOwnerOrAdminOrCommercial(BasePermission):
     def has_object_permission(self, request, view, obj):
         # obj est une Reservation
         # Admin/Commercial ont accès
-        if getattr(request.user, "is_admin_scindongo", False) or getattr(request.user, "is_commercial", False):
+        if is_admin_user(request.user) or getattr(request.user, "is_commercial", False):
             return True
         
         # Client : doit être le client de la réservation

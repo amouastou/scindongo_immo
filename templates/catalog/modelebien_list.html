@@ -22,7 +22,6 @@
             <th>Nom marketing</th>
             <th>Type</th>
             <th>Surface (m²)</th>
-            <th>Prix base TTC</th>
             <th>Nb. unités</th>
             <th>Actions</th>
           </tr>
@@ -33,7 +32,6 @@
               <td><strong>{{ modele.nom_marketing }}</strong></td>
               <td><span class="badge bg-secondary">{{ modele.type_bien.libelle }}</span></td>
               <td>{{ modele.surface_hab_m2|default:"-" }} m²</td>
-              <td>{{ modele.prix_base_ttc|floatformat:0 }} FCFA</td>
               <td><span class="badge bg-info">{{ modele.unites.count }}</span></td>
               <td>
                 <div class="d-flex gap-1">

@@ -8,6 +8,7 @@ from core.choices import (
     PaiementStatus,
     FinancementStatus,
     MoyenPaiement,
+    PaiementType,
 )
 
 
@@ -34,6 +35,15 @@ class Reservation(TimeStampedModel):
     unite = models.ForeignKey(Unite, on_delete=models.PROTECT, related_name='reservations')
     date_reservation = models.DateField(auto_now_add=True)
     acompte = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    
+    # Durée du bail en mois (pour location uniquement)
+    duree_bail_mois = models.PositiveIntegerField(
+        null=True,
+        blank=True,
+        default=12,
+        help_text="Durée du bail en mois (12, 24, 36...)"
+    )
+    
     statut = models.CharField(
         max_length=20,
         choices=ReservationStatus.choices,
@@ -120,6 +130,41 @@ class Reservation(TimeStampedModel):
         
         # La cascade sera gérée par le signal post_save
 
+    def is_vente(self) -> bool:
+        """Vérifier si la réservation est pour une vente."""
+        return self.unite.programme.is_vente()
+
+    def is_location(self) -> bool:
+        """Vérifier si la réservation est pour une location."""
+        return self.unite.programme.is_location()
+
+    def can_request_financement(self) -> bool:
+        """
+        Vérifier si on peut demander un financement.
+        Seulement pour les ventes, et seulement si réservation confirmée.
+        """
+        if not self.is_vente():
+            return False
+        return self.statut == ReservationStatus.CONFIRMEE and not hasattr(self, 'financement')
+
+    def caution_payments(self, include_rejected: bool = False):
+        """Retourner le queryset des paiements de caution associés."""
+        qs = self.paiements.filter(type_paiement=PaiementType.CAUTION)
+        if not include_rejected:
+            qs = qs.exclude(statut=PaiementStatus.REJETE)
+        return qs
+
+    def has_caution_payment(self, include_pending: bool = True) -> bool:
+        """Indique si une caution a été enregistrée (et non rejetée)."""
+        qs = self.caution_payments()
+        if not include_pending:
+            qs = qs.filter(statut=PaiementStatus.VALIDE)
+        return qs.exists()
+
+    def is_caution_validated(self) -> bool:
+        """Indique si une caution a été validée par un commercial."""
+        return self.caution_payments().filter(statut=PaiementStatus.VALIDE).exists()
+
 
 class Contrat(TimeStampedModel):
     reservation = models.OneToOneField(Reservation, on_delete=models.PROTECT, related_name='contrat')
@@ -134,6 +179,30 @@ class Contrat(TimeStampedModel):
     pdf_hash = models.CharField(max_length=128, blank=True)
     otp_logs = models.JSONField(default=dict, blank=True)
     otp_generated_at = models.DateTimeField(null=True, blank=True, help_text="Date et heure de génération du dernier OTP")
+    
+    # Durée du bail en mois (copie depuis Reservation pour historique)
+    duree_mois = models.PositiveIntegerField(
+        null=True,
+        blank=True,
+        default=12,
+        help_text="Durée du bail en mois au moment de la signature"
+    )
+    client_nom = models.CharField(max_length=255, blank=True)
+    client_email = models.EmailField(blank=True)
+    client_telephone = models.CharField(max_length=50, blank=True)
+    client_adresse = models.CharField(max_length=255, blank=True)
+    programme_nom = models.CharField(max_length=255, blank=True)
+    unite_reference = models.CharField(max_length=100, blank=True)
+    unite_description = models.CharField(max_length=255, blank=True)
+    montant_total = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
+    date_signature = models.DateField(null=True, blank=True)
+    date_fin = models.DateField(null=True, blank=True)
+    lieu_signature = models.CharField(max_length=255, blank=True)
+    conditions_generales = models.TextField(blank=True)
+    conditions_particulieres = models.TextField(blank=True)
+    commercial_nom = models.CharField(max_length=255, blank=True)
+    commercial_email = models.EmailField(blank=True)
+    generated_pdf = models.BooleanField(default=False)
 
     class Meta:
         verbose_name = "Contrat"
@@ -153,6 +222,45 @@ class Paiement(TimeStampedModel):
         max_length=20,
         choices=PaiementStatus.choices,
         default=PaiementStatus.ENREGISTRE,
+    )
+    notes = models.TextField(
+        blank=True,
+        null=True,
+        help_text="Remarques supplémentaires sur le paiement"
+    )
+
+    # Type de paiement (acompte, solde, échéance loyer, caution)
+    type_paiement = models.CharField(
+        max_length=50,
+        choices=PaiementType.choices,
+        default=PaiementType.ACOMPTE,
+        help_text="Acompte, Solde, Échéance loyer ou Caution"
+    )
+
+    # Traçabilité validation/reçu
+    valide_par = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        related_name='paiements_valides',
+        null=True,
+        blank=True,
+        help_text="Utilisateur ayant validé le paiement"
+    )
+    recu_pdf = models.FileField(
+        upload_to='paiements/recus/%Y/%m/',
+        blank=True,
+        null=True,
+        help_text="Reçu généré automatiquement au format PDF"
+    )
+    recu_meta = models.JSONField(
+        default=dict,
+        blank=True,
+        help_text="Métadonnées du reçu (numéro, info client, etc.)"
+    )
+    recu_emis_le = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text="Date et heure de génération du reçu"
     )
 
     class Meta:
@@ -327,4 +435,60 @@ class FinancementDocument(TimeStampedModel):
             suffix = suffixes.get(self.numero_ordre, "e")
             label = f"{label} ({self.numero_ordre}{suffix})"
         return label
+
+
+class EcheanceLoyer(TimeStampedModel):
+    """
+    Échéance de loyer pour les programmes en location.
+    Générée automatiquement pour chaque mois du bail.
+    """
+    reservation = models.ForeignKey(Reservation, on_delete=models.PROTECT, related_name='echeances_loyer')
+    numero_mois = models.PositiveIntegerField(help_text="Numéro du mois (1, 2, 3...)")
+    montant = models.DecimalField(max_digits=12, decimal_places=2, help_text="Montant du loyer pour ce mois")
+    date_echeance = models.DateField(help_text="Date d'échéance du paiement")
+    paiement = models.OneToOneField(
+        Paiement,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='echeance_loyer',
+        help_text="Paiement associé (null si non payé)"
+    )
+    statut_paiement = models.CharField(
+        max_length=20,
+        choices=PaiementStatus.choices,
+        default=PaiementStatus.ENREGISTRE,
+        help_text="Statut du paiement pour cette échéance"
+    )
+
+    class Meta:
+        verbose_name = "Échéance loyer"
+        verbose_name_plural = "Échéances loyer"
+        ordering = ['reservation', 'numero_mois']
+        unique_together = ('reservation', 'numero_mois')
+
+    def __str__(self):
+        return f"{self.reservation.client.user.email} - Mois {self.numero_mois} ({self.montant} CFA)"
+
+    def is_payee(self) -> bool:
+        """Vérifier si l'échéance est payée."""
+        return self.statut_paiement == PaiementStatus.VALIDE
+
+    def is_echeue(self) -> bool:
+        """Vérifier si l'échéance est échue (date d'échéance dépassée)."""
+        from django.utils import timezone
+        from datetime import date
+        
+        today = date.today()
+        return self.date_echeance < today
+
+    def is_en_retard(self) -> bool:
+        """Vérifier si l'échéance est en retard (écheue et non payée)."""
+        return self.is_echeue() and not self.is_payee()
+
+    def marquer_comme_payee(self, paiement):
+        """Marquer l'échéance comme payée avec le paiement associé."""
+        self.paiement = paiement
+        self.statut_paiement = PaiementStatus.VALIDE
+        self.save()
 

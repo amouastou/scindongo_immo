@@ -18,6 +18,7 @@ from .views import (
     BanquePartenaireViewSet,
     FinancementViewSet,
     EcheanceViewSet,
+    EcheanceLoyerViewSet,
     ContratViewSet,
     PaiementViewSet,
 )
@@ -44,6 +45,7 @@ router.register("reservation-documents", ReservationDocumentViewSet)
 router.register("banques", BanquePartenaireViewSet)
 router.register("financements", FinancementViewSet)
 router.register("echeances", EcheanceViewSet)
+router.register("echeances-loyer", EcheanceLoyerViewSet)
 router.register("contrats", ContratViewSet)
 router.register("paiements", PaiementViewSet)
 

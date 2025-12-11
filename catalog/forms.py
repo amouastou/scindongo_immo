@@ -51,6 +51,7 @@ class ProgrammeForm(forms.ModelForm):
             'notaire_nom',
             'notaire_contact',
             'contact_commercial',
+            'type_operation',
             'statut',
             'date_livraison_prevue',
         ]
@@ -58,6 +59,7 @@ class ProgrammeForm(forms.ModelForm):
             'nom': forms.TextInput(attrs={'class': 'form-control'}),
             'description': forms.Textarea(attrs={'class': 'form-control', 'rows': 4}),
             'image_principale': forms.FileInput(attrs={'class': 'form-control'}),
+            'type_operation': forms.Select(attrs={'class': 'form-select'}),
             'adresse': forms.TextInput(attrs={'class': 'form-control'}),
             'gps_lat': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.000001'}),
             'gps_lng': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.000001'}),

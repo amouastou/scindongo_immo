@@ -1,0 +1,74 @@
+# Git
+.git
+.gitignore
+.gitattributes
+
+# Python
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+*.egg-info
+dist
+build
+.pytest_cache
+.coverage
+htmlcov
+
+# IDE
+.vscode
+.idea
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Docker
+docker-compose*.yml
+Dockerfile*
+.dockerignore
+
+# Node/Frontend
+node_modules
+npm-debug.log
+yarn-error.log
+
+# OS
+.env.local
+.env.*.local
+
+# Zone Identifier (Windows)
+*.Zone.Identifier
+:Zone.Identifier
+
+# Temporary
+*.tmp
+*.bak
+*.log
+
+# Media (will be created at runtime)
+media/*
+
+# Static files (will be collected at runtime)
+staticfiles/*
+
+# Database
+*.sqlite3
+*.sqlite
+db.sqlite3
+
+# Environment
+.env
+
+# Tests
+.pytest_cache
+coverage.xml
+.coverage
+
+# Documentation
+docs/_build
+*.md~
+
+# Project specific
+.env.development
+.env.production
