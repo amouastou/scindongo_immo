@@ -94,7 +94,8 @@
                             </div>
                         </div>
 
-                        <!-- Option 2: Financing -->
+                        <!-- Option 2: Financing (VENTE UNIQUEMENT) -->
+                        {% if reservation.is_vente %}
                         <div class="card border-left border-5" style="border-left-color: #007bff;">
                             <div class="card-body">
                                 <div class="form-check mb-0">
@@ -122,6 +123,7 @@
                                 </p>
                             </div>
                         </div>
+                        {% endif %}
                     </div>
                 </div>
 
@@ -154,10 +156,12 @@
                     <strong>Paiement Direct :</strong> 
                     Idéal si vous disposez des fonds immédiatement.
                 </p>
+                {% if reservation.is_vente %}
                 <p class="mb-0">
                     <strong>Financement Bancaire :</strong> 
                     Contactez nos banques partenaires pour étudier votre dossier.
                 </p>
+                {% endif %}
             </div>
         </div>
     </div>

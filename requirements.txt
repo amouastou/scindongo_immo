@@ -10,3 +10,4 @@ django-filter
 django-widget-tweaks==1.5.0
 django-redis>=5.4.0
 redis>=5.0.0
+python-dateutil>=2.8.0

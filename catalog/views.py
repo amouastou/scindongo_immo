@@ -1,10 +1,11 @@
 from django.views.generic import TemplateView, ListView, DetailView, UpdateView, DeleteView, CreateView
-from django.contrib.auth.mixins import LoginRequiredMixin
 from django.urls import reverse_lazy
 from django.shortcuts import redirect
 from django.contrib import messages
 from django.db.models import Q
+from django.core.exceptions import PermissionDenied
 from accounts.mixins import RoleRequiredMixin
+from accounts.utils import is_admin_user
 from .models import Programme, Unite, TypeBien, ModeleBien, AvancementChantierUnite, PhotoChantierUnite, MessageChantier
 from .forms import ProgrammeForm, AvancementChantierUniteForm
 from datetime import datetime
@@ -14,36 +15,56 @@ class HomeView(TemplateView):
     template_name = 'public/home.html'
 
 
-class ProgrammeListView(ListView):
+class ProgrammeListView(RoleRequiredMixin, ListView):
     model = Programme
     template_name = 'catalog/programme_list.html'
     context_object_name = 'programmes'
+    required_roles = ["ADMIN", "COMMERCIAL"]
 
     def get_queryset(self):
-        # Prefetch unités pour éviter N+1 queries
-        return Programme.objects.prefetch_related('unites').order_by("nom")
+        user = self.request.user
+        qs = Programme.objects.prefetch_related('unites').order_by("nom")
+
+        # 🔒 ADMIN voit tout, COMMERCIAL seulement ses programmes
+        if is_admin_user(user):
+            return qs
+
+        return qs.filter(contact_commercial=user)
 
 
-class ProgrammeDetailView(DetailView):
+class ProgrammeDetailView(RoleRequiredMixin, DetailView):
     model = Programme
     template_name = 'catalog/programme_detail.html'
     context_object_name = 'programme'
+    required_roles = ["ADMIN", "COMMERCIAL"]
 
     def get_queryset(self):
-        # Prefetch unités + réservations pour éviter N+1
-        return Programme.objects.prefetch_related('unites', 'unites__reservations')
+        user = self.request.user
+        qs = Programme.objects.prefetch_related('unites', 'unites__reservations')
+        
+        # 🔒 ADMIN voit tout, COMMERCIAL seulement ses programmes
+        if is_admin_user(user):
+            return qs
+        
+        return qs.filter(contact_commercial=user)
 
 
-class UniteDetailView(DetailView):
+class UniteDetailView(RoleRequiredMixin, DetailView):
     model = Unite
     template_name = 'catalog/unite_detail.html'
     context_object_name = 'unite'
+    required_roles = ["ADMIN", "COMMERCIAL"]
 
     def get_queryset(self):
-        # Select related programme + modele_bien, prefetch réservations
-        return Unite.objects.select_related(
+        user = self.request.user
+        qs = Unite.objects.select_related(
             'programme', 'modele_bien', 'modele_bien__type_bien'
         ).prefetch_related('reservations')
+
+        if is_admin_user(user):
+            return qs
+
+        return qs.filter(programme__contact_commercial=user)
 
 
 class BiensListView(ListView):
@@ -115,6 +136,39 @@ class PourquoiInvestirView(TemplateView):
     template_name = 'public/pourquoi_investir.html'
 
 
+class PublicProgrammeListView(ListView):
+    """
+    Page publique affichant les programmes disponibles (vente et location).
+    Accessible à tous les utilisateurs (authentifiés ou non).
+    """
+    model = Programme
+    template_name = 'catalog/programme_list.html'
+    context_object_name = 'programmes'
+    paginate_by = 12
+
+    def get_queryset(self):
+        """Afficher seulement les programmes actifs au public"""
+        return Programme.objects.filter(
+            statut='actif'
+        ).prefetch_related('unites').order_by("nom")
+
+
+class PublicProgrammeDetailView(DetailView):
+    """
+    Page de détail publique d'un programme.
+    Accessible à tous les utilisateurs (authentifiés ou non).
+    """
+    model = Programme
+    template_name = 'catalog/programme_detail.html'
+    context_object_name = 'programme'
+
+    def get_queryset(self):
+        """Afficher seulement les programmes actifs au public"""
+        return Programme.objects.filter(
+            statut='actif'
+        ).prefetch_related('unites', 'unites__reservations')
+
+
 class ContactView(TemplateView):
     """
     Page de contact : coordonnées, formulaire de prise de contact simple.
@@ -133,6 +187,21 @@ class ProgrammeUpdateView(RoleRequiredMixin, UpdateView):
     required_roles = ["ADMIN", "COMMERCIAL"]
     success_url = reverse_lazy('programme_list')
 
+    def get_queryset(self):
+        user = self.request.user
+        qs = Programme.objects.all()
+
+        if is_admin_user(user):
+            return qs
+
+        return qs.filter(contact_commercial=user)
+
+    def form_valid(self, form):
+        user = self.request.user
+        if not is_admin_user(user):
+            form.instance.contact_commercial = user
+        return super().form_valid(form)
+
 
 class ProgrammeCreateView(RoleRequiredMixin, CreateView):
     """
@@ -143,6 +212,20 @@ class ProgrammeCreateView(RoleRequiredMixin, CreateView):
     form_class = ProgrammeForm
     required_roles = ["ADMIN", "COMMERCIAL"]
     success_url = reverse_lazy('programme_list')
+
+    def get_form(self, form_class=None):
+        form = super().get_form(form_class)
+        user = self.request.user
+        if not is_admin_user(user):
+            form.fields['contact_commercial'].queryset = form.fields['contact_commercial'].queryset.filter(pk=user.pk)
+            form.fields['contact_commercial'].initial = user
+        return form
+
+    def form_valid(self, form):
+        user = self.request.user
+        if not is_admin_user(user):
+            form.instance.contact_commercial = user
+        return super().form_valid(form)
 
 
 class ProgrammeDeleteView(RoleRequiredMixin, DeleteView):
@@ -239,7 +322,7 @@ class ModeleBienDeleteView(RoleRequiredMixin, DeleteView):
 # === Gestion des Unités ===
 
 class UniteListView(RoleRequiredMixin, ListView):
-    """Liste des unités (ADMIN/COMMERCIAL)"""
+    """Liste des unités (filtrée par commercial)"""
     model = Unite
     template_name = 'catalog/unite_list.html'
     context_object_name = 'unites'
@@ -247,7 +330,15 @@ class UniteListView(RoleRequiredMixin, ListView):
     paginate_by = 20
     
     def get_queryset(self):
-        return Unite.objects.select_related('programme', 'modele_bien', 'modele_bien__type_bien').all()
+        user = self.request.user
+        qs = Unite.objects.select_related('programme', 'modele_bien', 'modele_bien__type_bien')
+        
+        # 🔒 ADMIN voit toutes les unités, COMMERCIAL seulement les siennes
+        if is_admin_user(user):
+            return qs.all()
+        
+        # Seulement les unités de MES programmes
+        return qs.filter(programme__contact_commercial=user)
 
 
 class UniteCreateView(RoleRequiredMixin, CreateView):
@@ -258,14 +349,54 @@ class UniteCreateView(RoleRequiredMixin, CreateView):
     required_roles = ["ADMIN", "COMMERCIAL"]
     success_url = reverse_lazy('unite_list')
 
+    def get_form(self, form_class=None):
+        form = super().get_form(form_class)
+        user = self.request.user
+        if not is_admin_user(user):
+            form.fields['programme'].queryset = Programme.objects.filter(contact_commercial=user)
+        return form
+
+    def form_valid(self, form):
+        user = self.request.user
+        programme = form.cleaned_data.get('programme')
+        if programme and not is_admin_user(user):
+            if programme.contact_commercial != user:
+                raise PermissionDenied("Vous ne pouvez créer que des unités pour vos programmes.")
+        return super().form_valid(form)
+
 
 class UniteUpdateView(RoleRequiredMixin, UpdateView):
-    """Modifier une unité (ADMIN/COMMERCIAL)"""
+    """Modifier une unité (filtrée par commercial)"""
     model = Unite
     template_name = 'catalog/unite_form.html'
     fields = ['programme', 'modele_bien', 'reference_lot', 'prix_ttc', 'statut_disponibilite', 'gps_lat', 'gps_lng', 'image']
     required_roles = ["ADMIN", "COMMERCIAL"]
     success_url = reverse_lazy('unite_list')
+    
+    def get_queryset(self):
+        user = self.request.user
+        qs = Unite.objects.select_related('programme')
+        
+        # 🔒 ADMIN voit tout, COMMERCIAL seulement ses unités
+        if is_admin_user(user):
+            return qs
+        
+        return qs.filter(programme__contact_commercial=user)
+
+    def get_form(self, form_class=None):
+        form = super().get_form(form_class)
+        user = self.request.user
+        if not is_admin_user(user):
+            form.fields['programme'].queryset = Programme.objects.filter(contact_commercial=user)
+        return form
+
+    def form_valid(self, form):
+        user = self.request.user
+        programme = form.cleaned_data.get('programme')
+        if programme and not is_admin_user(user):
+            if programme.contact_commercial != user:
+                raise PermissionDenied("Vous ne pouvez modifier que vos propres programmes.")
+        return super().form_valid(form)
 
 
 class UniteDeleteView(RoleRequiredMixin, DeleteView):
@@ -293,11 +424,20 @@ class ChantiersUniteListView(RoleRequiredMixin, ListView):
     paginate_by = 20
 
     def get_queryset(self):
-        """Afficher les unités réservées ou vendues (en chantier)"""
-        from core.choices import UniteStatus
-        return Unite.objects.filter(
-            statut_disponibilite__in=[UniteStatus.RESERVE, UniteStatus.VENDU]
+        """Afficher les unités réservées ou vendues (en chantier) - VENTE UNIQUEMENT"""
+        from core.choices import UniteStatus, OperationType
+
+        user = self.request.user
+        qs = Unite.objects.filter(
+            statut_disponibilite__in=[UniteStatus.RESERVE, UniteStatus.VENDU],
+            programme__type_operation=OperationType.VENTE  # 🏠 Exclure locations
         ).select_related('programme', 'modele_bien').prefetch_related('avancements_chantier')
+
+        # 🔒 ADMIN voit tous les chantiers, COMMERCIAL seulement les siens
+        if is_admin_user(user):
+            return qs
+
+        return qs.filter(programme__contact_commercial=user)
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -319,9 +459,15 @@ class AvancementChantierUniteDetailView(RoleRequiredMixin, DetailView):
     pk_url_kwarg = 'pk'
 
     def get_queryset(self):
-        return AvancementChantierUnite.objects.select_related(
+        user = self.request.user
+        qs = AvancementChantierUnite.objects.select_related(
             'unite', 'unite__programme', 'reservation'
         ).prefetch_related('photos')
+
+        if is_admin_user(user):
+            return qs
+
+        return qs.filter(unite__programme__contact_commercial=user)
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -345,6 +491,7 @@ class AvancementChantierUniteCreateView(RoleRequiredMixin, CreateView):
 
     def get_initial(self):
         """Pré-remplir les champs depuis les paramètres URL."""
+        from core.choices import OperationType
         initial = super().get_initial()
         
         # Récupérer l'unité depuis le QueryString (?unite=<id>)
@@ -352,6 +499,15 @@ class AvancementChantierUniteCreateView(RoleRequiredMixin, CreateView):
         if unite_id:
             try:
                 unite = Unite.objects.get(id=unite_id)
+                
+                # 🏠 BLOQUER les programmes de location
+                if unite.programme.type_operation == OperationType.LOCATION:
+                    raise PermissionDenied("Le suivi de chantier n'est pas disponible pour les programmes de location.")
+                
+                user = self.request.user
+                if not is_admin_user(user):
+                    if unite.programme.contact_commercial != user:
+                        raise PermissionDenied("Accès refusé à cette unité.")
                 initial['unite'] = unite
                 
                 # Si l'unité a une réservation confirmée/signée, la pré-sélectionner
@@ -369,19 +525,68 @@ class AvancementChantierUniteCreateView(RoleRequiredMixin, CreateView):
         return initial
 
     def get_context_data(self, **kwargs):
+        from core.choices import OperationType
         context = super().get_context_data(**kwargs)
         # Récupérer l'unité si passée en paramètre (pour affichage)
         unite_id = self.request.GET.get('unite')
         if unite_id:
             try:
-                context['initial_unite'] = Unite.objects.get(id=unite_id)
+                unite = Unite.objects.get(id=unite_id)
+                
+                # 🏠 BLOQUER les programmes de location
+                if unite.programme.type_operation == OperationType.LOCATION:
+                    raise PermissionDenied("Le suivi de chantier n'est pas disponible pour les programmes de location.")
+                
+                user = self.request.user
+                if not is_admin_user(user):
+                    if unite.programme.contact_commercial != user:
+                        raise PermissionDenied("Accès refusé à cette unité.")
+                context['initial_unite'] = unite
             except Unite.DoesNotExist:
                 pass
         return context
 
+    def get_form(self, form_class=None):
+        from core.choices import OperationType
+        form = super().get_form(form_class)
+        user = self.request.user
+        if not is_admin_user(user):
+            # 🏠 Filtrer uniquement les unités de VENTE du commercial
+            form.fields['unite'].queryset = Unite.objects.filter(
+                programme__contact_commercial=user,
+                programme__type_operation=OperationType.VENTE
+            )
+            from sales.models import Reservation
+            form.fields['reservation'].queryset = Reservation.objects.filter(
+                unite__programme__contact_commercial=user,
+                unite__programme__type_operation=OperationType.VENTE
+            )
+        else:
+            # 🏠 Admin : filtrer uniquement les unités de VENTE
+            form.fields['unite'].queryset = Unite.objects.filter(
+                programme__type_operation=OperationType.VENTE
+            )
+            from sales.models import Reservation
+            form.fields['reservation'].queryset = Reservation.objects.filter(
+                unite__programme__type_operation=OperationType.VENTE
+            )
+        return form
+
     def form_valid(self, form):
+        user = self.request.user
+        unite = form.cleaned_data.get('unite')
+        reservation = form.cleaned_data.get('reservation')
+        if not is_admin_user(user):
+            if unite and unite.programme.contact_commercial != user:
+                raise PermissionDenied("Vous ne pouvez pas créer d'avancement pour cette unité.")
+            if reservation and reservation.unite.programme.contact_commercial != user:
+                raise PermissionDenied("Vous ne pouvez pas associer cette réservation.")
+
         # Sauvegarder l'avancement d'abord
         avancement = form.save()
+        
+        # IMPORTANT: Assigner self.object pour que get_success_url() fonctionne
+        self.object = avancement
         
         # Gérer l'upload des photos
         photos = self.request.FILES.getlist('photos')
@@ -408,13 +613,40 @@ class AvancementChantierUniteUpdateView(RoleRequiredMixin, UpdateView):
     template_name = 'catalog/avancement_chantier_unite_form.html'
     required_roles = ["COMMERCIAL", "ADMIN"]
 
+    def get_queryset(self):
+        user = self.request.user
+        qs = AvancementChantierUnite.objects.select_related('unite', 'unite__programme', 'reservation')
+        if is_admin_user(user):
+            return qs
+        return qs.filter(unite__programme__contact_commercial=user)
+
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         # Ajouter les photos existantes au contexte
         context['existing_photos'] = self.object.photos.all()
         return context
 
+    def get_form(self, form_class=None):
+        form = super().get_form(form_class)
+        user = self.request.user
+        if not is_admin_user(user):
+            form.fields['unite'].queryset = Unite.objects.filter(programme__contact_commercial=user)
+            from sales.models import Reservation
+            form.fields['reservation'].queryset = Reservation.objects.filter(
+                unite__programme__contact_commercial=user
+            )
+        return form
+
     def form_valid(self, form):
+        user = self.request.user
+        unite = form.cleaned_data.get('unite')
+        reservation = form.cleaned_data.get('reservation')
+        if not is_admin_user(user):
+            if unite and unite.programme.contact_commercial != user:
+                raise PermissionDenied("Vous ne pouvez pas modifier cet avancement.")
+            if reservation and reservation.unite.programme.contact_commercial != user:
+                raise PermissionDenied("Réservation non autorisée.")
+        
         # Sauvegarder les modifications
         avancement = form.save()
         

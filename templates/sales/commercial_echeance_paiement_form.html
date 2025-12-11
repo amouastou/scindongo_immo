@@ -1,0 +1,116 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Enregistrer Paiement Échéance{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header bg-success text-white">
+                    <h3 class="mb-0">
+                        ✓ Valider Paiement Échéance de Loyer
+                    </h3>
+                </div>
+                <div class="card-body">
+                    <div class="alert alert-success mb-4">
+                        <strong>👤 Client :</strong> {{ echeance.reservation.client.prenom }} {{ echeance.reservation.client.nom }}<br>
+                        <strong>📍 Bien :</strong> {{ echeance.reservation.unite.reference }} - {{ echeance.reservation.unite.programme.nom }}<br>
+                        <strong>📅 Mois :</strong> Mois {{ echeance.numero_mois }}<br>
+                        <strong>💰 Montant :</strong> {{ echeance.montant|floatformat:0 }} FCFA<br>
+                        <strong>📆 Échéance :</strong> {{ echeance.date_echeance|date:"d/m/Y" }}<br>
+                        <strong>✓ Statut Paiement :</strong> 
+                        {% if echeance.is_payee %}
+                            <span class="badge bg-success">Payée</span>
+                        {% elif echeance.is_en_retard %}
+                            <span class="badge bg-danger">En Retard</span>
+                        {% else %}
+                            <span class="badge bg-warning">En Attente de Validation</span>
+                        {% endif %}
+                    </div>
+
+                    <form method="post" class="needs-validation">
+                        {% csrf_token %}
+                        
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="montant" class="form-label">Montant du Paiement</label>
+                                    <input type="number" 
+                                           id="montant" 
+                                           name="montant" 
+                                           class="form-control" 
+                                           value="{{ echeance.montant|floatformat:0 }}"
+                                           readonly
+                                           required>
+                                    <small class="form-text text-muted">Montant fixe de l'échéance</small>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="moyen" class="form-label">Moyen de Paiement</label>
+                                    <select name="moyen" id="moyen" class="form-select" required>
+                                        <option value="">--- Choisir ---</option>
+                                        <option value="virement">🏦 Virement</option>
+                                        <option value="cheque">📋 Chèque</option>
+                                        <option value="espece">💵 Espèce</option>
+                                        <option value="carte">💳 Carte</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="source" class="form-label">Référence de Paiement</label>
+                                    <input type="text" 
+                                           id="source" 
+                                           name="source" 
+                                           class="form-control" 
+                                           placeholder="Numéro de compte, numéro de chèque, etc."
+                                           required>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="reference_externe" class="form-label">Référence Externe (Optionnel)</label>
+                                    <input type="text" 
+                                           id="reference_externe" 
+                                           name="reference_externe" 
+                                           class="form-control" 
+                                           placeholder="Ref. interne, numéro de reçu, etc.">
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="notes" class="form-label">Notes (Optionnel)</label>
+                            <textarea name="notes" 
+                                      id="notes" 
+                                      class="form-control" 
+                                      rows="3"
+                                      placeholder="Remarques supplémentaires sur le paiement..."></textarea>
+                        </div>
+
+                        <div class="d-grid gap-2 d-md-flex justify-content-md-between">
+                            <a href="{% url 'commercial_dashboard' %}" class="btn btn-outline-secondary">
+                                ← Retourner au tableau de bord
+                            </a>
+                            <button type="submit" class="btn btn-success btn-lg">
+                                ✓ Valider Paiement {{ echeance.montant|floatformat:0 }} FCFA
+                            </button>
+                        </div>
+                    </form>
+
+                    <div class="alert alert-light mt-4 small">
+                        <strong>ℹ️ Information :</strong><br>
+                        Le paiement sera validé et marqué comme payé. L'échéance sera clôturée dans le système.
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

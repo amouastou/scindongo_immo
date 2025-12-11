@@ -88,6 +88,110 @@ def audit_paiement_save(sender, instance, created, **kwargs):
     audit_log(None, instance, action, payload)
 
 
+@receiver(post_save, sender=Paiement)
+def generer_echeances_apres_caution_validee(sender, instance, created, **kwargs):
+    """
+    Générer la PREMIÈRE échéance de loyer quand la caution est validée.
+    Les échéances suivantes seront générées au fur et à mesure.
+    """
+    from sales.models import EcheanceLoyer
+    from core.choices import PaiementType
+    from datetime import date, timedelta
+    from dateutil.relativedelta import relativedelta
+    
+    # Vérifier que c'est un paiement de caution validé
+    if instance.type_paiement != PaiementType.CAUTION or instance.statut != PaiementStatus.VALIDE:
+        return
+    
+    # Vérifier que c'est une réservation location
+    reservation = instance.reservation
+    if not reservation.is_location():
+        return
+    
+    # Vérifier que la première échéance n'existe pas déjà
+    if reservation.echeances_loyer.filter(numero_mois=1).exists():
+        return  # L'échéance 1 existe déjà
+    
+    try:
+        # Calculer la date de début du bail = 1er jour du mois prochain
+        aujourd_hui = date.today()
+        prochain_mois = aujourd_hui.replace(day=1) + timedelta(days=32)
+        date_debut_bail = prochain_mois.replace(day=1)
+        
+        # Date d'échéance = 10 du mois suivant le début du bail
+        date_echeance_mois_1 = date_debut_bail + relativedelta(months=1)
+        date_echeance_mois_1 = date_echeance_mois_1.replace(day=10)
+        
+        # Montant mensuel
+        montant_mensuel = reservation.unite.modele_bien.prix_base_ttc
+        
+        # Créer SEULEMENT la première échéance
+        echeance = EcheanceLoyer.objects.create(
+            reservation=reservation,
+            numero_mois=1,
+            montant=montant_mensuel,
+            date_echeance=date_echeance_mois_1,
+            statut_paiement=PaiementStatus.ENREGISTRE
+        )
+        
+        print(f"✅ Première échéance générée pour réservation {reservation.id}: {date_echeance_mois_1}")
+    except Exception as e:
+        print(f"❌ Erreur génération première échéance: {e}")
+
+
+@receiver(post_save, sender=Paiement)
+def generer_echeance_suivante_apres_paiement(sender, instance, created, **kwargs):
+    """
+    Générer l'échéance suivante quand une échéance de loyer est payée et validée.
+    """
+    from sales.models import EcheanceLoyer
+    from core.choices import PaiementType
+    from datetime import date
+    from dateutil.relativedelta import relativedelta
+    
+    # Vérifier que c'est un paiement d'échéance validé
+    if instance.type_paiement != PaiementType.ECHÉANCE_LOYER or instance.statut != PaiementStatus.VALIDE:
+        return
+    
+    # Récupérer l'échéance associée à ce paiement
+    try:
+        echeance_payee = EcheanceLoyer.objects.get(paiement=instance)
+    except EcheanceLoyer.DoesNotExist:
+        return
+    
+    reservation = echeance_payee.reservation
+    numero_suivant = echeance_payee.numero_mois + 1
+    
+    # Vérifier qu'on n'a pas dépassé la durée du bail
+    if numero_suivant > reservation.duree_bail_mois:
+        print(f"✅ Toutes les échéances du bail ont été générées")
+        return
+    
+    # Vérifier que l'échéance suivante n'existe pas déjà
+    if reservation.echeances_loyer.filter(numero_mois=numero_suivant).exists():
+        return
+    
+    try:
+        # Calculer la date d'échéance suivante = date de l'échéance payée + 1 mois
+        date_echeance_suivante = echeance_payee.date_echeance + relativedelta(months=1)
+        
+        # Montant mensuel
+        montant_mensuel = reservation.unite.modele_bien.prix_base_ttc
+        
+        # Créer l'échéance suivante
+        nouvelle_echeance = EcheanceLoyer.objects.create(
+            reservation=reservation,
+            numero_mois=numero_suivant,
+            montant=montant_mensuel,
+            date_echeance=date_echeance_suivante,
+            statut_paiement=PaiementStatus.ENREGISTRE
+        )
+        
+        print(f"✅ Échéance {numero_suivant} générée après paiement de l'échéance {echeance_payee.numero_mois}")
+    except Exception as e:
+        print(f"❌ Erreur génération échéance suivante: {e}")
+
+
 @receiver(post_save, sender=Financement)
 def audit_financement_save(sender, instance, created, **kwargs):
     """Auditer la création/mise à jour de financement."""

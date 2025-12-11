@@ -1,0 +1,99 @@
+{% extends 'base.html' %}
+{% load static %}
+{% load l10n %}
+
+{% block title %}Payer la Caution{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <div class="card shadow-sm">
+                <div class="card-header bg-danger text-white">
+                    <h3 class="mb-0">🔐 Paiement de la Caution</h3>
+                </div>
+                <div class="card-body">
+                    <!-- Messages Django -->
+                    {% if messages %}
+                        {% for message in messages %}
+                            <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                                {{ message }}
+                                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                            </div>
+                        {% endfor %}
+                    {% endif %}
+
+                    <div class="alert alert-warning mb-4">
+                        <strong>📍 Bien :</strong> {{ reservation.unite.reference }} - {{ reservation.unite.programme.nom }}<br>
+                        <strong>💰 Caution à payer :</strong> {{ montant_caution|floatformat:0 }} FCFA<br>
+                        <strong>ℹ️ Rappel :</strong> La caution correspond à deux mois de loyer et doit être payée avant la remise des clés.
+                    </div>
+
+                    <form method="post" class="needs-validation">
+                        {% csrf_token %}
+
+                        <div class="mb-3">
+                            <label for="montant_display" class="form-label">Montant de la Caution</label>
+                            <input type="text"
+                                   id="montant_display"
+                                   class="form-control"
+                                   value="{{ montant_caution|floatformat:2 }} FCFA"
+                                   disabled>
+                            <!-- Champ caché pour soumettre la valeur numérique brute -->
+                            <input type="hidden"
+                                   name="montant"
+                                   value="{{ montant_caution|unlocalize }}">
+                            <small class="form-text text-muted">Montant fixe calculé automatiquement</small>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="moyen" class="form-label">Moyen de Paiement</label>
+                            <select name="moyen" id="moyen" class="form-select" required>
+                                <option value="">--- Choisir ---</option>
+                                <option value="virement" {% if form.data.moyen == 'virement' %}selected{% endif %}>🏦 Virement</option>
+                                <option value="cheque" {% if form.data.moyen == 'cheque' %}selected{% endif %}>📋 Chèque</option>
+                                <option value="espece" {% if form.data.moyen == 'espece' %}selected{% endif %}>💵 Espèce</option>
+                                <option value="carte" {% if form.data.moyen == 'carte' %}selected{% endif %}>💳 Carte</option>
+                            </select>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="source" class="form-label">Référence de Paiement</label>
+                            <input type="text"
+                                   id="source"
+                                   name="source"
+                                   class="form-control"
+                                   placeholder="Numéro de compte, numéro de chèque, etc."
+                    value="{{ form.data.source|default:'' }}"
+                    required>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="notes" class="form-label">Notes (Optionnel)</label>
+                            <textarea name="notes"
+                                      id="notes"
+                                      class="form-control"
+                                      rows="3"
+                                      placeholder="Remarques supplémentaires...">{{ form.data.notes|default:'' }}</textarea>
+                        </div>
+
+                        <div class="d-grid gap-2">
+                            <button type="submit" class="btn btn-danger btn-lg">
+                                ✓ Payer {{ montant_caution|floatformat:0 }} FCFA
+                            </button>
+                            <a href="{% url 'client_dashboard' %}" class="btn btn-outline-secondary">
+                                ← Retourner au tableau de bord
+                            </a>
+                        </div>
+                    </form>
+
+                    <div class="alert alert-light mt-4 small">
+                        <strong>ℹ️ Informations :</strong><br>
+                        Le paiement sera enregistré et en attente de validation par un commercial.
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

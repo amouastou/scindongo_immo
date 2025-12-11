@@ -15,6 +15,7 @@ from accounts.permissions import (
     IsReservationOwnerOrAdminOrCommercial,
     IsClientOwnerOrAdminOrCommercial,
 )
+from accounts.utils import is_admin_user
 
 from .serializers import (
     ProgrammeSerializer,
@@ -33,6 +34,7 @@ from .serializers import (
     BanquePartenaireSerializer,
     FinancementSerializer,
     EcheanceSerializer,
+    EcheanceLoyerSerializer,
     ContratSerializer,
     PaiementSerializer,
 )
@@ -56,6 +58,7 @@ from sales.models import (
     BanquePartenaire,
     Financement,
     Echeance,
+    EcheanceLoyer,
     Contrat,
     Paiement,
 )
@@ -75,6 +78,20 @@ class ProgrammeViewSet(viewsets.ModelViewSet):
     search_fields = ["nom", "description", "adresse"]
     ordering_fields = ["nom", "created_at"]
     ordering = ["-created_at"]
+    
+    def get_queryset(self):
+        user = self.request.user
+        qs = super().get_queryset()
+        
+        # 🔒 ADMIN voit tout, COMMERCIAL seulement ses programmes
+        if not user.is_authenticated:
+            return qs  # Lecture publique autorisée
+        
+        if is_admin_user(user):
+            return qs
+        
+        # Commercial ne voit que ses programmes
+        return qs.filter(contact_commercial=user)
 
 
 class UniteViewSet(viewsets.ModelViewSet):
@@ -86,6 +103,20 @@ class UniteViewSet(viewsets.ModelViewSet):
     search_fields = ["reference_lot"]
     ordering_fields = ["prix_ttc", "reference_lot", "created_at"]
     ordering = ["reference_lot"]
+    
+    def get_queryset(self):
+        user = self.request.user
+        qs = super().get_queryset()
+        
+        # 🔒 ADMIN voit tout, COMMERCIAL seulement ses unités
+        if not user.is_authenticated:
+            return qs  # Lecture publique autorisée
+        
+        if is_admin_user(user):
+            return qs
+        
+        # Commercial ne voit que les unités de ses programmes
+        return qs.filter(programme__contact_commercial=user)
 
 
 class TypeBienViewSet(viewsets.ModelViewSet):
@@ -107,6 +138,11 @@ class EtapeChantierViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         qs = super().get_queryset()
+        user = self.request.user
+
+        if user.is_authenticated and getattr(user, "is_commercial", False) and not is_admin_user(user):
+            qs = qs.filter(programme__contact_commercial=user)
+
         programme_id = self.request.query_params.get("programme")
         if programme_id:
             qs = qs.filter(programme_id=programme_id)
@@ -120,6 +156,11 @@ class AvancementChantierViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         qs = super().get_queryset()
+        user = self.request.user
+
+        if user.is_authenticated and getattr(user, "is_commercial", False) and not is_admin_user(user):
+            qs = qs.filter(etape__programme__contact_commercial=user)
+
         programme_id = self.request.query_params.get("programme")
         etape_id = self.request.query_params.get("etape")
 
@@ -138,6 +179,11 @@ class PhotoChantierViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         qs = super().get_queryset()
+        user = self.request.user
+
+        if user.is_authenticated and getattr(user, "is_commercial", False) and not is_admin_user(user):
+            qs = qs.filter(avancement__etape__programme__contact_commercial=user)
+
         avancement_id = self.request.query_params.get("avancement")
         if avancement_id:
             qs = qs.filter(avancement_id=avancement_id)
@@ -172,11 +218,17 @@ class AvancementChantierUniteViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         user = self.request.user
         
-        # Admin et Commercial : toutes les avancements
-        if user.is_admin_scindongo or user.is_commercial:
-            return AvancementChantierUnite.objects.select_related(
-                'unite', 'unite__programme', 'reservation'
-            ).all()
+        qs = AvancementChantierUnite.objects.select_related(
+            'unite', 'unite__programme', 'reservation'
+        )
+
+        # Admin : toutes les avancées
+        if is_admin_user(user):
+            return qs
+
+        # Commercial : uniquement ses programmes
+        if getattr(user, "is_commercial", False):
+            return qs.filter(unite__programme__contact_commercial=user)
         
         # Client : seulement ses réservations avec contrat signé
         if user.is_client:
@@ -185,14 +237,14 @@ class AvancementChantierUniteViewSet(viewsets.ModelViewSet):
             try:
                 client_profile = ClientModel.objects.get(user=user)
                 # Avancements liés aux réservations du client avec contrat signé
-                return AvancementChantierUnite.objects.filter(
+                return qs.filter(
                     reservation__client=client_profile,
                     reservation__contrat__statut=ContratStatus.SIGNE
-                ).select_related('unite', 'unite__programme', 'reservation')
+                )
             except ClientModel.DoesNotExist:
-                return AvancementChantierUnite.objects.none()
+                return qs.none()
         
-        return AvancementChantierUnite.objects.none()
+        return qs.none()
 
     def get_permissions(self):
         """
@@ -243,11 +295,17 @@ class PhotoChantierUniteViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         user = self.request.user
         
-        # Admin et Commercial : toutes les photos
-        if user.is_admin_scindongo or user.is_commercial:
-            return PhotoChantierUnite.objects.select_related(
-                'avancement', 'avancement__unite', 'avancement__reservation'
-            ).all()
+        qs = PhotoChantierUnite.objects.select_related(
+            'avancement', 'avancement__unite', 'avancement__reservation'
+        )
+
+        # Admin : toutes les photos
+        if is_admin_user(user):
+            return qs
+
+        # Commercial : photos liées à ses programmes
+        if getattr(user, "is_commercial", False):
+            return qs.filter(avancement__unite__programme__contact_commercial=user)
         
         # Client : photos des avancements de ses réservations confirmées
         if user.is_client:
@@ -255,14 +313,14 @@ class PhotoChantierUniteViewSet(viewsets.ModelViewSet):
             from core.choices import ContratStatus
             try:
                 client_profile = ClientModel.objects.get(user=user)
-                return PhotoChantierUnite.objects.filter(
+                return qs.filter(
                     avancement__reservation__client=client_profile,
                     avancement__reservation__contrat__statut=ContratStatus.SIGNE
-                ).select_related('avancement', 'avancement__unite', 'avancement__reservation')
+                )
             except ClientModel.DoesNotExist:
-                return PhotoChantierUnite.objects.none()
+                return qs.none()
         
-        return PhotoChantierUnite.objects.none()
+        return qs.none()
 
     def get_serializer_class(self):
         return PhotoChantierUniteSerializer
@@ -289,14 +347,19 @@ class ClientViewSet(viewsets.ModelViewSet):
     filterset_fields = ["kyc_statut"]
 
     def get_queryset(self):
-        """Admin et Commercial voient tous les clients. Client ne voit que son propre profil."""
+        """Admin voit tout. Commercial voit ses clients. Client ne voit que son propre profil."""
         qs = super().get_queryset()
         user = self.request.user
         
-        if getattr(user, "is_admin_scindongo", False) or getattr(user, "is_commercial", False):
+        # ADMIN voit tout
+        if is_admin_user(user):
             return qs
         
-        # Client : ne voir que son propre profil
+        # COMMERCIAL ne voit que les clients ayant réservé sur SES programmes
+        if getattr(user, "is_commercial", False):
+            return qs.filter(reservations__unite__programme__contact_commercial=user).distinct()
+        
+        # CLIENT : ne voir que son propre profil
         client_profile = getattr(user, "client_profile", None)
         if client_profile:
             return qs.filter(pk=client_profile.pk)
@@ -324,8 +387,11 @@ class ReservationDocumentViewSet(viewsets.ModelViewSet):
         qs = super().get_queryset()
         user = self.request.user
         
-        if getattr(user, "is_admin_scindongo", False) or getattr(user, "is_commercial", False):
+        if is_admin_user(user):
             return qs
+
+        if getattr(user, "is_commercial", False):
+            return qs.filter(reservation__unite__programme__contact_commercial=user)
         
         # Client : ne voir que les documents de SES réservations
         client_profile = getattr(user, "client_profile", None)
@@ -352,14 +418,19 @@ class ReservationViewSet(viewsets.ModelViewSet):
     ordering = ["-date_reservation"]
 
     def get_queryset(self):
-        """Admin/Commercial voient tout. Client ne voit que SES réservations."""
+        """Admin/Commercial voient leurs réservations. Client ne voit que SES réservations."""
         qs = super().get_queryset()
         user = self.request.user
         
-        if getattr(user, "is_admin_scindongo", False) or getattr(user, "is_commercial", False):
+        # ADMIN voit tout
+        if is_admin_user(user):
             return qs
         
-        # Client : ne voir que ses réservations
+        # COMMERCIAL ne voit que les réservations de SES programmes
+        if getattr(user, "is_commercial", False):
+            return qs.filter(unite__programme__contact_commercial=user)
+        
+        # CLIENT : ne voir que ses réservations
         client_profile = getattr(user, "client_profile", None)
         if client_profile:
             return qs.filter(client=client_profile)
@@ -376,7 +447,7 @@ class ReservationViewSet(viewsets.ModelViewSet):
         reservation = self.get_object()
         
         # Vérifier les permissions : seul COMMERCIAL ou ADMIN peut annuler
-        is_admin = getattr(request.user, "is_admin_scindongo", False) or request.user.is_staff
+        is_admin = is_admin_user(request.user)
         is_commercial = getattr(request.user, "is_commercial", False)
         
         if not (is_admin or is_commercial):
@@ -435,7 +506,7 @@ class ReservationViewSet(viewsets.ModelViewSet):
         reservation = self.get_object()
         
         # Vérifier les permissions : seul COMMERCIAL ou ADMIN peut supprimer
-        is_admin = getattr(request.user, "is_admin_scindongo", False) or request.user.is_staff
+        is_admin = is_admin_user(request.user)
         is_commercial = getattr(request.user, "is_commercial", False)
         
         if not (is_admin or is_commercial):
@@ -511,14 +582,19 @@ class FinancementViewSet(viewsets.ModelViewSet):
     ordering_fields = ["created_at", "montant"]
 
     def get_queryset(self):
-        """Admin/Commercial voient tout. Client voit SES financements."""
+        """Admin voit tout. Commercial voit ses financements. Client voit SES financements."""
         qs = super().get_queryset()
         user = self.request.user
         
-        if getattr(user, "is_admin_scindongo", False) or getattr(user, "is_commercial", False):
+        # ADMIN voit tout
+        if is_admin_user(user):
             return qs
         
-        # Client : ne voir que ses financements
+        # COMMERCIAL ne voit que les financements de SES programmes
+        if getattr(user, "is_commercial", False):
+            return qs.filter(reservation__unite__programme__contact_commercial=user)
+        
+        # CLIENT : ne voir que ses financements
         client_profile = getattr(user, "client_profile", None)
         if client_profile:
             return qs.filter(reservation__client=client_profile)
@@ -586,14 +662,19 @@ class EcheanceViewSet(viewsets.ModelViewSet):
     ordering_fields = ["date_echeance"]
 
     def get_queryset(self):
-        """Admin/Commercial voient tout. Client voit SES échéances."""
+        """Admin voit tout. Commercial voit ses échéances. Client voit SES échéances."""
         qs = super().get_queryset()
         user = self.request.user
         
-        if getattr(user, "is_admin_scindongo", False) or getattr(user, "is_commercial", False):
+        # ADMIN voit tout
+        if is_admin_user(user):
             return qs
         
-        # Client : ne voir que ses échéances
+        # COMMERCIAL ne voit que les échéances de SES programmes
+        if getattr(user, "is_commercial", False):
+            return qs.filter(financement__reservation__unite__programme__contact_commercial=user)
+        
+        # CLIENT : ne voir que ses échéances
         client_profile = getattr(user, "client_profile", None)
         if client_profile:
             return qs.filter(financement__reservation__client=client_profile)
@@ -615,14 +696,19 @@ class ContratViewSet(viewsets.ModelViewSet):
     ordering_fields = ["created_at", "signe_le"]
 
     def get_queryset(self):
-        """Admin/Commercial voient tout. Client voit SES contrats."""
+        """Admin voit tout. Commercial voit ses contrats. Client voit SES contrats."""
         qs = super().get_queryset()
         user = self.request.user
         
-        if getattr(user, "is_admin_scindongo", False) or getattr(user, "is_commercial", False):
+        # ADMIN voit tout
+        if is_admin_user(user):
             return qs
         
-        # Client : ne voir que ses contrats
+        # COMMERCIAL ne voit que les contrats de SES programmes
+        if getattr(user, "is_commercial", False):
+            return qs.filter(reservation__unite__programme__contact_commercial=user)
+        
+        # CLIENT : ne voir que ses contrats
         client_profile = getattr(user, "client_profile", None)
         if client_profile:
             return qs.filter(reservation__client=client_profile)
@@ -639,14 +725,54 @@ class PaiementViewSet(viewsets.ModelViewSet):
     ordering_fields = ["date_paiement", "montant"]
 
     def get_queryset(self):
-        """Admin/Commercial voient tout. Client voit SES paiements."""
+        """Admin voit tout. Commercial voit ses paiements. Client voit SES paiements."""
         qs = super().get_queryset()
         user = self.request.user
         
-        if getattr(user, "is_admin_scindongo", False) or getattr(user, "is_commercial", False):
+        # ADMIN voit tout
+        if is_admin_user(user):
             return qs
         
-        # Client : ne voir que ses paiements
+        # COMMERCIAL ne voit que les paiements de SES programmes
+        if getattr(user, "is_commercial", False):
+            return qs.filter(reservation__unite__programme__contact_commercial=user)
+        
+        # CLIENT : ne voir que ses paiements
+        client_profile = getattr(user, "client_profile", None)
+        if client_profile:
+            return qs.filter(reservation__client=client_profile)
+        
+        return qs.none()
+
+
+class EcheanceLoyerViewSet(viewsets.ModelViewSet):
+    """ViewSet pour les échéances de loyer (location)."""
+    queryset = EcheanceLoyer.objects.select_related(
+        'reservation', 
+        'reservation__client', 
+        'reservation__unite', 
+        'paiement'
+    ).all()
+    serializer_class = EcheanceLoyerSerializer
+    permission_classes = [IsAuthenticated, IsAdminOrCommercial]
+    filter_backends = [DjangoFilterBackend, filters.OrderingFilter]
+    filterset_fields = ["statut_paiement", "reservation__client", "numero_mois"]
+    ordering_fields = ["date_echeance", "montant", "numero_mois"]
+
+    def get_queryset(self):
+        """Admin voit tout. Commercial voit les échéances de ses programmes. Client voit SES échéances."""
+        qs = super().get_queryset()
+        user = self.request.user
+        
+        # ADMIN voit tout
+        if is_admin_user(user):
+            return qs
+        
+        # COMMERCIAL ne voit que les échéances de SES programmes
+        if getattr(user, "is_commercial", False):
+            return qs.filter(reservation__unite__programme__contact_commercial=user)
+        
+        # CLIENT : ne voir que ses échéances
         client_profile = getattr(user, "client_profile", None)
         if client_profile:
             return qs.filter(reservation__client=client_profile)

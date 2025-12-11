@@ -162,7 +162,103 @@
   <!-- Onglet Paiements -->
   <div class="tab-pane fade" id="paiements-content" role="tabpanel">
     <h3 class="mb-3">Mes paiements</h3>
-    {% if paiements %}
+      {% if cautions_en_attente %}
+        <div class="mb-5">
+          <h5 class="mb-3">
+            <i class="fas fa-shield-alt"></i> Caution à Payer
+            <span class="badge bg-danger">{{ cautions_en_attente|length }}</span>
+          </h5>
+          <div class="table-responsive">
+            <table class="table table-hover table-bordered">
+              <thead class="table-light">
+                <tr>
+                  <th>Bien</th>
+                  <th>Programme</th>
+                  <th>Montant Caution</th>
+                  <th>Action</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for caution in cautions_en_attente %}
+                  <tr>
+                    <td>
+                      <strong>{{ caution.reservation.unite.reference }}</strong><br>
+                      <small class="text-muted">Réservation du {{ caution.reservation.created_at|date:"d/m/Y" }}</small>
+                    </td>
+                    <td>{{ caution.reservation.unite.programme.nom }}</td>
+                    <td class="fw-bold text-danger">{{ caution.montant|floatformat:0 }} FCFA</td>
+                    <td>
+                      <a href="{% url 'client_caution_paiement' caution.reservation.id %}" class="btn btn-sm btn-danger">
+                        🔐 Payer la caution
+                      </a>
+                    </td>
+                  </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      {% endif %}
+      <!-- 📅 Échéances à Payer (Locations) -->
+      {% if echeances_en_attente %}
+        <div class="mb-5">
+          <h5 class="mb-3">
+            <i class="fas fa-calendar-alt"></i> Mes Échéances à Payer
+            <span class="badge bg-warning">{{ echeances_en_attente.count }}</span>
+          </h5>
+          <div class="table-responsive">
+            <table class="table table-hover table-bordered">
+              <thead class="table-light">
+                <tr>
+                  <th>Bien</th>
+                  <th>Mois</th>
+                  <th>Montant</th>
+                  <th>Échéance</th>
+                  <th>Statut</th>
+                  <th>Action</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for ech in echeances_en_attente %}
+                  <tr>
+                    <td>
+                      <strong>{{ ech.reservation.unite.reference }}</strong><br>
+                      <small class="text-muted">{{ ech.reservation.unite.programme.nom }}</small>
+                    </td>
+                    <td>Mois {{ ech.numero_mois }}</td>
+                    <td class="fw-bold text-primary">{{ ech.montant|floatformat:0 }} FCFA</td>
+                    <td>{{ ech.date_echeance|date:"d/m/Y" }}</td>
+                    <td>
+                      {% if ech.is_payee %}
+                        <span class="badge bg-success">✓ Payée</span>
+                      {% elif ech.is_en_retard %}
+                        <span class="badge bg-danger">❌ En Retard</span>
+                      {% else %}
+                        <span class="badge bg-warning">⏳ En Attente</span>
+                      {% endif %}
+                    </td>
+                    <td>
+                      {% if not ech.is_payee %}
+                        <a href="{% url 'client_echeance_paiement' ech.id %}" class="btn btn-sm btn-primary">
+                          💳 Payer
+                        </a>
+                      {% else %}
+                        <span class="text-muted small">Payée</span>
+                      {% endif %}
+                    </td>
+                  </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      {% endif %}
+    
+      <!-- 💳 Historique Paiements -->
+      <h5 class="mb-3">
+        <i class="fas fa-history"></i> Historique Paiements
+      </h5>
+      {% if paiements %}
       <div class="table-responsive">
         <table class="table table-hover">
           <thead class="table-light">

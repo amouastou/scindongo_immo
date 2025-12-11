@@ -1,0 +1,17 @@
+[
+  {
+    "id": 1,
+    "title": "Revoir vues Django pour filtrage role",
+    "status": "done"
+  },
+  {
+    "id": 2,
+    "title": "Ajuster ViewSets API pour restreindre commerciaux",
+    "status": "done"
+  },
+  {
+    "id": 3,
+    "title": "Vérifications (manage.py check/tests)",
+    "status": "done"
+  }
+]

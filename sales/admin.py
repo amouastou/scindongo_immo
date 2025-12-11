@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Client, Reservation, ReservationDocument, Contrat, Paiement, BanquePartenaire, Financement, Echeance
+from .models import Client, Reservation, ReservationDocument, Contrat, Paiement, BanquePartenaire, Financement, Echeance, EcheanceLoyer
 
 
 class ReservationDocumentInline(admin.TabularInline):
@@ -19,11 +19,12 @@ class ClientAdmin(admin.ModelAdmin):
 
 @admin.register(Reservation)
 class ReservationAdmin(admin.ModelAdmin):
-    list_display = ("client", "unite", "date_reservation", "acompte", "statut", "created_at")
+    list_display = ("client", "unite", "date_reservation", "acompte", "duree_bail_mois", "statut", "created_at")
     list_filter = ("statut", "date_reservation")
     search_fields = ("client__nom", "client__prenom", "unite__reference_lot")
     autocomplete_fields = ("client", "unite")
     inlines = [ReservationDocumentInline]
+    readonly_fields = ("created_at", "updated_at")
 
 
 @admin.register(ReservationDocument)
@@ -51,9 +52,10 @@ class ContratAdmin(admin.ModelAdmin):
 
 @admin.register(Paiement)
 class PaiementAdmin(admin.ModelAdmin):
-    list_display = ("reservation", "montant", "date_paiement", "moyen", "source", "statut", "created_at")
-    list_filter = ("statut", "moyen", "source")
+    list_display = ("reservation", "montant", "type_paiement", "date_paiement", "moyen", "statut", "created_at")
+    list_filter = ("statut", "type_paiement", "moyen", "date_paiement")
     search_fields = ("reservation__client__nom", "reservation__client__prenom")
+    readonly_fields = ("date_paiement", "created_at", "updated_at")
 
 
 @admin.register(BanquePartenaire)
@@ -73,3 +75,15 @@ class FinancementAdmin(admin.ModelAdmin):
 class EcheanceAdmin(admin.ModelAdmin):
     list_display = ("financement", "date_echeance", "montant_total", "statut", "created_at")
     list_filter = ("statut", "date_echeance")
+
+
+@admin.register(EcheanceLoyer)
+class EchéanceLoyerAdmin(admin.ModelAdmin):
+    list_display = ("reservation", "numero_mois", "montant", "date_echeance", "statut_paiement", "is_payee", "created_at")
+    list_filter = ("statut_paiement", "date_echeance", "numero_mois")
+    search_fields = ("reservation__client__user__email", "reservation__unite__reference_lot")
+    readonly_fields = ("created_at", "updated_at")
+    
+    def is_payee(self, obj):
+        return "✓" if obj.is_payee() else "✗"
+    is_payee.short_description = "Payée ?"

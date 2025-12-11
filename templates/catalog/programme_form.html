@@ -111,6 +111,21 @@
           </div>
 
           <div class="mb-3">
+            <label for="id_type_operation" class="form-label fw-bold">Type d'opération *</label>
+            <select name="type_operation" class="form-control" id="id_type_operation" required>
+              <option value="vente" {% if form.type_operation.value == 'vente' or not form.type_operation.value %}selected{% endif %}>🏠 Vente</option>
+              <option value="location" {% if form.type_operation.value == 'location' %}selected{% endif %}>🏘️ Location</option>
+            </select>
+            {% if form.type_operation.errors %}
+              <div class="text-danger small">{{ form.type_operation.errors }}</div>
+            {% endif %}
+            <small class="form-text text-muted">
+              <strong>Vente :</strong> Achat définitif du bien | 
+              <strong>Location :</strong> Bail mensuel avec échéances de loyer
+            </small>
+          </div>
+
+          <div class="mb-3">
             <label for="id_date_livraison_prevue" class="form-label fw-bold">Date de livraison prévue</label>
             <input type="date" name="date_livraison_prevue" value="{{ form.date_livraison_prevue.value|date:'Y-m-d'|default:'' }}" class="form-control" id="id_date_livraison_prevue">
             {% if form.date_livraison_prevue.errors %}

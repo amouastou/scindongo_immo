@@ -1,0 +1,110 @@
+{% extends 'base.html' %}
+{% load static %}
+{% load l10n %}
+
+{% block title %}Payer Échéance de Loyer{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h3 class="mb-0">
+                        💳 Payer Échéance de Loyer
+                    </h3>
+                </div>
+                <div class="card-body">
+                    <div class="alert alert-info mb-4">
+                        <strong>📍 Bien :</strong> {{ echeance.reservation.unite.reference }} - {{ echeance.reservation.unite.programme.nom }}<br>
+                        <strong>📅 Mois :</strong> Mois {{ echeance.numero_mois }}<br>
+                        <strong>💰 Montant à Payer :</strong> {{ echeance.montant|floatformat:0 }} FCFA<br>
+                        <strong>📆 Échéance :</strong> {{ echeance.date_echeance|date:"d/m/Y" }}<br>
+                        <strong>✓ Statut :</strong> 
+                        {% if echeance.is_payee %}
+                            <span class="badge bg-success">Payée</span>
+                        {% elif echeance.is_en_retard %}
+                            <span class="badge bg-danger">En Retard</span>
+                        {% else %}
+                            <span class="badge bg-warning">En Attente</span>
+                        {% endif %}
+                    </div>
+
+                    <form method="post" class="needs-validation">
+                        {% csrf_token %}
+                        
+                        <!-- Messages Django -->
+                        {% if messages %}
+                            {% for message in messages %}
+                                <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                                    {{ message }}
+                                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                                </div>
+                            {% endfor %}
+                        {% endif %}
+                        
+                        <div class="mb-3">
+                            <label for="montant_display" class="form-label">Montant du Paiement</label>
+                            <input type="text" 
+                                   id="montant_display" 
+                                   class="form-control" 
+                                   value="{{ echeance.montant|floatformat:2 }} FCFA"
+                                   disabled>
+                            <!-- Champ caché pour soumettre la valeur numérique -->
+                            <input type="hidden" 
+                                   name="montant" 
+                                   value="{{ echeance.montant|unlocalize }}">
+                            <small class="form-text text-muted">Montant fixe de l'échéance</small>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="moyen" class="form-label">Moyen de Paiement</label>
+                            <select name="moyen" id="moyen" class="form-select" required>
+                                <option value="">--- Choisir ---</option>
+                                <option value="virement" {% if form.data.moyen == 'virement' %}selected{% endif %}>🏦 Virement</option>
+                                <option value="cheque" {% if form.data.moyen == 'cheque' %}selected{% endif %}>📋 Chèque</option>
+                                <option value="espece" {% if form.data.moyen == 'espece' %}selected{% endif %}>💵 Espèce</option>
+                                <option value="carte" {% if form.data.moyen == 'carte' %}selected{% endif %}>💳 Carte</option>
+                            </select>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="source" class="form-label">Référence de Paiement</label>
+                            <input type="text" 
+                                   id="source" 
+                                   name="source" 
+                                   class="form-control" 
+                                   placeholder="Numéro de compte, numéro de chèque, etc."
+                    value="{{ form.data.source|default:'' }}"
+                    required>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="notes" class="form-label">Notes (Optionnel)</label>
+                            <textarea name="notes" 
+                                      id="notes" 
+                                      class="form-control" 
+                                      rows="3"
+                                      placeholder="Remarques supplémentaires...">{{ form.data.notes|default:'' }}</textarea>
+                        </div>
+
+                        <div class="d-grid gap-2">
+                            <button type="submit" class="btn btn-primary btn-lg">
+                                ✓ Payer {{ echeance.montant|floatformat:0 }} FCFA
+                            </button>
+                            <a href="{% url 'client_dashboard' %}" class="btn btn-outline-secondary">
+                                ← Retourner au tableau de bord
+                            </a>
+                        </div>
+                    </form>
+
+                    <div class="alert alert-light mt-4 small">
+                        <strong>ℹ️ Informations :</strong><br>
+                        Le paiement sera enregistré et en attente de validation par un commercial.
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
