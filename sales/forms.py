@@ -139,10 +139,10 @@ class ContratForm(forms.ModelForm):
 
 
 class FinancingRequestForm(forms.ModelForm):
-    """Formulaire pour le client demander un financement APRÈS confirmation"""
+    """Formulaire pour uploader le justificatif de financement bancaire."""
     class Meta:
         model = Financement
-        fields = ['banque', 'montant']
+        fields = ['banque', 'montant', 'justificatif_financement']
         widgets = {
             'banque': forms.Select(attrs={'class': 'form-select'}),
             'montant': forms.NumberInput(attrs={
@@ -151,11 +151,35 @@ class FinancingRequestForm(forms.ModelForm):
                 'min': '0',
                 'placeholder': 'Montant souhaité'
             }),
+            'justificatif_financement': forms.FileInput(attrs={
+                'class': 'form-control',
+                'accept': '.pdf,.jpg,.jpeg,.png',
+                'required': True,
+            }),
         }
         labels = {
             'banque': 'Banque partenaire',
             'montant': 'Montant de financement (FCFA)'
+            ,
+            'justificatif_financement': 'Justificatif de financement bancaire'
         }
+
+    def clean_justificatif_financement(self):
+        fichier = self.cleaned_data.get('justificatif_financement')
+
+        if not fichier:
+            raise forms.ValidationError('Fichier requis')
+
+        # Vérifier taille (max 5MB)
+        if fichier.size > 5 * 1024 * 1024:
+            raise forms.ValidationError('Fichier trop volumineux (maximum 5MB)')
+
+        # Vérifier format
+        allowed_formats = ['application/pdf', 'image/jpeg', 'image/png']
+        if getattr(fichier, 'content_type', None) not in allowed_formats:
+            raise forms.ValidationError('Format non autorisé. Accepté: PDF, JPG, PNG')
+
+        return fichier
 
 
 class ReservationDocumentForm(forms.ModelForm):

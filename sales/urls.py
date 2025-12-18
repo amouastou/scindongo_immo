@@ -8,10 +8,8 @@ from .views import (
     ReservationDocumentModifyView,
     CommercialDocumentRejectView,
     CommercialDocumentValidateView,
-    FinancementDocumentsUploadView,
-    FinancementDocumentModifyView,
-    CommercialFinancingDocumentRejectView,
-    CommercialFinancingDocumentValidateView,
+    # Legacy financement docs views intentionally not exposed via URLs.
+    # (Model/table FinancementDocument is kept, but the multi-doc workflow is disabled.)
     StartReservationView,
     ReservationSuccessView,
     ClientReservationDetailView,
@@ -83,11 +81,8 @@ urlpatterns = [
     path('commercial/document/<uuid:document_id>/reject/', CommercialDocumentRejectView.as_view(), name='commercial_document_reject'),
     path('commercial/document/<uuid:document_id>/validate/', CommercialDocumentValidateView.as_view(), name='commercial_document_validate'),
     
-    # Documents financement
-    path('financement/<uuid:financement_id>/documents/', FinancementDocumentsUploadView.as_view(), name='financing_documents_upload'),
-    path('financement/document/<uuid:document_id>/modify/', FinancementDocumentModifyView.as_view(), name='financing_document_modify'),
-    path('commercial/financement/document/<uuid:document_id>/reject/', CommercialFinancingDocumentRejectView.as_view(), name='commercial_financing_document_reject'),
-    path('commercial/financement/document/<uuid:document_id>/validate/', CommercialFinancingDocumentValidateView.as_view(), name='commercial_financing_document_validate'),
+    # Documents financement (legacy) — conservé en base mais désactivé côté UI/URLs
+    # path('financement/<uuid:financement_id>/documents/', FinancementDocumentsUploadView.as_view(), name='financing_documents_upload'),
     
     path('reserver/<uuid:unite_id>/', start_reservation_or_auth, name='reserve_unite'),
     path('reservation/<uuid:unite_id>/demarrer/', StartReservationView.as_view(), name='start_reservation'),
@@ -109,9 +104,9 @@ urlpatterns = [
     path('commercial/reservations/<uuid:reservation_id>/', CommercialReservationDetailView.as_view(), name='commercial_reservation_detail'),
     path('commercial/reservations/<uuid:reservation_id>/confirmer/', CommercialReservationConfirmView.as_view(), name='commercial_reservation_confirm'),
     
-    # Commercial actions - Financements
-    path('commercial/reservations/<uuid:reservation_id>/financement/creer/', CommercialFinancementCreateView.as_view(), name='commercial_financement_create'),
-    path('commercial/reservations/<uuid:reservation_id>/financement/modifier/', CommercialFinancementUpdateView.as_view(), name='commercial_financement_update'),
+    # Commercial actions - Financements (nouveau workflow justificatif unique)
+    path('commercial/financements/', CommercialFinancingListView.as_view(), name='commercial_financing_list'),
+    path('commercial/financements/<uuid:financement_id>/', CommercialFinancingDetailView.as_view(), name='commercial_financing_detail'),
     
     # Commercial actions - Contrats
     path('commercial/reservations/<uuid:reservation_id>/contrat/creer/', CommercialContratCreateView.as_view(), name='commercial_contrat_create'),

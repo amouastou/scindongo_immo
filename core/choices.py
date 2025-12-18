@@ -67,11 +67,9 @@ class PaiementType(models.TextChoices):
 
 # ========== FINANCEMENT ==========
 class FinancementStatus(models.TextChoices):
-    SOUMIS = "soumis", "Soumis"
-    EN_ETUDE = "en_etude", "En étude"
-    ACCEPTE = "accepte", "Accepté"
-    REFUSE = "refuse", "Refusé"
-    CLOS = "clos", "Clos"
+    JUSTIFICATIF_SOUMIS = "justificatif_soumis", "Justificatif soumis"
+    ACCEPTE = "accepte", "Financement accepté"
+    REFUSE = "refuse", "Financement rejeté"
 
 
 # ========== MOYENS DE PAIEMENT ==========
@@ -87,3 +85,35 @@ class UserRole(models.TextChoices):
     CLIENT = "CLIENT", "Client"
     COMMERCIAL = "COMMERCIAL", "Commercial"
     ADMIN = "ADMIN", "Administrateur"
+
+
+# ==============================
+# AUDIT: Catégories d'actions
+# ==============================
+
+class AuditActionCategory(models.TextChoices):
+    """Catégories d'actions pour l'audit"""
+    AUTHENTICATION = "authentication", "Authentification"
+    AUTHORIZATION = "authorization", "Autorisation"
+    DATA_CREATE = "data_create", "Création de données"
+    DATA_READ = "data_read", "Lecture de données"
+    DATA_UPDATE = "data_update", "Mise à jour de données"
+    DATA_DELETE = "data_delete", "Suppression de données"
+    BUSINESS_LOGIC = "business_logic", "Logique métier"
+    FILE_UPLOAD = "file_upload", "Upload de fichier"
+    FILE_DOWNLOAD = "file_download", "Téléchargement de fichier"
+    PAYMENT = "payment", "Paiement"
+    CONTRACT = "contract", "Contrat"
+    RESERVATION = "reservation", "Réservation"
+    FINANCING = "financing", "Financement"
+    DOCUMENT = "document", "Document"
+    USER_MANAGEMENT = "user_management", "Gestion utilisateur"
+    SYSTEM = "system", "Système"
+
+
+class AuditActionResult(models.TextChoices):
+    """Résultat d'une action auditée"""
+    SUCCESS = "success", "Succès"
+    FAILURE = "failure", "Échec"
+    PARTIAL = "partial", "Partiel"
+    PENDING = "pending", "En attente"

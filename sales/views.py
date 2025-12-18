@@ -39,7 +39,7 @@ from .services.signature_service import SignatureService
 from .services.payment_receipt_service import generate_payment_receipt
 from .services.contract_pdf_service import generate_contract_pdf
 from core.utils import audit_log
-from core.choices import PaiementStatus, PaiementType, UniteStatus, OperationType, ContratStatus
+from core.choices import PaiementStatus, PaiementType, UniteStatus, OperationType, ContratStatus, FinancementStatus
 from django.db.models import Sum, Count, Q
 from dateutil.relativedelta import relativedelta
 
@@ -924,8 +924,8 @@ class AdminDashboardView(RoleRequiredMixin, TemplateView):
         
         # Financements
         ctx["financements_count"] = Financement.objects.count()
-        ctx["financements_acceptes"] = Financement.objects.filter(statut="accepte").count()
-        ctx["financements_en_etude"] = Financement.objects.filter(statut="en_etude").count()
+        ctx["financements_acceptes"] = Financement.objects.filter(statut=FinancementStatus.ACCEPTE).count()
+        ctx["financements_justificatif_soumis"] = Financement.objects.filter(statut=FinancementStatus.JUSTIFICATIF_SOUMIS).count()
         
         # Contrats et banques
         ctx["contrats_count"] = Contrat.objects.count()
@@ -1718,10 +1718,10 @@ class CommercialFinancementCreateView(RoleRequiredMixin, CommercialReservationAc
         
         financement = form.save(commit=False)
         financement.reservation = reservation
-        financement.statut = "soumis"
+        financement.statut = FinancementStatus.JUSTIFICATIF_SOUMIS
         financement.save()
         
-        messages.success(self.request, "Financement créé et soumis à la banque")
+        messages.success(self.request, "Financement créé.")
         audit_log(self.request.user, financement, "financement_create", 
                  {"banque": financement.banque.nom, "montant": str(financement.montant)}, self.request)
         
@@ -2275,7 +2275,7 @@ class ClientDirectPaymentView(RoleRequiredMixin, TemplateView):
 
 # ÉTAPE 7: Financing Request View
 class ClientFinancingRequestView(RoleRequiredMixin, TemplateView):
-    """ÉTAPE 7: Client demande un financement bancaire (VENTE UNIQUEMENT)"""
+    """Client soumet directement le justificatif de financement bancaire (VENTE uniquement)."""
     required_roles = ["CLIENT"]
     template_name = 'sales/client_financing_request.html'
     
@@ -2348,57 +2348,62 @@ class ClientFinancingRequestView(RoleRequiredMixin, TemplateView):
         except Reservation.DoesNotExist:
             raise Http404("Réservation introuvable")
         
-        form = FinancingRequestForm(request.POST)
+        form = FinancingRequestForm(request.POST, request.FILES)
         if not form.is_valid():
             context = self.get_context_data(reservation_id=reservation_id)
             context['form'] = form
             return self.render_to_response(context)
         
-        financement = form.save(commit=False)
-        financement.reservation = reservation
-        financement.statut = 'soumis'  # Initial status
-        
+        # Empêcher la création d'un financement en double pour la même réservation
+        financement, created = Financement.objects.get_or_create(
+            reservation=reservation,
+            defaults={
+                'banque': form.cleaned_data['banque'],
+                'montant': form.cleaned_data['montant'],
+                'justificatif_financement': form.cleaned_data['justificatif_financement'],
+                'statut': FinancementStatus.JUSTIFICATIF_SOUMIS,
+            }
+        )
+        if not created:
+            # Mise à jour si déjà existant
+            financement.banque = form.cleaned_data['banque']
+            financement.montant = form.cleaned_data['montant']
+            financement.justificatif_financement = form.cleaned_data['justificatif_financement']
+            financement.statut = FinancementStatus.JUSTIFICATIF_SOUMIS
         # Validation: montant ne peut pas dépasser le montant restant
         prix_total = reservation.unite.prix_ttc
         acompte = reservation.acompte or 0
-        
-        # Soustraire les paiements validés déjà effectués
         paiements_valides = Paiement.objects.filter(
             reservation=reservation,
             statut='valide'
         ).aggregate(total=Sum('montant'))['total'] or 0
-        
         max_amount = prix_total - acompte - paiements_valides
-        
         if financement.montant > max_amount:
             form.add_error('montant', f'Montant maximum : {max_amount} FCFA')
             context = self.get_context_data(reservation_id=reservation_id)
             context['form'] = form
             return self.render_to_response(context)
-        
         financement.save()
         
         # Audit log
         audit_log(
             request.user,
             financement,
-            'financing_request',
+            'financing_justificatif_submitted',
             {
                 'montant': str(financement.montant),
                 'banque': str(financement.banque),
-                'statut': 'soumis'
+                'statut': FinancementStatus.JUSTIFICATIF_SOUMIS
             },
             request
         )
         
         messages.success(
             request,
-            f"✅ Demande de financement de {financement.montant} FCFA soumise ! "
-            "Veuillez maintenant uploader vos documents requis."
+            "✅ Document soumis avec succès."
         )
-        
-        # Rediriger vers l'upload des documents de financement
-        return redirect('financing_documents_upload', financement_id=financement.id)
+
+        return redirect('client_reservation_detail', reservation_id=reservation_id)
 
 
 # ÉTAPE 8: Commercial Payment Validation View
@@ -2575,7 +2580,7 @@ class CommercialFinancingListView(RoleRequiredMixin, TemplateView):
         ctx = super().get_context_data(**kwargs)
         
         # Filtrer par statut
-        statut = self.request.GET.get('statut', 'soumis')
+        statut = self.request.GET.get('statut', FinancementStatus.JUSTIFICATIF_SOUMIS)
         
         if statut == 'all':
             financements = Financement.objects.select_related(
@@ -2591,11 +2596,9 @@ class CommercialFinancingListView(RoleRequiredMixin, TemplateView):
         ctx['financements'] = financements
         ctx['statut_filter'] = statut
         ctx['statuts'] = [
-            ('soumis', '📮 Soumis'),
-            ('en_etude', '📚 En étude'),
-            ('accepte', '✅ Accepté'),
-            ('refuse', '❌ Refusé'),
-            ('clos', '🏁 Clos'),
+            (FinancementStatus.JUSTIFICATIF_SOUMIS, '📄 Justificatif soumis'),
+            (FinancementStatus.ACCEPTE, '✅ Financement accepté'),
+            (FinancementStatus.REFUSE, '❌ Financement rejeté'),
             ('all', 'Tous'),
         ]
         
@@ -2621,24 +2624,9 @@ class CommercialFinancingDetailView(RoleRequiredMixin, TemplateView):
         ctx['unite'] = financement.reservation.unite
         ctx['banque'] = financement.banque
         
-        # Ajouter les documents de financement groupés par type
-        documents = financement.documents.all().order_by('document_type', 'numero_ordre')
-        ctx['documents'] = documents
-        
-        # Compter documents validés, rejetés, en attente
-        ctx['documents_counts'] = {
-            'valide': financement.documents.filter(statut='valide').count(),
-            'rejete': financement.documents.filter(statut='rejete').count(),
-            'en_attente': financement.documents.filter(statut='en_attente').count(),
-            'total': financement.documents.count(),
-        }
-        
-        # Vérifier si tous les documents sont validés
-        ctx['all_documents_validated'] = (
-            ctx['documents_counts']['total'] > 0 and 
-            ctx['documents_counts']['en_attente'] == 0 and 
-            ctx['documents_counts']['rejete'] == 0
-        )
+        # Nouveau workflow: un seul justificatif stocké sur Financement
+        ctx['justificatif'] = financement.justificatif_financement
+        ctx['motif_rejet'] = financement.motif_rejet
         
         return ctx
 
@@ -2648,36 +2636,32 @@ class CommercialFinancingDetailView(RoleRequiredMixin, TemplateView):
         nouveau_statut = request.POST.get('statut')
         ancien_statut = financement.statut
         
-        if nouveau_statut not in ['soumis', 'en_etude', 'accepte', 'refuse', 'clos']:
+        if nouveau_statut not in [FinancementStatus.JUSTIFICATIF_SOUMIS, FinancementStatus.ACCEPTE, FinancementStatus.REFUSE]:
             messages.error(request, "Statut invalide.")
             return redirect('commercial_financing_detail', financement_id=financement_id)
-        
-        # Vérifier que tous les documents sont validés avant de passer en "en_etude" ou "accepte"
-        if nouveau_statut in ['en_etude', 'accepte']:
-            docs_en_attente = financement.documents.filter(statut='en_attente').count()
-            docs_rejetes = financement.documents.filter(statut='rejete').count()
-            docs_total = financement.documents.count()
-            
-            if docs_total == 0:
-                messages.error(request, "❌ Aucun document uploadé. Le client doit d'abord télécharger les documents.")
+
+        # Vérifier que le justificatif est présent avant validation/rejet
+        if nouveau_statut in [FinancementStatus.ACCEPTE, FinancementStatus.REFUSE] and not financement.justificatif_financement:
+            messages.error(request, "❌ Aucun justificatif soumis. Le client doit d'abord uploader le document.")
+            return redirect('commercial_financing_detail', financement_id=financement_id)
+
+        # Motif obligatoire si rejet
+        if nouveau_statut == FinancementStatus.REFUSE:
+            motif = request.POST.get('motif_rejet', '').strip()
+            if not motif:
+                messages.error(request, "Motif de rejet obligatoire.")
                 return redirect('commercial_financing_detail', financement_id=financement_id)
-            
-            if docs_en_attente > 0:
-                messages.error(
-                    request, 
-                    f"❌ {docs_en_attente} document(s) en attente de validation. Veuillez d'abord valider ou rejeter tous les documents."
-                )
-                return redirect('commercial_financing_detail', financement_id=financement_id)
-            
-            if docs_rejetes > 0:
-                messages.error(
-                    request, 
-                    f"❌ {docs_rejetes} document(s) rejeté(s). Le client doit corriger et renvoyer les documents."
-                )
-                return redirect('commercial_financing_detail', financement_id=financement_id)
+            financement.motif_rejet = motif
         
         financement.statut = nouveau_statut
-        financement.save(update_fields=['statut'])
+        fields = ['statut']
+        if nouveau_statut == FinancementStatus.REFUSE:
+            fields.append('motif_rejet')
+        else:
+            # Nettoyer le motif si on valide
+            financement.motif_rejet = ''
+            fields.append('motif_rejet')
+        financement.save(update_fields=fields)
         
         # Audit log
         audit_log(
@@ -2690,11 +2674,9 @@ class CommercialFinancingDetailView(RoleRequiredMixin, TemplateView):
         
         # Message de succès avec emoji selon le statut
         messages_dict = {
-            'soumis': '📮 Demande remise en attente de soumission',
-            'en_etude': '📚 Demande en cours d\'étude',
-            'accepte': '✅ Demande acceptée',
-            'refuse': '❌ Demande refusée',
-            'clos': '🏁 Dossier de financement clôturé'
+            FinancementStatus.JUSTIFICATIF_SOUMIS: '📄 Justificatif soumis',
+            FinancementStatus.ACCEPTE: '✅ Financement accepté',
+            FinancementStatus.REFUSE: '❌ Financement rejeté',
         }
         
         messages.success(

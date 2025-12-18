@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vérification Email</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f4f4f4;
+            margin: 0;
+            padding: 0;
+        }
+        .container {
+            max-width: 600px;
+            margin: 40px auto;
+            background-color: #ffffff;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px 20px;
+            text-align: center;
+        }
+        .header h1 {
+            margin: 0;
+            font-size: 28px;
+        }
+        .content {
+            padding: 40px 30px;
+            color: #333;
+        }
+        .content h2 {
+            color: #667eea;
+            margin-top: 0;
+        }
+        .button {
+            display: inline-block;
+            padding: 15px 40px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white !important;
+            text-decoration: none;
+            border-radius: 50px;
+            font-weight: bold;
+            margin: 20px 0;
+            text-align: center;
+        }
+        .button:hover {
+            opacity: 0.9;
+        }
+        .warning {
+            background-color: #fff3cd;
+            border-left: 4px solid #ffc107;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 4px;
+        }
+        .footer {
+            background-color: #f8f9fa;
+            padding: 20px;
+            text-align: center;
+            color: #6c757d;
+            font-size: 14px;
+        }
+        .footer a {
+            color: #667eea;
+            text-decoration: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🏘️ SCINDONGO Immo</h1>
+        </div>
+        <div class="content">
+            <h2>Bienvenue {{ user.get_full_name|default:user.email }} !</h2>
+            <p>Merci de vous être inscrit sur <strong>SCINDONGO Immo</strong>, votre plateforme immobilière de confiance.</p>
+            
+            <p>Pour activer votre compte et commencer à explorer nos programmes immobiliers, veuillez vérifier votre adresse email en cliquant sur le bouton ci-dessous :</p>
+            
+            <div style="text-align: center;">
+                <a href="{{ verification_url }}" class="button">
+                    ✓ Vérifier mon email
+                </a>
+            </div>
+            
+            <p>Ou copiez-collez ce lien dans votre navigateur :</p>
+            <p style="word-break: break-all; background-color: #f8f9fa; padding: 10px; border-radius: 4px; font-family: monospace; font-size: 12px;">
+                {{ verification_url }}
+            </p>
+            
+            <div class="warning">
+                <strong>⚠️ Important :</strong>
+                <ul style="margin: 10px 0;">
+                    <li>Ce lien est valable pendant <strong>{{ expiration_hours }} heures</strong></li>
+                    <li>Si vous n'avez pas créé de compte, ignorez cet email</li>
+                    <li>Ne partagez jamais ce lien avec d'autres personnes</li>
+                </ul>
+            </div>
+            
+            <p>Après vérification, vous pourrez :</p>
+            <ul>
+                <li>✓ Parcourir nos programmes immobiliers</li>
+                <li>✓ Faire des réservations en ligne</li>
+                <li>✓ Suivre vos paiements et contrats</li>
+                <li>✓ Gérer votre profil</li>
+            </ul>
+            
+            <p>À bientôt sur SCINDONGO Immo !</p>
+            <p><strong>L'équipe SCINDONGO</strong></p>
+        </div>
+        <div class="footer">
+            <p>&copy; 2025 SCINDONGO Immo. Tous droits réservés.</p>
+            <p>
+                <a href="{{ site_url }}">Visiter le site</a> | 
+                <a href="mailto:contact@scindongo.com">Contact</a>
+            </p>
+            <p style="font-size: 12px; color: #adb5bd;">
+                Vous recevez cet email car vous vous êtes inscrit sur notre plateforme.
+            </p>
+        </div>
+    </div>
+</body>
+</html>

@@ -12,6 +12,7 @@ from django.db.models import Sum, Count, Q
 from accounts.mixins import RoleRequiredMixin
 from catalog.models import Programme, Unite
 from .models import Reservation, Paiement, Financement, Contrat, Client, BanquePartenaire
+from core.choices import FinancementStatus
 
 
 # ============================================================================
@@ -267,19 +268,19 @@ class FinancingReportView(RoleRequiredMixin, TemplateView):
         
         # Statistiques
         total_montant = financements.aggregate(Sum('montant'))['montant__sum'] or 0
-        total_acceptes = financements.filter(statut='accepte').aggregate(Sum('montant'))['montant__sum'] or 0
-        total_refuses = financements.filter(statut='refuse').aggregate(Sum('montant'))['montant__sum'] or 0
+        total_acceptes = financements.filter(statut=FinancementStatus.ACCEPTE).aggregate(Sum('montant'))['montant__sum'] or 0
+        total_refuses = financements.filter(statut=FinancementStatus.REFUSE).aggregate(Sum('montant'))['montant__sum'] or 0
         
         ctx['total_financements'] = financements.count()
         ctx['total_montant'] = total_montant
-        ctx['acceptes_count'] = financements.filter(statut='accepte').count()
-        ctx['en_etude_count'] = financements.filter(statut='en_etude').count()
-        ctx['refuses_count'] = financements.filter(statut='refuse').count()
+        ctx['acceptes_count'] = financements.filter(statut=FinancementStatus.ACCEPTE).count()
+        ctx['justificatif_soumis_count'] = financements.filter(statut=FinancementStatus.JUSTIFICATIF_SOUMIS).count()
+        ctx['refuses_count'] = financements.filter(statut=FinancementStatus.REFUSE).count()
         ctx['total_acceptes'] = total_acceptes
         ctx['total_refuses'] = total_refuses
         
         if financements.count() > 0:
-            ctx['taux_acceptation'] = round((financements.filter(statut='accepte').count() / financements.count()) * 100, 1)
+            ctx['taux_acceptation'] = round((financements.filter(statut=FinancementStatus.ACCEPTE).count() / financements.count()) * 100, 1)
         else:
             ctx['taux_acceptation'] = 0
         
@@ -290,11 +291,9 @@ class FinancingReportView(RoleRequiredMixin, TemplateView):
         ctx['selected_statut'] = statut
         ctx['selected_banque'] = banque_id
         ctx['statuts'] = [
-            ('soumis', 'Soumis'),
-            ('en_etude', 'En étude'),
-            ('accepte', 'Accepté'),
-            ('refuse', 'Refusé'),
-            ('clos', 'Clos'),
+            (FinancementStatus.JUSTIFICATIF_SOUMIS, 'Justificatif soumis'),
+            (FinancementStatus.ACCEPTE, 'Accepté'),
+            (FinancementStatus.REFUSE, 'Refusé'),
         ]
         
         return ctx

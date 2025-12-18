@@ -10,13 +10,19 @@ from .views import (
     ClientProfileUpdateView,
     ClientChangePasswordView,
     CommercialProfileUpdateView,
-    CommercialChangePasswordView
+    CommercialChangePasswordView,
+    RegistrationPendingView,
+    VerifyEmailView,
+    ResendVerificationEmailView,
 )
 
 urlpatterns = [
     path('login/', UserLoginView.as_view(), name='login'),
     path('logout/', UserLogoutView.as_view(), name='logout'),
     path('register/', RegisterView.as_view(), name='register'),
+    path('registration-pending/', RegistrationPendingView.as_view(), name='registration_pending'),
+    path('verify-email/<str:token>/', VerifyEmailView.as_view(), name='verify_email'),
+    path('resend-verification/', ResendVerificationEmailView.as_view(), name='resend_verification'),
     path('profil/modifier/', ClientProfileUpdateView.as_view(), name='edit_profile'),
     path('profil/changer-mot-de-passe/', ClientChangePasswordView.as_view(), name='change_password'),
     # Routes pour le commercial (profil local)

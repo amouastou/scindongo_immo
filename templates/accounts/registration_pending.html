@@ -1,0 +1,91 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Vérification en attente - SCINDONGO Immo{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <div class="card shadow-lg">
+                <div class="card-body text-center p-5">
+                    <div class="mb-4">
+                        <i class="fas fa-envelope-open-text" style="font-size: 80px; color: #667eea;"></i>
+                    </div>
+                    
+                    <h2 class="mb-3">📧 Vérifiez votre email</h2>
+                    
+                    <div class="alert alert-info">
+                        <strong>Un email de vérification vous a été envoyé !</strong>
+                    </div>
+                    
+                    <p class="lead mb-4">
+                        Pour activer votre compte, veuillez cliquer sur le lien de vérification 
+                        que nous venons d'envoyer à votre adresse email.
+                    </p>
+                    
+                    <div class="text-start mb-4">
+                        <h5>📋 Prochaines étapes :</h5>
+                        <ol>
+                            <li>Consultez votre boîte de réception</li>
+                            <li>Ouvrez l'email de SCINDONGO Immo</li>
+                            <li>Cliquez sur le bouton "Vérifier mon email"</li>
+                            <li>Connectez-vous à votre compte</li>
+                        </ol>
+                    </div>
+                    
+                    <div class="alert alert-warning mb-3">
+                        <i class="fas fa-exclamation-triangle"></i>
+                        <strong>Attention :</strong> Le lien de vérification expire dans <strong>24 heures</strong>.
+                    </div>
+                    
+                    <div class="alert alert-info border-info">
+                        <i class="fas fa-info-circle"></i>
+                        <small>
+                            <strong>💡 Conseil :</strong> Pensez à vérifier votre dossier de courrier indésirable (spam) 
+                            si vous ne voyez pas l'email dans votre boîte de réception principale.
+                        </small>
+                    </div>
+                    
+                    <hr class="my-4">
+                    
+                    <h6 class="mb-3">Vous n'avez pas reçu l'email ?</h6>
+                    
+                    <form method="post" action="{% url 'resend_verification' %}">
+                        {% csrf_token %}
+                        <div class="mb-3">
+                            <input 
+                                type="email" 
+                                name="email" 
+                                class="form-control" 
+                                placeholder="Votre adresse email"
+                                required
+                            >
+                            <small class="text-muted">
+                                Saisissez l'email utilisé lors de l'inscription
+                            </small>
+                        </div>
+                        
+                        <div class="d-grid gap-2">
+                            <button type="submit" class="btn btn-outline-primary">
+                                <i class="fas fa-redo"></i> Renvoyer l'email de vérification
+                            </button>
+                            
+                            <a href="{% url 'home' %}" class="btn btn-secondary">
+                                <i class="fas fa-home"></i> Retour à l'accueil
+                            </a>
+                        </div>
+                    </form>
+                    
+                    <div class="mt-4">
+                        <small class="text-muted">
+                            <i class="fas fa-info-circle"></i>
+                            Pensez à vérifier votre dossier de courrier indésirable (spam)
+                        </small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -288,8 +288,15 @@ class Financement(TimeStampedModel):
     statut = models.CharField(
         max_length=20,
         choices=FinancementStatus.choices,
-        default=FinancementStatus.SOUMIS,
+        default=FinancementStatus.JUSTIFICATIF_SOUMIS,
     )
+    justificatif_financement = models.FileField(
+        upload_to='documents/financements/justificatifs/%Y/%m/',
+        blank=True,
+        null=True,
+        help_text="Justificatif de financement bancaire (PDF/JPG/PNG max 5MB)"
+    )
+    motif_rejet = models.TextField(blank=True, null=True)
 
     class Meta:
         verbose_name = "Financement"
@@ -305,7 +312,7 @@ class Echeance(TimeStampedModel):
     statut = models.CharField(
         max_length=20,
         choices=FinancementStatus.choices,
-        default=FinancementStatus.SOUMIS,
+        default=FinancementStatus.JUSTIFICATIF_SOUMIS,
     )
 
     class Meta:

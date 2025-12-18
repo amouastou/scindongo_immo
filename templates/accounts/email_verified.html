@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Email vérifié - SCINDONGO Immo{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <div class="card shadow-lg border-success">
+                <div class="card-body text-center p-5">
+                    <div class="mb-4">
+                        <i class="fas fa-check-circle" style="font-size: 100px; color: #28a745;"></i>
+                    </div>
+                    
+                    <h2 class="text-success mb-3">✓ Email vérifié !</h2>
+                    
+                    <p class="lead mb-4">
+                        Félicitations ! Votre compte a été activé avec succès.
+                    </p>
+                    
+                    <div class="alert alert-success">
+                        <strong>Vous pouvez maintenant vous connecter et profiter de tous nos services.</strong>
+                    </div>
+                    
+                    <div class="text-start mb-4">
+                        <h5>🎉 Que faire maintenant ?</h5>
+                        <ul>
+                            <li>Connectez-vous à votre compte</li>
+                            <li>Explorez nos programmes immobiliers</li>
+                            <li>Faites une réservation en ligne</li>
+                            <li>Gérez vos paiements et contrats</li>
+                        </ul>
+                    </div>
+                    
+                    <div class="d-grid gap-2">
+                        <a href="{% url 'login' %}" class="btn btn-success btn-lg">
+                            <i class="fas fa-sign-in-alt"></i> Se connecter maintenant
+                        </a>
+                        
+                        <a href="{% url 'home' %}" class="btn btn-outline-secondary">
+                            <i class="fas fa-home"></i> Retour à l'accueil
+                        </a>
+                    </div>
+                    
+                    <div class="mt-4">
+                        <small class="text-muted">
+                            <i class="fas fa-envelope"></i>
+                            Un email de bienvenue vous a été envoyé
+                        </small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

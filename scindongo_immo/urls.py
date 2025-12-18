@@ -18,6 +18,7 @@ urlpatterns = [
     path('comptes/', include('accounts.urls')),
     path('ventes/', include('sales.urls')),
     path('api/', include('api.urls')),
+    path('audit/', include('core.urls')),  # Audit logs
     path("dashboards/admin/", DashboardAdminView.as_view(), name="admin-dashboard"),
 ]
 

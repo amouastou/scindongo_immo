@@ -315,8 +315,8 @@
                                                         <span class="badge bg-info">{{ reservation.financement.montant|floatformat:0 }} FCFA</span>
                                                     </div>
                                                     <div class="mt-3">
-                                                        <a href="{% url 'financing_documents_upload' reservation.financement.id %}" class="btn btn-sm btn-primary">
-                                                            <i class="fas fa-cloud-upload"></i> Gérer mes documents
+                                                        <a href="{% url 'client_financing_detail' reservation.financement.id %}" class="btn btn-sm btn-primary">
+                                                            <i class="fas fa-eye"></i> Voir le justificatif
                                                         </a>
                                                     </div>
                                                 </div>

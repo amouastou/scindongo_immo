@@ -40,16 +40,12 @@
             <td>{{ fin.banque.nom }}</td>
             <td class="fw-bold">{{ fin.montant|floatformat:0 }} FCFA</td>
             <td>
-              {% if fin.statut == 'soumis' %}
-                <span class="badge bg-info">📮 Soumis</span>
-              {% elif fin.statut == 'en_etude' %}
-                <span class="badge bg-warning text-dark">📚 En étude</span>
-              {% elif fin.statut == 'accepte' %}
-                <span class="badge bg-success">✅ Accepté</span>
-              {% elif fin.statut == 'refuse' %}
-                <span class="badge bg-danger">❌ Refusé</span>
-              {% elif fin.statut == 'clos' %}
-                <span class="badge bg-secondary">🏁 Clos</span>
+              {% if fin.statut == fin.Statut.JUSTIFICATIF_SOUMIS %}
+                <span class="badge bg-info">� Justificatif soumis</span>
+              {% elif fin.statut == fin.Statut.ACCEPTE %}
+                <span class="badge bg-success">✅ Financement accepté</span>
+              {% elif fin.statut == fin.Statut.REFUSE %}
+                <span class="badge bg-danger">❌ Financement rejeté</span>
               {% endif %}
             </td>
             <td>{{ fin.created_at|date:"d/m/Y" }}</td>

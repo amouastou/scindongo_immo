@@ -1,0 +1,200 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Détail Audit - SCINDONGO Immo{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row mb-4">
+        <div class="col-md-12">
+            <a href="{% url 'core:audit_list' %}" class="btn btn-outline-secondary mb-3">
+                <i class="fas fa-arrow-left"></i> Retour à la liste
+            </a>
+            <h1><i class="fas fa-file-alt"></i> Détail de l'entrée d'audit</h1>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-6">
+            <div class="card mb-4">
+                <div class="card-header bg-primary text-white">
+                    <h5><i class="fas fa-info-circle"></i> Informations générales</h5>
+                </div>
+                <div class="card-body">
+                    <table class="table table-borderless">
+                        <tr>
+                            <th width="40%">Date/Heure :</th>
+                            <td>{{ audit_log.created_at|date:"d/m/Y H:i:s" }}</td>
+                        </tr>
+                        <tr>
+                            <th>Utilisateur :</th>
+                            <td>
+                                {% if audit_log.acteur %}
+                                    <a href="{% url 'core:user_audit_history' audit_log.acteur.id %}">
+                                        {{ audit_log.acteur.email }}
+                                    </a>
+                                    <br><small class="text-muted">
+                                        Rôles: 
+                                        {% for role in audit_log.acteur.roles.all %}
+                                            <span class="badge bg-info">{{ role.get_code_display }}</span>
+                                        {% endfor %}
+                                    </small>
+                                {% else %}
+                                    <em class="text-muted">Système</em>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        <tr>
+                            <th>Action :</th>
+                            <td><code>{{ audit_log.action }}</code></td>
+                        </tr>
+                        <tr>
+                            <th>Catégorie :</th>
+                            <td>
+                                <span class="badge bg-secondary">{{ audit_log.get_categorie_display }}</span>
+                            </td>
+                        </tr>
+                        <tr>
+                            <th>Résultat :</th>
+                            <td>
+                                {% if audit_log.resultat == 'success' %}
+                                    <span class="badge bg-success"><i class="fas fa-check"></i> Succès</span>
+                                {% elif audit_log.resultat == 'failure' %}
+                                    <span class="badge bg-danger"><i class="fas fa-times"></i> Échec</span>
+                                {% elif audit_log.resultat == 'partial' %}
+                                    <span class="badge bg-warning text-dark"><i class="fas fa-exclamation"></i> Partiel</span>
+                                {% else %}
+                                    <span class="badge bg-info"><i class="fas fa-clock"></i> En attente</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        <tr>
+                            <th>Objet concerné :</th>
+                            <td>
+                                {{ audit_log.objet_type }}
+                                {% if audit_log.objet_id %}
+                                    <br><small class="text-muted">ID: {{ audit_log.objet_id }}</small>
+                                {% endif %}
+                            </td>
+                        </tr>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-6">
+            <div class="card mb-4">
+                <div class="card-header bg-secondary text-white">
+                    <h5><i class="fas fa-network-wired"></i> Informations réseau</h5>
+                </div>
+                <div class="card-body">
+                    <table class="table table-borderless">
+                        <tr>
+                            <th width="40%">Adresse IP :</th>
+                            <td>{{ audit_log.ip_address|default:"Non disponible" }}</td>
+                        </tr>
+                        <tr>
+                            <th>Session ID :</th>
+                            <td><code>{{ audit_log.session_key|default:"N/A" }}</code></td>
+                        </tr>
+                        <tr>
+                            <th>Méthode HTTP :</th>
+                            <td>
+                                {% if audit_log.methode_http %}
+                                    <span class="badge bg-info">{{ audit_log.methode_http }}</span>
+                                {% else %}
+                                    N/A
+                                {% endif %}
+                            </td>
+                        </tr>
+                        <tr>
+                            <th>URL :</th>
+                            <td><code>{{ audit_log.url_path|default:"N/A" }}</code></td>
+                        </tr>
+                        <tr>
+                            <th>User-Agent :</th>
+                            <td><small>{{ audit_log.user_agent|default:"Non disponible" }}</small></td>
+                        </tr>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Payload (données détaillées) -->
+    <div class="row">
+        <div class="col-md-12">
+            <div class="card">
+                <div class="card-header bg-info text-white">
+                    <h5><i class="fas fa-database"></i> Données détaillées (Payload)</h5>
+                </div>
+                <div class="card-body">
+                    {% if audit_log.payload %}
+                        <pre class="bg-light p-3 rounded" style="max-height: 500px; overflow-y: auto;"><code>{{ audit_log.payload|pprint }}</code></pre>
+                    {% else %}
+                        <p class="text-muted">Aucune donnée supplémentaire</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Contexte temporel -->
+    <div class="row mt-4">
+        <div class="col-md-12">
+            <div class="card">
+                <div class="card-header bg-warning text-dark">
+                    <h5><i class="fas fa-clock"></i> Actions adjacentes</h5>
+                </div>
+                <div class="card-body">
+                    <p class="text-muted">
+                        Actions effectuées autour de cette entrée (±5 minutes) par le même utilisateur :
+                    </p>
+                    {% if audit_log.acteur %}
+                    <table class="table table-sm">
+                        <thead>
+                            <tr>
+                                <th>Heure</th>
+                                <th>Action</th>
+                                <th>Résultat</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% comment %}
+                            On pourrait ajouter une query pour récupérer les actions adjacentes
+                            {% endcomment %}
+                            <tr>
+                                <td colspan="3" class="text-center text-muted">Fonctionnalité à implémenter</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                    {% else %}
+                    <p class="text-muted">Action système, pas d'utilisateur associé</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Améliorer l'affichage du JSON
+document.addEventListener('DOMContentLoaded', function() {
+    const codeBlocks = document.querySelectorAll('pre code');
+    codeBlocks.forEach(block => {
+        try {
+            // Tenter de formatter le JSON si c'est du JSON valide
+            const text = block.textContent;
+            if (text.trim().startsWith('{') || text.trim().startsWith('[')) {
+                const json = JSON.parse(text);
+                block.textContent = JSON.stringify(json, null, 2);
+            }
+        } catch (e) {
+            // Pas du JSON, on laisse tel quel
+        }
+    });
+});
+</script>
+{% endblock %}

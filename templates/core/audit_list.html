@@ -1,0 +1,258 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Journal d'Audit - SCINDONGO Immo{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <div class="row mb-4">
+        <div class="col-md-12">
+            <h1><i class="fas fa-clipboard-list"></i> Journal d'Audit</h1>
+            <p class="text-muted">Traçabilité complète de toutes les actions des utilisateurs</p>
+        </div>
+    </div>
+
+    <!-- Statistiques générales -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card border-primary">
+                <div class="card-body">
+                    <h5 class="card-title"><i class="fas fa-list"></i> Total des logs</h5>
+                    <h2 class="text-primary">{{ total_logs|default:0 }}</h2>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card border-info">
+                <div class="card-body">
+                    <h5 class="card-title"><i class="fas fa-clock"></i> Dernières 24h</h5>
+                    <h2 class="text-info">{{ logs_24h|default:0 }}</h2>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card border-success">
+                <div class="card-body">
+                    <h5 class="card-title"><i class="fas fa-check-circle"></i> Succès (24h)</h5>
+                    <h2 class="text-success">
+                        {% for stat in stats_resultats %}
+                            {% if stat.resultat == 'success' %}{{ stat.count }}{% endif %}
+                        {% endfor %}
+                    </h2>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card border-danger">
+                <div class="card-body">
+                    <h5 class="card-title"><i class="fas fa-exclamation-triangle"></i> Échecs (24h)</h5>
+                    <h2 class="text-danger">
+                        {% for stat in stats_resultats %}
+                            {% if stat.resultat == 'failure' %}{{ stat.count }}{% endif %}
+                        {% endfor %}
+                    </h2>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Top 5 catégories (24h) -->
+    <div class="row mb-4">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header bg-secondary text-white">
+                    <h5><i class="fas fa-chart-bar"></i> Top 5 Catégories (24h)</h5>
+                </div>
+                <div class="card-body">
+                    <ul class="list-group">
+                        {% for stat in stats_categories %}
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            {{ stat.categorie|title }}
+                            <span class="badge bg-primary rounded-pill">{{ stat.count }}</span>
+                        </li>
+                        {% empty %}
+                        <li class="list-group-item">Aucune donnée</li>
+                        {% endfor %}
+                    </ul>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Échecs récents -->
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header bg-danger text-white">
+                    <h5><i class="fas fa-exclamation-circle"></i> Échecs récents (1h)</h5>
+                </div>
+                <div class="card-body" style="max-height: 300px; overflow-y: auto;">
+                    <ul class="list-group">
+                        {% for log in recent_failures %}
+                        <li class="list-group-item">
+                            <small class="text-muted">{{ log.created_at|date:"d/m/Y H:i" }}</small><br>
+                            <strong>{{ log.acteur.email|default:"Système" }}</strong> - {{ log.action }}
+                        </li>
+                        {% empty %}
+                        <li class="list-group-item text-success">
+                            <i class="fas fa-check-circle"></i> Aucun échec récent
+                        </li>
+                        {% endfor %}
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filtres -->
+    <div class="card mb-4">
+        <div class="card-header bg-light">
+            <h5><i class="fas fa-filter"></i> Filtres de recherche</h5>
+        </div>
+        <div class="card-body">
+            <form method="get" class="row g-3">
+                <div class="col-md-3">
+                    <label class="form-label">Catégorie</label>
+                    <select name="categorie" class="form-select">
+                        <option value="">Toutes</option>
+                        {% for code, label in categories %}
+                        <option value="{{ code }}" {% if request.GET.categorie == code %}selected{% endif %}>{{ label }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                
+                <div class="col-md-3">
+                    <label class="form-label">Résultat</label>
+                    <select name="resultat" class="form-select">
+                        <option value="">Tous</option>
+                        {% for code, label in resultats %}
+                        <option value="{{ code }}" {% if request.GET.resultat == code %}selected{% endif %}>{{ label }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                
+                <div class="col-md-3">
+                    <label class="form-label">Période</label>
+                    <select name="periode" class="form-select">
+                        <option value="">Personnalisée</option>
+                        <option value="1h" {% if request.GET.periode == '1h' %}selected{% endif %}>Dernière heure</option>
+                        <option value="24h" {% if request.GET.periode == '24h' %}selected{% endif %}>Dernières 24h</option>
+                        <option value="7d" {% if request.GET.periode == '7d' %}selected{% endif %}>7 derniers jours</option>
+                        <option value="30d" {% if request.GET.periode == '30d' %}selected{% endif %}>30 derniers jours</option>
+                    </select>
+                </div>
+                
+                <div class="col-md-3">
+                    <label class="form-label">Recherche</label>
+                    <input type="text" name="search" class="form-control" placeholder="Action, email..." value="{{ request.GET.search }}">
+                </div>
+                
+                <div class="col-md-12 text-end">
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-search"></i> Filtrer
+                    </button>
+                    <a href="{% url 'core:audit_list' %}" class="btn btn-secondary">
+                        <i class="fas fa-redo"></i> Réinitialiser
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Liste des logs -->
+    <div class="card">
+        <div class="card-header bg-primary text-white">
+            <h5><i class="fas fa-list"></i> Entrées d'audit ({{ page_obj.paginator.count }} résultats)</h5>
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover table-sm mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Date/Heure</th>
+                            <th>Utilisateur</th>
+                            <th>Catégorie</th>
+                            <th>Action</th>
+                            <th>Objet</th>
+                            <th>Résultat</th>
+                            <th>IP</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for log in audit_logs %}
+                        <tr>
+                            <td><small>{{ log.created_at|date:"d/m/Y H:i:s" }}</small></td>
+                            <td>
+                                {% if log.acteur %}
+                                    <a href="{% url 'core:user_audit_history' log.acteur.id %}" class="text-decoration-none">
+                                        {{ log.acteur.email }}
+                                    </a>
+                                {% else %}
+                                    <em class="text-muted">Système</em>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <span class="badge bg-secondary">{{ log.get_categorie_display }}</span>
+                            </td>
+                            <td><small>{{ log.action }}</small></td>
+                            <td><small>{{ log.objet_type }}</small></td>
+                            <td>
+                                {% if log.resultat == 'success' %}
+                                    <span class="badge bg-success">Succès</span>
+                                {% elif log.resultat == 'failure' %}
+                                    <span class="badge bg-danger">Échec</span>
+                                {% elif log.resultat == 'partial' %}
+                                    <span class="badge bg-warning text-dark">Partiel</span>
+                                {% else %}
+                                    <span class="badge bg-info">En attente</span>
+                                {% endif %}
+                            </td>
+                            <td><small>{{ log.ip_address|default:"-" }}</small></td>
+                            <td>
+                                <a href="{% url 'core:audit_detail' log.id %}" class="btn btn-sm btn-outline-primary">
+                                    <i class="fas fa-eye"></i>
+                                </a>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="8" class="text-center py-4">
+                                <i class="fas fa-info-circle"></i> Aucune entrée d'audit trouvée
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Pagination -->
+    {% if is_paginated %}
+    <nav aria-label="Pagination" class="mt-3">
+        <ul class="pagination justify-content-center">
+            {% if page_obj.has_previous %}
+            <li class="page-item">
+                <a class="page-link" href="?page=1{{ request.GET.urlencode|slice:'5:' }}">Première</a>
+            </li>
+            <li class="page-item">
+                <a class="page-link" href="?page={{ page_obj.previous_page_number }}{{ request.GET.urlencode|slice:'5:' }}">Précédent</a>
+            </li>
+            {% endif %}
+            
+            <li class="page-item active">
+                <span class="page-link">Page {{ page_obj.number }} / {{ page_obj.paginator.num_pages }}</span>
+            </li>
+            
+            {% if page_obj.has_next %}
+            <li class="page-item">
+                <a class="page-link" href="?page={{ page_obj.next_page_number }}{{ request.GET.urlencode|slice:'5:' }}">Suivant</a>
+            </li>
+            <li class="page-item">
+                <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}{{ request.GET.urlencode|slice:'5:' }}">Dernière</a>
+            </li>
+            {% endif %}
+        </ul>
+    </nav>
+    {% endif %}
+</div>
+{% endblock %}

@@ -77,6 +77,24 @@ class User(AbstractUser):
         help_text="Numéro de téléphone",
         verbose_name="Téléphone"
     )
+    
+    # Vérification email
+    email_verified = models.BooleanField(
+        default=False,
+        help_text="Email vérifié par le user"
+    )
+    email_verification_token = models.CharField(
+        max_length=64,
+        blank=True,
+        null=True,
+        help_text="Token de vérification email"
+    )
+    email_verification_sent_at = models.DateTimeField(
+        blank=True,
+        null=True,
+        help_text="Date d'envoi du dernier email de vérification"
+    )
+    
     roles = models.ManyToManyField(Role, related_name="utilisateurs", blank=True)
 
     USERNAME_FIELD = "email"

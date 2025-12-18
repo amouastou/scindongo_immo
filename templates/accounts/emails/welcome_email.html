@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bienvenue</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f4f4f4;
+            margin: 0;
+            padding: 0;
+        }
+        .container {
+            max-width: 600px;
+            margin: 40px auto;
+            background-color: #ffffff;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .header {
+            background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+            color: white;
+            padding: 30px 20px;
+            text-align: center;
+        }
+        .header h1 {
+            margin: 0;
+            font-size: 32px;
+        }
+        .content {
+            padding: 40px 30px;
+            color: #333;
+        }
+        .success-icon {
+            font-size: 80px;
+            text-align: center;
+            margin: 20px 0;
+        }
+        .button {
+            display: inline-block;
+            padding: 15px 40px;
+            background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+            color: white !important;
+            text-decoration: none;
+            border-radius: 50px;
+            font-weight: bold;
+            margin: 20px 0;
+        }
+        .features {
+            background-color: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 20px 0;
+        }
+        .features h3 {
+            color: #28a745;
+            margin-top: 0;
+        }
+        .footer {
+            background-color: #f8f9fa;
+            padding: 20px;
+            text-align: center;
+            color: #6c757d;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎉 Bienvenue !</h1>
+        </div>
+        <div class="content">
+            <div class="success-icon">✓</div>
+            <h2 style="text-align: center; color: #28a745;">Votre compte est activé !</h2>
+            
+            <p>Bonjour <strong>{{ user.get_full_name|default:user.email }}</strong>,</p>
+            
+            <p>Félicitations ! Votre adresse email a été vérifiée avec succès. Vous pouvez maintenant profiter pleinement de tous les services de SCINDONGO Immo.</p>
+            
+            <div style="text-align: center;">
+                <a href="{{ login_url }}" class="button">
+                    🏠 Accéder à mon compte
+                </a>
+            </div>
+            
+            <div class="features">
+                <h3>🌟 Ce que vous pouvez faire maintenant :</h3>
+                <ul>
+                    <li><strong>Explorer</strong> nos programmes immobiliers exclusifs</li>
+                    <li><strong>Réserver</strong> votre logement en quelques clics</li>
+                    <li><strong>Gérer</strong> vos paiements et échéances</li>
+                    <li><strong>Suivre</strong> l'avancement de votre projet</li>
+                    <li><strong>Contacter</strong> nos conseillers commerciaux</li>
+                </ul>
+            </div>
+            
+            <p><strong>Besoin d'aide ?</strong></p>
+            <p>Notre équipe est à votre disposition pour vous accompagner :</p>
+            <ul>
+                <li>📧 Email : <a href="mailto:contact@scindongo.com">contact@scindongo.com</a></li>
+                <li>📞 Téléphone : +221 XX XXX XX XX</li>
+                <li>💬 Chat en ligne sur notre site</li>
+            </ul>
+            
+            <p>Nous sommes ravis de vous compter parmi nos clients !</p>
+            <p><strong>L'équipe SCINDONGO Immo</strong></p>
+        </div>
+        <div class="footer">
+            <p>&copy; 2025 SCINDONGO Immo. Tous droits réservés.</p>
+            <p>
+                <a href="{{ site_url }}">Visiter le site</a> | 
+                <a href="mailto:contact@scindongo.com">Contact</a>
+            </p>
+        </div>
+    </div>
+</body>
+</html>
