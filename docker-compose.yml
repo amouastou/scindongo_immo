@@ -35,6 +35,7 @@ services:
       POSTGRES_PORT: 5432
       REDIS_URL: redis://redis:6379/0
       DJANGO_DEBUG: "1"
+      PRODUCTION_MODE: "${PRODUCTION_MODE:-0}"
     depends_on:
       - db
       - redis

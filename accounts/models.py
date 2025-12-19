@@ -124,3 +124,65 @@ class User(AbstractUser):
     @property
     def is_admin_scindongo(self) -> bool:
         return self.has_role("ADMIN")
+
+
+class PasswordResetToken(TimeStampedModel):
+    """
+    Token sécurisé pour la réinitialisation de mot de passe.
+    
+    Caractéristiques de sécurité:
+    - Token unique généré aléatoirement (32 bytes)
+    - Expiration après 1 heure
+    - Usage unique (is_used = True après utilisation)
+    - Lié à un utilisateur spécifique
+    - Supprimé automatiquement après utilisation
+    """
+    user = models.ForeignKey(
+        User, 
+        on_delete=models.CASCADE, 
+        related_name='password_reset_tokens',
+        verbose_name="Utilisateur"
+    )
+    token = models.CharField(
+        max_length=64,
+        unique=True,
+        db_index=True,
+        help_text="Token de réinitialisation (32 bytes hex)"
+    )
+    is_used = models.BooleanField(
+        default=False,
+        help_text="Token déjà utilisé"
+    )
+    expires_at = models.DateTimeField(
+        help_text="Date d'expiration du token (1h après création)"
+    )
+    ip_address = models.GenericIPAddressField(
+        blank=True,
+        null=True,
+        help_text="IP de l'utilisateur qui a demandé le reset"
+    )
+    
+    class Meta:
+        verbose_name = "Token de réinitialisation"
+        verbose_name_plural = "Tokens de réinitialisation"
+        ordering = ['-created_at']
+    
+    def __str__(self):
+        return f"Reset token for {self.user.email} - {'Used' if self.is_used else 'Valid'}"
+    
+    def is_valid(self):
+        """Vérifie si le token est encore valide"""
+        from django.utils import timezone
+        
+        if self.is_used:
+            return False
+        
+        if timezone.now() > self.expires_at:
+            return False
+        
+        return True
+    
+    def mark_as_used(self):
+        """Marque le token comme utilisé"""
+        self.is_used = True
+        self.save(update_fields=['is_used', 'updated_at'])

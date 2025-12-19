@@ -91,5 +91,10 @@ fi
 echo "🔥 Starting Gunicorn with DJANGO_SETTINGS_MODULE=$DJANGO_SETTINGS_MODULE"
 exec gunicorn scindongo_immo.wsgi:application \
     --bind 0.0.0.0:8000 \
-    --workers 3 \
-    --timeout 120
+    --workers 4 \
+    --threads 2 \
+    --worker-class gthread \
+    --timeout 120 \
+    --max-requests 1000 \
+    --max-requests-jitter 50 \
+    --keep-alive 5

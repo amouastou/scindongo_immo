@@ -1,0 +1,79 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Trop de tentatives - SCINDONGO Immo{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-8 col-lg-6">
+            <div class="card border-warning shadow-lg">
+                <div class="card-header bg-warning text-dark text-center">
+                    <h3><i class="fas fa-exclamation-triangle"></i> Trop de tentatives</h3>
+                </div>
+                <div class="card-body text-center p-5">
+                    <div class="mb-4">
+                        <i class="fas fa-shield-alt fa-5x text-warning"></i>
+                    </div>
+                    
+                    <h4 class="mb-3">Limite de tentatives atteinte</h4>
+                    
+                    <p class="lead mb-4">
+                        Vous avez effectué trop de tentatives en peu de temps. 
+                        Pour votre sécurité, cette action a été temporairement bloquée.
+                    </p>
+                    
+                    <div class="alert alert-warning" role="alert">
+                        <strong><i class="fas fa-clock"></i> Veuillez patienter 15 minutes</strong> avant de réessayer.
+                    </div>
+                    
+                    <div class="mt-4 text-start">
+                        <h5 class="mb-3">Pourquoi cette protection ?</h5>
+                        <ul class="list-unstyled">
+                            <li class="mb-2">
+                                <i class="fas fa-check-circle text-success"></i> 
+                                Protection contre les attaques automatisées
+                            </li>
+                            <li class="mb-2">
+                                <i class="fas fa-check-circle text-success"></i> 
+                                Sécurisation de votre compte
+                            </li>
+                            <li class="mb-2">
+                                <i class="fas fa-check-circle text-success"></i> 
+                                Prévention des abus
+                            </li>
+                        </ul>
+                    </div>
+                    
+                    <hr class="my-4">
+                    
+                    <div class="mt-4">
+                        <h5 class="mb-3">Que faire maintenant ?</h5>
+                        <p class="text-muted">
+                            <i class="fas fa-lightbulb text-warning"></i> 
+                            Si vous avez oublié votre mot de passe, vous pourrez utiliser 
+                            la fonction "Mot de passe oublié" après le délai d'attente.
+                        </p>
+                        <p class="text-muted">
+                            <i class="fas fa-question-circle text-info"></i> 
+                            Si vous rencontrez des difficultés, contactez notre support.
+                        </p>
+                    </div>
+                    
+                    <div class="mt-4">
+                        <a href="{% url 'home' %}" class="btn btn-primary btn-lg">
+                            <i class="fas fa-home"></i> Retour à l'accueil
+                        </a>
+                    </div>
+                </div>
+                <div class="card-footer text-muted text-center">
+                    <small>
+                        <i class="fas fa-info-circle"></i> 
+                        Cette protection est automatique et temporaire.
+                    </small>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

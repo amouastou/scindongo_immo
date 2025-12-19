@@ -2,8 +2,10 @@ from django.views.generic import TemplateView, ListView, DetailView, UpdateView,
 from django.urls import reverse_lazy
 from django.shortcuts import redirect
 from django.contrib import messages
-from django.db.models import Q
+from django.db.models import Q, Prefetch
 from django.core.exceptions import PermissionDenied
+from django.views.decorators.cache import cache_page
+from django.utils.decorators import method_decorator
 from accounts.mixins import RoleRequiredMixin
 from accounts.utils import is_admin_user
 from .models import Programme, Unite, TypeBien, ModeleBien, AvancementChantierUnite, PhotoChantierUnite, MessageChantier
@@ -11,6 +13,8 @@ from .forms import ProgrammeForm, AvancementChantierUniteForm
 from datetime import datetime
 
 
+# Cache la page d'accueil pendant 5 minutes (300 secondes)
+@method_decorator(cache_page(300), name='dispatch')
 class HomeView(TemplateView):
     template_name = 'public/home.html'
 
@@ -23,7 +27,10 @@ class ProgrammeListView(RoleRequiredMixin, ListView):
 
     def get_queryset(self):
         user = self.request.user
-        qs = Programme.objects.prefetch_related('unites').order_by("nom")
+        # Optimisation : précharger les unités en une seule requête
+        qs = Programme.objects.prefetch_related(
+            Prefetch('unites', queryset=Unite.objects.select_related('modele'))
+        ).order_by("nom")
 
         # 🔒 ADMIN voit tout, COMMERCIAL seulement ses programmes
         if is_admin_user(user):

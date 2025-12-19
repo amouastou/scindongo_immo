@@ -105,15 +105,15 @@ def verify_email_smtp(email):
     
     try:
         # Obtenir le serveur MX du domaine
-        mx_records = dns.resolver.resolve(domain, 'MX')
+        mx_records = dns.resolver.resolve(domain, 'MX', lifetime=3)  # Timeout DNS 3s
         # Trier par priorité (plus petit = prioritaire)
         mx_records = sorted(mx_records, key=lambda x: x.preference)
         mx_host = str(mx_records[0].exchange).rstrip('.')
         
         logger.info(f"Vérification SMTP de {email} via {mx_host}")
         
-        # Se connecter au serveur SMTP
-        server = smtplib.SMTP(timeout=10)
+        # Se connecter au serveur SMTP avec timeout réduit
+        server = smtplib.SMTP(timeout=5)  # Réduit de 10s à 5s
         server.set_debuglevel(0)
         server.connect(mx_host)
         server.helo('scindongo-immo.com')

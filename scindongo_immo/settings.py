@@ -31,13 +31,15 @@ INSTALLED_APPS = [
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
+    'django.middleware.gzip.GZipMiddleware',  # Compression GZIP pour accélérer
+    'corsheaders.middleware.CorsMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
-    # Audit middleware - doit être après AuthenticationMiddleware
     'core.middleware.AuditMiddleware',
+    'accounts.middleware.RateLimitMiddleware',  # Rate limiting personnalisé
 ]
 
 ROOT_URLCONF = 'scindongo_immo.urls'
@@ -69,6 +71,11 @@ DATABASES = {
         'PASSWORD': os.environ.get('POSTGRES_PASSWORD', 'scindongo'),
         'HOST': os.environ.get('POSTGRES_HOST', 'db'),
         'PORT': os.environ.get('POSTGRES_PORT', '5432'),
+        # Optimisations de connexion PostgreSQL
+        'CONN_MAX_AGE': 600,  # Réutilise les connexions pendant 10 minutes
+        'OPTIONS': {
+            'connect_timeout': 5,  # Timeout de connexion 5s
+        },
     }
 }
 
@@ -139,9 +146,76 @@ SIMPLE_JWT = {
     "AUTH_HEADER_TYPES": ("Bearer",),
 }
 
-SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
-SESSION_COOKIE_SECURE = False  # à passer à True en prod
-CSRF_COOKIE_SECURE = False     # à passer à True en prod
+# ==========================================
+# SÉCURITÉ HTTPS/SSL - CONFIGURATION CONDITIONNELLE
+# ==========================================
+# En développement (localhost), HTTPS est désactivé
+# En production, HTTPS est activé automatiquement
+PRODUCTION_MODE = os.environ.get('PRODUCTION_MODE', '0') == '1'
+
+if PRODUCTION_MODE:
+    # === CONFIGURATION PRODUCTION : HTTPS ACTIVÉ ===
+    print("🔒 MODE PRODUCTION : HTTPS/SSL activé")
+    
+    # Force HTTPS pour toutes les requêtes
+    SECURE_SSL_REDIRECT = True
+    
+    # HSTS (HTTP Strict Transport Security)
+    SECURE_HSTS_SECONDS = 31536000  # 1 an
+    SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+    SECURE_HSTS_PRELOAD = True
+    
+    # Cookies sécurisés (HTTPS uniquement)
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
+    SESSION_COOKIE_HTTPONLY = True
+    CSRF_COOKIE_HTTPONLY = True
+    SESSION_COOKIE_SAMESITE = 'Lax'
+    CSRF_COOKIE_SAMESITE = 'Lax'
+    
+    # Session expire après 1 heure d'inactivité
+    SESSION_COOKIE_AGE = 3600  # 1 heure
+    SESSION_SAVE_EVERY_REQUEST = True  # Prolonge la session à chaque requête
+    
+    # Sécurité supplémentaire
+    SECURE_CONTENT_TYPE_NOSNIFF = True
+    SECURE_BROWSER_XSS_FILTER = True
+    X_FRAME_OPTIONS = 'DENY'
+    
+    # Proxy SSL (si derrière Nginx/Apache)
+    SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+    
+else:
+    # === CONFIGURATION DÉVELOPPEMENT : HTTPS DÉSACTIVÉ ===
+    print("🔓 MODE DÉVELOPPEMENT : HTTPS/SSL désactivé (localhost)")
+    
+    # Pas de redirection HTTPS
+    SECURE_SSL_REDIRECT = False
+    
+    # HSTS désactivé
+    SECURE_HSTS_SECONDS = 0
+    SECURE_HSTS_INCLUDE_SUBDOMAINS = False
+    SECURE_HSTS_PRELOAD = False
+    
+    # Cookies non sécurisés (HTTP autorisé)
+    SESSION_COOKIE_SECURE = False
+    CSRF_COOKIE_SECURE = False
+    SESSION_COOKIE_HTTPONLY = True  # Toujours activé (protection XSS)
+    CSRF_COOKIE_HTTPONLY = True
+    SESSION_COOKIE_SAMESITE = 'Lax'
+    CSRF_COOKIE_SAMESITE = 'Lax'
+    
+    # Session expire après 2 semaines (plus confortable en dev)
+    SESSION_COOKIE_AGE = 1209600  # 2 semaines
+    SESSION_SAVE_EVERY_REQUEST = False
+    
+    # Sécurité de base (même en dev)
+    SECURE_CONTENT_TYPE_NOSNIFF = True
+    SECURE_BROWSER_XSS_FILTER = True
+    X_FRAME_OPTIONS = 'SAMEORIGIN'  # Moins strict en dev
+    
+    # Proxy SSL
+    SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 
 # File Upload Settings - Allow up to 60MB for large documents like brochures
 DATA_UPLOAD_MAX_MEMORY_SIZE = 62914560  # 60MB in bytes
@@ -178,4 +252,12 @@ SERVER_EMAIL = DEFAULT_FROM_EMAIL
 
 # URL du site (pour les liens dans les emails)
 SITE_URL = os.environ.get('SITE_URL', 'http://localhost:8000')
+
+# ==========================================
+# RATE LIMITING CONFIGURATION
+# ==========================================
+# django-ratelimit utilise le cache Django pour stocker les compteurs
+# Clé pour identifier l'utilisateur : 'user' (si authentifié) ou 'ip' (sinon)
+RATELIMIT_ENABLE = True  # Activer le rate limiting
+RATELIMIT_USE_CACHE = 'default'  # Utilise le cache Redis
 

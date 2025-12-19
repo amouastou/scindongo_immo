@@ -71,6 +71,13 @@
           <button type="submit" class="btn btn-primary w-100 btn-lg fw-semibold mb-3">
             ✓ Se connecter
           </button>
+          
+          <!-- Lien mot de passe oublié -->
+          <div class="text-center mb-3">
+            <a href="{% url 'password_reset_request' %}" class="text-decoration-none small">
+              <i class="fas fa-key"></i> Mot de passe oublié ?
+            </a>
+          </div>
         </form>
 
         <!-- Lien vers inscription -->

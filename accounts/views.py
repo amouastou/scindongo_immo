@@ -1,10 +1,12 @@
 from django.urls import reverse_lazy
 from django.views.generic import CreateView, ListView, UpdateView, DeleteView, TemplateView, View
 from django.contrib.auth.views import LoginView, LogoutView, PasswordChangeView
-from django.shortcuts import redirect
+from django.shortcuts import redirect, render
 from django.contrib.auth import authenticate, login, get_user_model
 from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin
+from django.utils.decorators import method_decorator
+from django_ratelimit.decorators import ratelimit
 
 from .forms import (
     LoginForm, RegisterForm, UserManagementForm, UserCreationFormWithPassword,
@@ -22,7 +24,13 @@ from sales.utils import get_pending_unite_and_clear
 User = get_user_model()
 
 
+@method_decorator(ratelimit(key='ip', rate='5/15m', method='POST', block=True), name='post')
 class UserLoginView(LoginView):
+    """
+    Vue de connexion avec rate limiting:
+    - Maximum 5 tentatives de connexion par IP toutes les 15 minutes
+    - Si dépassé, l'utilisateur est bloqué pendant 15 minutes
+    """
     template_name = 'accounts/login.html'
     authentication_form = LoginForm
 
@@ -87,7 +95,13 @@ class UserLogoutView(LogoutView):
     next_page = reverse_lazy('home')
 
 
+@method_decorator(ratelimit(key='ip', rate='3/15m', method='POST', block=True), name='post')
 class RegisterView(CreateView):
+    """
+    Vue d'inscription avec rate limiting:
+    - Maximum 3 tentatives d'inscription par IP toutes les 15 minutes
+    - Si dépassé, l'utilisateur est bloqué pendant 15 minutes
+    """
     template_name = 'accounts/register.html'
     form_class = RegisterForm
 
@@ -362,8 +376,203 @@ class ClientChangePasswordView(LoginRequiredMixin, PasswordChangeView):
     
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context['title'] = "Changer mon mot de passe"
+        context['page_title'] = "Changer mon mot de passe"
         return context
+
+
+# === Réinitialisation sécurisée du mot de passe ===
+
+@method_decorator(ratelimit(key='ip', rate='3/15m', method='POST', block=True), name='post')
+class PasswordResetRequestView(View):
+    """
+    Vue pour demander la réinitialisation du mot de passe.
+    Rate limiting: Maximum 3 demandes par IP toutes les 15 minutes
+    """
+    template_name = 'accounts/password_reset_request.html'
+    
+    def get(self, request):
+        return render(request, self.template_name)
+    
+    def post(self, request):
+        from .password_reset_service import generate_reset_token, send_password_reset_email
+        from core.utils import audit_log
+        
+        email = request.POST.get('email', '').strip()
+        
+        if not email:
+            messages.error(request, "❌ Veuillez fournir une adresse email.")
+            return render(request, self.template_name)
+        
+        try:
+            user = User.objects.get(email=email)
+        except User.DoesNotExist:
+            # Ne pas révéler si l'email existe ou pas (sécurité)
+            messages.success(
+                request,
+                "✓ Si cette adresse existe dans notre système, "
+                "un email de réinitialisation a été envoyé."
+            )
+            
+            # Logger la tentative échouée
+            audit_log(
+                None,
+                None,
+                "password_reset_requested_unknown_email",
+                {"email": email},
+                request,
+                categorie="security",
+                resultat="error"
+            )
+            
+            return redirect('password_reset_done')
+        
+        # Générer le token
+        token = generate_reset_token(user, request)
+        
+        # Envoyer l'email
+        email_sent, error = send_password_reset_email(user, token, request)
+        
+        if email_sent:
+            messages.success(
+                request,
+                "✓ Un email de réinitialisation a été envoyé à votre adresse."
+            )
+            
+            # Logger le succès
+            audit_log(
+                user,
+                None,
+                "password_reset_requested",
+                {"token_id": str(token.id)},
+                request,
+                categorie="user_management",
+                resultat="success"
+            )
+        else:
+            messages.error(
+                request,
+                "❌ Impossible d'envoyer l'email. Veuillez réessayer plus tard."
+            )
+            
+            # Logger l'échec
+            audit_log(
+                user,
+                None,
+                "password_reset_email_failed",
+                {"error": error},
+                request,
+                categorie="user_management",
+                resultat="error"
+            )
+        
+        return redirect('password_reset_done')
+
+
+class PasswordResetDoneView(TemplateView):
+    """Page affichée après demande de réinitialisation"""
+    template_name = 'accounts/password_reset_done.html'
+
+
+class PasswordResetConfirmView(View):
+    """Vue pour confirmer et saisir le nouveau mot de passe"""
+    template_name = 'accounts/password_reset_confirm.html'
+    
+    def get(self, request, token):
+        from .password_reset_service import validate_reset_token
+        
+        # Valider le token
+        reset_token, error = validate_reset_token(token)
+        
+        if error:
+            messages.error(request, f"❌ {error}")
+            return redirect('password_reset_request')
+        
+        # Afficher le formulaire
+        return render(request, self.template_name, {
+            'token': token,
+            'user': reset_token.user
+        })
+    
+    def post(self, request, token):
+        from .password_reset_service import (
+            validate_reset_token,
+            send_password_changed_notification,
+            invalidate_all_sessions
+        )
+        from core.utils import audit_log
+        
+        # Valider le token
+        reset_token, error = validate_reset_token(token)
+        
+        if error:
+            messages.error(request, f"❌ {error}")
+            return redirect('password_reset_request')
+        
+        # Récupérer les mots de passe
+        password1 = request.POST.get('password1')
+        password2 = request.POST.get('password2')
+        
+        # Validation
+        if not password1 or not password2:
+            messages.error(request, "❌ Veuillez remplir tous les champs.")
+            return render(request, self.template_name, {
+                'token': token,
+                'user': reset_token.user
+            })
+        
+        if password1 != password2:
+            messages.error(request, "❌ Les mots de passe ne correspondent pas.")
+            return render(request, self.template_name, {
+                'token': token,
+                'user': reset_token.user
+            })
+        
+        # Valider la complexité du mot de passe
+        from django.contrib.auth.password_validation import validate_password
+        from django.core.exceptions import ValidationError
+        
+        try:
+            validate_password(password1, reset_token.user)
+        except ValidationError as e:
+            for error_msg in e.messages:
+                messages.error(request, f"❌ {error_msg}")
+            return render(request, self.template_name, {
+                'token': token,
+                'user': reset_token.user
+            })
+        
+        # Changer le mot de passe
+        user = reset_token.user
+        user.set_password(password1)
+        user.save()
+        
+        # Marquer le token comme utilisé
+        reset_token.mark_as_used()
+        
+        # Invalider toutes les sessions actives (déconnexion partout)
+        invalidate_all_sessions(user)
+        
+        # Envoyer l'email de notification
+        send_password_changed_notification(user)
+        
+        # Logger le succès
+        audit_log(
+            user,
+            None,
+            "password_reset_completed",
+            {"token_id": str(reset_token.id)},
+            request,
+            categorie="user_management",
+            resultat="success"
+        )
+        
+        messages.success(
+            request,
+            "✅ Votre mot de passe a été modifié avec succès ! "
+            "Vous pouvez maintenant vous connecter."
+        )
+        
+        return redirect('login')
 
 
 # === Vérification Email ===
@@ -434,8 +643,12 @@ class VerifyEmailView(TemplateView):
         return super().get(request, *args, **kwargs)
 
 
+@method_decorator(ratelimit(key='ip', rate='2/10m', method='POST', block=True), name='post')
 class ResendVerificationEmailView(View):
-    """Permet de renvoyer l'email de vérification - accessible sans être connecté"""
+    """
+    Permet de renvoyer l'email de vérification - accessible sans être connecté
+    Rate limiting: Maximum 2 renvois d'email par IP toutes les 10 minutes
+    """
     
     def post(self, request, *args, **kwargs):
         # Récupérer l'email depuis le formulaire
